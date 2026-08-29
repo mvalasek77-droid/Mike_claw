@@ -95,6 +95,15 @@ interface Env {
   // ── Batch U: R2 profile photos ────────────────────────────────────────────
   PHOTOS?: R2Bucket;               // bound in wrangler.toml; absent = uploads disabled
   PHOTOS_PUBLIC_URL?: string;      // e.g. "https://pub-abc123.r2.dev"
+
+  // ── Founder signup alerts ──────────────────────────────────────────────────
+  // Both ADMIN_EMAIL and RESEND_API_KEY must be set or the feature is a total
+  // no-op — a missing key never blocks, slows, or fails a signup. Delivery is
+  // one REST call to Resend, no SDK. RESEND_FROM is optional: Resend's shared
+  // onboarding sender reaches your own verified address without a domain.
+  ADMIN_EMAIL?: string;            // where alerts land, e.g. "you@gmail.com"
+  RESEND_API_KEY?: string;         // secret: wrangler secret put RESEND_API_KEY
+  RESEND_FROM?: string;            // e.g. "Auction Baby <alerts@yourdomain.com>"
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -349,7 +358,7 @@ function handleHealth(env: Env): Response {
 }
 
 /** POST /auth/apple  { identityToken, name?, email? }  →  { userId, sessionToken, isNew, user } */
-async function handleAppleAuth(request: Request, env: Env): Promise<Response> {
+async function handleAppleAuth(request: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
   let body: any;
   try { body = await request.json(); } catch { return err("Invalid JSON body"); }
 
@@ -383,6 +392,9 @@ async function handleAppleAuth(request: Request, env: Env): Promise<Response> {
   const ttl = Number(env.SESSION_TTL_SECONDS ?? 60 * 60 * 24 * 30);
   const sessionToken = await issueSessionToken(user.id, ttl, env.SESSION_SECRET);
 
+  // After the response, never before it.
+  if (isNew && ctx) ctx.waitUntil(notifyNewSignup(env, user, "Sign in with Apple"));
+
   return json({
     userId: user.id,
     sessionToken,
@@ -398,6 +410,73 @@ async function handleAppleAuth(request: Request, env: Env): Promise<Response> {
 function isNew_seedName(supplied: string | null, _claims: AppleClaims): string | null {
   if (supplied && supplied.length > 0) return supplied;
   return null;
+}
+
+// ── Founder signup alerts ────────────────────────────────────────────────────
+
+/** One REST call to Resend. Silent no-op when unconfigured, and every failure
+ *  is swallowed after logging — an email provider being down must never turn
+ *  into a failed signup. */
+async function sendAdminEmail(env: Env, subject: string, text: string): Promise<void> {
+  if (!env.RESEND_API_KEY || !env.ADMIN_EMAIL) return;
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${env.RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: env.RESEND_FROM || "Auction Baby <onboarding@resend.dev>",
+        to: [env.ADMIN_EMAIL],
+        subject,
+        text,
+      }),
+    });
+    if (!res.ok) {
+      console.log(`admin email failed ${res.status}: ${(await res.text()).slice(0, 300)}`);
+    }
+  } catch (e: any) {
+    console.log(`admin email error: ${e?.message ?? e}`);
+  }
+}
+
+/** Emails the founder that someone signed up, with a live count so each alert
+ *  doubles as a pulse. Call through ctx.waitUntil so it runs after the response
+ *  and can never add latency to the signup itself. */
+async function notifyNewSignup(
+  env: Env, user: { id: string; name: string | null; email: string | null }, source: string,
+): Promise<void> {
+  if (!env.RESEND_API_KEY || !env.ADMIN_EMAIL) return;
+  let snapshot = "";
+  try {
+    const rows = await env.DB.batch([
+      env.DB.prepare("SELECT COUNT(*) AS n FROM users"),
+      env.DB.prepare("SELECT COUNT(*) AS n FROM profiles WHERE role = 'woman'"),
+      env.DB.prepare("SELECT COUNT(*) AS n FROM profiles WHERE role = 'man'"),
+    ]);
+    const n = (i: number) => Number((rows[i].results?.[0] as any)?.n ?? 0);
+    snapshot = `\nTotals now: ${n(0)} users — ${n(1)} lots, ${n(2)} bidders ` +
+               `(${Math.max(0, n(0) - n(1) - n(2))} signed up but no profile yet).`;
+  } catch { /* a failed count must not lose the alert */ }
+
+  const who = user.name || user.email || "(no name yet)";
+  await sendAdminEmail(
+    env,
+    `New signup: ${who}`,
+    [
+      `${who} just signed up via ${source}.`,
+      ``,
+      `Name:  ${user.name || "—"}`,
+      `Email: ${user.email || "— (Apple private relay or not shared)"}`,
+      `User:  ${user.id}`,
+      `Time:  ${new Date().toISOString()}`,
+      snapshot,
+      ``,
+      `They have not finished onboarding yet — role, age and photo are set on`,
+      `the next step. Open the admin console for the full breakdown.`,
+    ].join("\n"),
+  );
 }
 
 /** Authenticate a request. Returns the userId on success, null otherwise. */
@@ -521,7 +600,7 @@ async function handleAdminLogin(request: Request, env: Env): Promise<Response> {
  *  and admin access goes through POST /auth/admin-login instead. Seed/test
  *  accounts that legitimately need is_admin = 1 get it via a manual D1
  *  statement, never from an HTTP path. */
-async function handleDevLogin(request: Request, env: Env): Promise<Response> {
+async function handleDevLogin(request: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
   if (!env.SESSION_SECRET) return err("Server misconfigured: SESSION_SECRET unset", 500);
   if (!env.DB) return err("Server misconfigured: D1 not bound", 500);
 
@@ -537,6 +616,12 @@ async function handleDevLogin(request: Request, env: Env): Promise<Response> {
 
   const ttl = Number(env.SESSION_TTL_SECONDS ?? 60 * 60 * 24 * 30);
   const sessionToken = await issueSessionToken(user.id, ttl, env.SESSION_SECRET);
+
+  // Dev logins are labelled so a test account is never mistaken for a real
+  // signup. Admin-console logins are skipped entirely — they're you, not a user.
+  // Labelled so a seeded account is never mistaken for a real signup. This
+  // path is now behind APP_SHARED_SECRET, so it is only ever you or a test.
+  if (isNew && ctx) ctx.waitUntil(notifyNewSignup(env, user, "dev login (test account)"));
 
   return json({
     userId: user.id,
@@ -1745,9 +1830,12 @@ async function handleAdminListUsers(request: Request, env: Env): Promise<Respons
   let sql =
     "SELECT u.id, u.email, u.name, u.date_of_birth, u.created_at, u.last_seen_at, " +
     "u.verified_at, u.verification_status, u.suspended_until, " +
+    // role/location come from the profile — NULL means they never finished
+    // onboarding, which is worth seeing per-row and not just in the totals.
+    "p.role AS role, p.location AS location, " +
     "(SELECT COUNT(*) FROM reports r WHERE r.target_id = u.id) AS reports_against, " +
     "(SELECT COUNT(*) FROM blocks b WHERE b.blocked_id = u.id) AS blocks_against " +
-    "FROM users u";
+    "FROM users u LEFT JOIN profiles p ON p.user_id = u.id";
   const params: unknown[] = [];
   if (cursor != null && Number.isFinite(cursor)) {
     sql += " WHERE u.created_at < ?";
@@ -1763,6 +1851,7 @@ async function handleAdminListUsers(request: Request, env: Env): Promise<Respons
     users: list.map((u) => ({
       id: u.id, email: u.email, name: u.name, dateOfBirth: u.date_of_birth,
       createdAt: u.created_at, lastSeenAt: u.last_seen_at,
+      role: (u as any).role ?? null, location: (u as any).location ?? null,
       verifiedAt: u.verified_at, verificationStatus: u.verification_status,
       suspendedUntil: u.suspended_until,
       reportsAgainst: u.reports_against, blocksAgainst: u.blocks_against,
@@ -1907,10 +1996,25 @@ async function handleAdminStats(request: Request, env: Env): Promise<Response> {
     env.DB.prepare("SELECT COUNT(*) AS n FROM messages WHERE created_at >= ?").bind(dayAgo),
     env.DB.prepare("SELECT COUNT(*) AS n FROM blocks"),
     env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE suspended_until IS NOT NULL AND suspended_until > ?").bind(now),
+    // The two-sided split is the number that actually matters — a floor with
+    // no lots or no bidders is dead however healthy the totals look. `role`
+    // lives on profiles, so it is also the count of finished onboardings.
+    env.DB.prepare("SELECT COUNT(*) AS n FROM profiles WHERE role = 'woman'"),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM profiles WHERE role = 'man'"),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM profiles"),
+    // Growth: signups in the last day / week / month.
+    env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE created_at >= ?").bind(dayAgo),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE created_at >= ?").bind(now - 7 * 24 * 60 * 60 * 1000),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE created_at >= ?").bind(now - 30 * 24 * 60 * 60 * 1000),
+    // Anyone who opened the app in the last week.
+    env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE last_seen_at >= ?").bind(now - 7 * 24 * 60 * 60 * 1000),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM bids"),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM matches"),
   ]);
   const n = (i: number): number => Number((rows[i].results?.[0] as any)?.n ?? 0);
+  const users = n(0), profiles = n(14);
   return json({
-    users: n(0),
+    users,
     verified: n(1),
     admins: n(2),
     noDob: n(3),
@@ -1922,6 +2026,21 @@ async function handleAdminStats(request: Request, env: Env): Promise<Response> {
     messages24h: n(9),
     blocks: n(10),
     suspended: n(11),
+    // ── who they are ──
+    women: n(12),
+    men: n(13),
+    profiles,
+    // Authenticated but never finished onboarding — they own an account and
+    // appear nowhere on the floor.
+    incomplete: Math.max(0, users - profiles),
+    // ── growth ──
+    signups24h: n(15),
+    signups7d: n(16),
+    signups30d: n(17),
+    active7d: n(18),
+    // ── lifetime activity ──
+    bidsTotal: n(19),
+    matchesTotal: n(20),
     generatedAt: now,
   });
 }
@@ -2173,16 +2292,16 @@ async function handleReorderPhotos(request: Request, env: Env): Promise<Response
 // ── Router ───────────────────────────────────────────────────────────────────
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
 
     const { pathname } = new URL(request.url);
     const m = request.method;
 
     if (pathname === "/health" && m === "GET") return handleHealth(env);
-    if (pathname === "/auth/apple" && m === "POST") return handleAppleAuth(request, env);
+    if (pathname === "/auth/apple" && m === "POST") return handleAppleAuth(request, env, ctx);
     if (pathname === "/auth/admin-login" && m === "POST") return handleAdminLogin(request, env);
-    if (pathname === "/auth/dev-login" && m === "POST") return handleDevLogin(request, env);
+    if (pathname === "/auth/dev-login" && m === "POST") return handleDevLogin(request, env, ctx);
     if (pathname === "/me" && m === "GET") return handleMe(request, env);
     if (pathname === "/me" && m === "DELETE") return handleDeleteMe(request, env);
     if (pathname === "/me/dob" && m === "POST") return handleSetDob(request, env);

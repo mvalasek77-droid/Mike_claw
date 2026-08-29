@@ -1886,15 +1886,53 @@
     }
     try {
       const s = await API.adminStats();
-      $("#adm-stats").innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div class="adm-stat"><div class="adm-stat-n">${s.totalUsers ?? "—"}</div><div class="adm-stat-l">Total users</div></div>
-        <div class="adm-stat"><div class="adm-stat-n">${s.verifiedCount ?? "—"}</div><div class="adm-stat-l">Verified</div></div>
-        <div class="adm-stat"><div class="adm-stat-n">${s.reportCount ?? "—"}</div><div class="adm-stat-l">Reports</div></div>
-        <div class="adm-stat"><div class="adm-stat-n">${s.matchCount ?? "—"}</div><div class="adm-stat-l">Matches</div></div>
-        <div class="adm-stat"><div class="adm-stat-n">${s.bids24h ?? "—"}</div><div class="adm-stat-l">Bids (24h)</div></div>
-        <div class="adm-stat"><div class="adm-stat-n">${s.messages24h ?? "—"}</div><div class="adm-stat-l">Messages (24h)</div></div>
-        <div class="adm-stat"><div class="adm-stat-n">${s.suspendedCount ?? "—"}</div><div class="adm-stat-l">Suspended</div></div>
-      </div>`;
+      // Field names here must match the Worker's /admin/stats payload exactly.
+      // They previously didn't (totalUsers vs users, verifiedCount vs verified,
+      // …) so every tile but the two 24h ones rendered a dash.
+      const num = v => (typeof v === "number" ? v.toLocaleString() : "—");
+      const tile = (n, l, tint) =>
+        `<div class="adm-stat"${tint ? ` style="border-color:${tint}"` : ""}>
+           <div class="adm-stat-n"${tint ? ` style="color:${tint}"` : ""}>${n}</div>
+           <div class="adm-stat-l">${l}</div></div>`;
+      const grid = inner => `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${inner}</div>`;
+      const label = t => `<div class="kicker" style="margin:16px 0 8px">${t}</div>`;
+      $("#adm-stats").innerHTML =
+        label("The floor") +
+        grid(
+          tile(num(s.women), "Lots (women)", "var(--rose)") +
+          tile(num(s.men), "Bidders (men)", "var(--gold)") +
+          tile(num(s.users), "Accounts") +
+          tile(num(s.incomplete), "No profile yet")
+        ) +
+        (typeof s.women === "number" && typeof s.men === "number" && (s.women + s.men) > 0
+          ? `<div class="faint" style="margin-top:8px;font-size:12px">${
+              s.women === 0 ? "No lots on the floor — bidders have nobody to bid on."
+              : s.men === 0 ? "No bidders — lots will see an empty inbox."
+              : "Ratio " + (s.men / s.women).toFixed(1) + " bidders per lot."}</div>`
+          : "") +
+        label("Growth") +
+        grid(
+          tile(num(s.signups24h), "Signups (24h)") +
+          tile(num(s.signups7d), "Signups (7d)") +
+          tile(num(s.signups30d), "Signups (30d)") +
+          tile(num(s.active7d), "Active (7d)")
+        ) +
+        label("Activity") +
+        grid(
+          tile(num(s.bids24h), "Bids (24h)") +
+          tile(num(s.messages24h), "Messages (24h)") +
+          tile(num(s.bidsTotal), "Bids (all time)") +
+          tile(num(s.matchesChatting), "Live matches")
+        ) +
+        label("Trust and safety") +
+        grid(
+          tile(num(s.verified), "Verified") +
+          tile(num(s.reportsOpen), "Open reports", s.reportsOpen > 0 ? "var(--rose)" : "") +
+          tile(num(s.suspended), "Suspended") +
+          tile(num(s.blocks), "Blocks")
+        ) +
+        `<div class="faint" style="margin-top:12px;font-size:11px">Updated ${
+          s.generatedAt ? new Date(s.generatedAt).toLocaleTimeString() : "—"}</div>`;
     } catch (e) { $("#adm-stats").innerHTML = `<div class="faint">Error: ${esc(e.message)}</div>`; }
   }
 
@@ -1914,8 +1952,11 @@
           <div class="row" style="gap:10px;margin-bottom:6px">
             <div class="grow">
               <div style="font-family:var(--serif);font-weight:800">${esc(u.name || "—")} <span class="muted" style="font-size:12px">${esc(u.id || u.userId || "")}</span></div>
-              <div class="faint" style="font-size:12px">${u.email || ""} · Joined ${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "?"}</div>
+              <div class="faint" style="font-size:12px">${u.email || ""} · Joined ${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "?"}${u.location ? " · " + esc(u.location) : ""}</div>
             </div>
+            ${u.role === "woman" ? `<span class="pill" style="background:rgba(224,96,122,.18);color:var(--rose);font-size:11px">Lot</span>`
+              : u.role === "man" ? `<span class="pill" style="background:rgba(230,184,0,.18);color:var(--gold);font-size:11px">Bidder</span>`
+              : `<span class="pill" style="font-size:11px">No profile</span>`}
             ${u.verifiedAt ? `<span class="pill" style="background:rgba(79,176,198,.2);color:var(--verify);font-size:11px">✓ Verified</span>` : ""}
             ${u.suspendedUntil ? `<span class="pill" style="background:rgba(224,96,122,.2);color:var(--rose);font-size:11px">Suspended until ${new Date(u.suspendedUntil).toLocaleDateString()}</span>` : ""}
           </div>

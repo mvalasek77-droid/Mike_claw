@@ -31,6 +31,17 @@ APPLE_CLIENT_ID = "com.valasek.auctionbaby"
 # that users don't re-auth constantly) against blast radius on a leaked token.
 # Default: 30 days.
 SESSION_TTL_SECONDS = "2592000"
+# ── Founder signup alerts ────────────────────────────────────────────────────
+# Emails you whenever a new account is created, with a live lots/bidders count.
+# Entirely optional: with either value missing the feature is a silent no-op and
+# signups are completely unaffected.
+#   1. Sign up at resend.com and create an API key (free tier: 100 emails/day)
+#   2. npx wrangler secret put RESEND_API_KEY
+#   3. Set ADMIN_EMAIL below and redeploy
+# RESEND_FROM is optional — the default shared sender reaches your own verified
+# address without owning a domain. Set it once you have a domain on Resend.
+ADMIN_EMAIL = ""
+# RESEND_FROM = "Auction Baby <alerts@yourdomain.com>"
 # Public base URL for the R2 photos bucket. Set to your r2.dev subdomain
 # (e.g. https://pub-abc123.r2.dev) OR a custom domain fronting the bucket.
 # Photo URLs returned to clients are this + "/" + object key. Leave empty
