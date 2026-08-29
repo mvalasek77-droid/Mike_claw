@@ -66,6 +66,19 @@
       if (data.sessionToken) setToken(data.sessionToken);
       return data; // { userId, sessionToken, isNew, user }
     },
+    // Admin console (2026-08-28): real server-verified login. Sends the
+    // credential to POST /auth/admin-login, which checks the same HMAC the
+    // console used to check client-side AND requires the mapped account to
+    // already have is_admin = 1. Replaces the old devLogin("admin-console")
+    // trick that depended on the unauthenticated admin-prefix promotion.
+    async adminLogin(username, password) {
+      const data = await auth("/auth/admin-login", {
+        method: "POST", auth: false,
+        body: { username, password },
+      });
+      if (data.sessionToken) setToken(data.sessionToken);
+      return data; // { userId, sessionToken, isNew, user }
+    },
     // The Worker wraps the row as { user: {...} }. Unwrap it so callers get the
     // user directly — reading `.id` off the wrapper yielded undefined, which is
     // what every Stripe checkout was passing as its userId.

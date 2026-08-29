@@ -13,6 +13,10 @@
   // ---- live backend (Cloudflare Workers) with graceful demo fallback ----
   const API = window.AB_API || {};
   const CONFIGURED = () => !!window.AB_LIVE;                       // backend URLs set
+  // 2026-08-28: dev-login is now APP_SHARED_SECRET-gated server-side, so the
+  // "Dev Test" button is hidden unless explicitly requested (?devlogin=1).
+  // E2E/local testing passes the secret itself; real users never see the UI.
+  const DEBUG_DEV_LOGIN = () => new URLSearchParams(location.search).has("devlogin");
   const SIGNED_IN = () => !!(API.hasSession && API.hasSession());  // have a session token
   const APPLE_ON = () => !!(window.AB_CONFIG && window.AB_CONFIG.APPLE_SERVICE_ID);
   const hueFrom = s => { let h = 0; for (const c of (s || "")) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
@@ -430,7 +434,7 @@
       </div>
       ${APPLE_ON() ? `<button class="btn ghost" id="ob-apple" style="margin-bottom:16px;width:100%"> Sign in with Apple</button>
         <div class="faint" style="text-align:center;margin-bottom:16px">Optional — keeps your account across devices.</div>` : ""}
-      ${(CONFIGURED() && !SIGNED_IN() && !APPLE_ON()) ? `<button class="btn ghost" id="ob-dev" style="margin-bottom:16px;width:100%;background:#e8364f;color:#fff;border-color:#e8364f"> Sign in (Dev Test)</button>
+      ${(CONFIGURED() && !SIGNED_IN() && !APPLE_ON() && DEBUG_DEV_LOGIN()) ? `<button class="btn ghost" id="ob-dev" style="margin-bottom:16px;width:100%;background:#e8364f;color:#fff;border-color:#e8364f"> Sign in (Dev Test)</button>
         <div class="faint" style="text-align:center;margin-bottom:16px">Dev mode — creates a test account on the server.</div>` : ""}
 
       <div class="kicker" style="margin:6px 0 8px">Your side of the floor</div>
@@ -524,15 +528,19 @@
       } catch (e) { toast("Apple sign-in: " + e.message); }
     };
     const dv = $("#ob-dev");
-    if (dv) dv.onclick = async () => {
-      const name = ($("#ob-name") || {}).value || "TestUser";
-      try {
-        const d = await API.devLogin(name.trim() || "TestUser");
-        const nm = d && d.user && d.user.name;
-        if (nm && !$("#ob-name").value) $("#ob-name").value = nm;
-        toast("Dev signed in as " + (nm || name));
-      } catch (e) { toast("Dev login: " + e.message); }
-    };
+    if (dv) {
+      // Server-side gated behind APP_SHARED_SECRET since 2026-08-28; UI kept
+      // only for local dev behind ?devlogin=1 (real users never see it).
+      dv.onclick = async () => {
+        const name = ($("#ob-name") || {}).value || "Test User";
+        try {
+          const d = await API.devLogin(name.trim() || "Test User");
+          const nm = d && d.user && d.user.name;
+          if (nm && !$("#ob-name").value) $("#ob-name").value = nm;
+          toast("Dev signed in as " + (nm || name));
+        } catch (e) { toast("Dev login: " + e.message); }
+      };
+    }
     $("#ob-go").onclick = async () => {
       const name = $("#ob-name").value.trim();
       const dob = ($("#ob-dob") || {}).value || "";
@@ -1165,8 +1173,11 @@
       save();
       return copycatReveal(w);
     }
-    const isMike = (S.me.name || "").trim().toLowerCase() === "mike valasek";
-    if (!isMike) { if (gavelCost) { S.wallet += gavelCost; save(); } return toast(`${w.name} passed. Only accepts bids from Mike Valasek.`); }
+    // 2026-08-28: removed the old hard "only Mike Valasek can bid in demo"
+    // gate — everything below only runs in demo mode (the real path returned
+    // above), so an outage would have shown EVERY user a refusal naming the
+    // founder personally. Demo now simulates the accepted bid for anyone, as
+    // every other demo interaction (whispers, matches) already does.
     S.pendingBids = (S.pendingBids || 0) + 1;
     const m = { id: uid(), lotId: w.id, name: w.name, hue: w.hue, amount, gilded: !!gild,
                 note: note || "",
@@ -1802,15 +1813,42 @@
       const user = ($("#adm-user") || {}).value || "";
       const pass = ($("#adm-pass") || {}).value || "";
       if (!user || !pass) return toast("Enter credentials.");
-      const ok = await hmacGate(user, pass);
-      if (!ok) return toast("Invalid credentials.");
-      sessionStorage.setItem(ADMIN_KEY, "1");
-      if (CONFIGURED()) {
-        // Use a fixed "admin-console" dev-login so the admin's own session
-        // account is NOT the same as any real user they need to delete.
-        // The "admin-" prefix grants is_admin=1 on the server.
-        try { await API.devLogin("admin-console"); } catch (e) { /* non-fatal */ }
+
+      // 2026-08-28: real server-side login. The old flow signed in via
+      // devLogin("admin-console") and relied on the server's "admin-" prefix
+      // to grant is_admin — a hole since that endpoint had no auth at all.
+      // POST /auth/admin-login now verifies the same HMAC credential
+      // server-side and only issues a token for an account already flagged
+      // is_admin = 1 in D1.
+      let d;
+      if (CONFIGURED() && API.adminLogin) {
+        try {
+          d = await API.adminLogin(user.trim(), pass);
+        } catch (e) {
+          return toast(e.message || "Invalid credentials.");
+        }
+      } else if (!CONFIGURED()) {
+        // Demo mode (no backend): keep the original local HMAC check so the
+        // console UI stays reachable offline. Live mode never uses this.
+        d = await hmacGate(user, pass) ? { ok: true } : null;
+        if (!d) return toast("Invalid credentials.");
+      } else {
+        return toast("Backend unavailable.");
       }
+
+      // Don't trust the flag alone — confirm the returned session is actually
+      // an admin account before unlocking the console UI.
+      let confirmedAdmin = false;
+      try {
+        const me = await API.me();
+        confirmedAdmin = !!(me && me.user && me.user.isAdmin === true);
+      } catch (e) { /* fall through to denial below */ }
+      if (!confirmedAdmin) {
+        API.signOutLocal();
+        return toast("Not an admin account.");
+      }
+
+      sessionStorage.setItem(ADMIN_KEY, "1");
       go("/admin/dash");
     };
     $("#adm-go").onclick = doLogin;
