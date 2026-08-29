@@ -63,7 +63,15 @@
       if (Array.isArray(arr) && arr.length) {
         const live = arr.map(mapLot);
         const liveIds = new Set(live.map(l => l.id));
-        const seed = seedFloor().filter(s => !liveIds.has(s.id));
+        const liveNames = new Set(live.map(l => (l.name || "").toLowerCase()));
+        // Demo seed stays visible to everyone (per Mike, 2026-08-29: "all users
+        // see what I see"). Tag demo rows so placeBid can route them to the
+        // local simulation instead of the server (no server account exists
+        // behind them). Name-dedupe keeps the floor single-listed once real
+        // women with the same display name exist server-side.
+        const seed = seedFloor()
+          .filter(s => !liveIds.has(s.id) && !liveNames.has(s.name.toLowerCase()))
+          .map(s => ({ ...s, demo: true }));
         S.floor = mergeFloor(live, seed); save();
         if (tab === "floor" && S.role !== "woman") floor();
       }
@@ -78,7 +86,10 @@
       if (Array.isArray(arr) && arr.length) {
         const live = arr.map(mapLot);
         const liveIds = new Set(live.map(l => l.id));
-        const seed = seedFloor().filter(s => !liveIds.has(s.id));
+        const liveNames = new Set(live.map(l => (l.name || "").toLowerCase()));
+        const seed = seedFloor()
+          .filter(s => !liveIds.has(s.id) && !liveNames.has(s.name.toLowerCase()))
+          .map(s => ({ ...s, demo: true }));
         S.womenFloor = mergeFloor(live, seed); save();
         if (tab === "floor" && location.hash.replace(/^#\/?/, "") === "browse") floor();
       }
@@ -124,6 +135,10 @@
       // /matches carries no messages either — those come from /matches/:id,
       // which syncMatchDetail() fetches when a chat is opened.
       const prev = S.matches || [];
+      // Keep local demo matches (demo-seed women) — the server list only
+      // covers real accounts, so a wholesale replace would make demo
+      // conversations vanish on every sync.
+      const demoKept = prev.filter(m => m.demo);
       S.matches = arr.map(m => {
         const peer = m.peer || m.other || {};
         const before = prev.find(x => x.id === m.id);
@@ -143,6 +158,7 @@
           messages: (before && before.messages) || [],
         };
       });
+      S.matches = [...S.matches, ...demoKept];
       save(); if (tab === "matches") matches();
     } catch (e) { /* keep local */ }
   }
@@ -1206,7 +1222,10 @@
     if (gild && !w.copycat) { if (S.wallet >= GILDED_BID_COST) { S.wallet -= GILDED_BID_COST; gavelCost += GILDED_BID_COST; } else gild = false; }
     if (insure && !w.copycat) { if (S.wallet >= BID_INSURANCE_COST) { S.wallet -= BID_INSURANCE_COST; gavelCost += BID_INSURANCE_COST; } else insure = false; }
     if (gavelCost > 0) save();
-    if (CONFIGURED() && SIGNED_IN()) {
+    // Demo-seed lots have no server account behind them — the seed ships in
+    // the client itself. Route their bids through the local simulation for
+    // EVERYONE (signed in or not): same floor, same experience, no 404s.
+    if (CONFIGURED() && SIGNED_IN() && !w.demo) {
       API.placeBid(w.id, amount, note || "", { gilded: !!gild, insured: !!insure })
         .then(() => { toast(gild ? "Gilded bid placed — she'll see it first." : "Bid placed — you'll be notified if she accepts."); syncMatches(); })
         .catch(e => { if (gavelCost) { S.wallet += gavelCost; save(); } toast("Bid failed: " + e.message); });
@@ -1225,7 +1244,7 @@
     // every other demo interaction (whispers, matches) already does.
     S.pendingBids = (S.pendingBids || 0) + 1;
     const m = { id: uid(), lotId: w.id, name: w.name, hue: w.hue, amount, gilded: !!gild,
-                note: note || "",
+                note: note || "", demo: !!w.demo,
                 messages: [{ me: false, text: w.icebreakers[0] || "You win — where are you taking me?" }] };
     S.matches.unshift(m); save(); celebrate(w, amount, m);
   }
@@ -1379,7 +1398,7 @@
   function chat(id) {
     const m = S.matches.find(x => x.id === id); if (!m) return go("/matches");
     if (m.unread) { m.unread = false; save(); }
-    if (CONFIGURED() && SIGNED_IN()) {
+    if (CONFIGURED() && SIGNED_IN() && !m.demo) {
       API.markSeen(id).catch(() => {});
       if (!chat._loading || chat._loading !== id) { chat._loading = id; syncMatchDetail(id).finally(() => { chat._loading = null; }); }
     }
@@ -1436,6 +1455,7 @@
     const send = () => {
       const i = $("#ci"), tx = i.value.trim(); if (!tx) return;
       pushMsg({ me: true, text: tx }); i.value = "";
+      if (m.demo) { demoReply(); return; }
       if (CONFIGURED() && SIGNED_IN()) {
         API.sendMessage(id, tx).catch(e => toast("Send failed: " + e.message));
         return;
@@ -1447,6 +1467,7 @@
     // Photo button — pick, downscale, send
     $("#photo-btn").onclick = () => {
       pickPhoto(({ blob, dataURL }) => {
+        if (m.demo) { pushMsg({ me: true, photo: dataURL, text: "" }); demoReply(); return; }
         if (CONFIGURED() && SIGNED_IN()) {
           API.uploadPhoto(blob).then(d => {
             const url = (d.photo && d.photo.url) || d.url || dataURL;
