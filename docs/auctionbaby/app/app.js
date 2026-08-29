@@ -417,6 +417,10 @@
         tab = "floor"; return floor();
       }
       if (h === "peek") { guest = true; go("/browse"); tab = "floor"; return floor(); }
+      // The admin console has its own credential gate and a server-side
+      // is_admin check, so it doesn't need a local signup first. Requiring one
+      // meant creating a throwaway account just to look at the real data.
+      if (h.startsWith("admin")) return adminRouter(h);
       return onboarding();
     }
     if (h.startsWith("lot/")) return lotDetail(h.split("/")[1]);
@@ -1831,6 +1835,7 @@
     if (h === "admin") return adminGate();
     if (h === "admin/dash") return adminDash();
     if (h === "admin/users") return adminUsers();
+    if (h === "admin/floor") return adminFloor();
     if (h === "admin/reports") return adminReports();
     if (h === "admin/bugs") return adminBugs();
     if (h === "admin/audit") return adminAudit();
@@ -1901,11 +1906,81 @@
   const adminNav = (active) => `<div class="adm-nav">
     <button class="${active === "dash" ? "on" : ""}" data-go="admin/dash">Stats</button>
     <button class="${active === "users" ? "on" : ""}" data-go="admin/users">Users</button>
+    <button class="${active === "floor" ? "on" : ""}" data-go="admin/floor">Floor</button>
     <button class="${active === "reports" ? "on" : ""}" data-go="admin/reports">Reports</button>
     <button class="${active === "bugs" ? "on" : ""}" data-go="admin/bugs">Bugs</button>
     <button class="${active === "audit" ? "on" : ""}" data-go="admin/audit">Audit</button>
     <button data-go="you" style="margin-left:auto;opacity:.6">Exit</button>
   </div>`;
+
+  // The floor exactly as the server serves it, both roles at once, plus the
+  // accounts that exist but never reach it. The Users list shows who signed up;
+  // this shows who is actually visible to a bidder, and why the rest are not.
+  async function adminFloor() {
+    app.innerHTML = `<div class="screen">${adminNav("floor")}
+      <h1 class="display" style="font-size:24px;margin:14px 0 4px">Live Floor</h1>
+      <div class="faint" style="margin-bottom:14px;font-size:13px">Straight from <code>/users/floor</code> — what a bidder actually sees.</div>
+      <div class="card muted" id="adm-floor">Loading…</div>
+    </div>`;
+    wire();
+    if (!CONFIGURED() || !SIGNED_IN()) { $("#adm-floor").textContent = "Backend not configured."; return; }
+    try {
+      const [women, men, all] = await Promise.all([
+        API.floor("woman").catch(e => ({ error: e.message })),
+        API.floor("man").catch(e => ({ error: e.message })),
+        API.adminUsers().catch(e => ({ error: e.message })),
+      ]);
+      const list = r => (r && (r.profiles || r.floor || r.users)) || [];
+      const onFloor = [...list(women), ...list(men)];
+      const shown = new Set(onFloor.map(p => p.userId || p.id));
+      const users = list(all);
+
+      // Why would an account not appear? These are the server's own rules.
+      const reason = u => {
+        if (!u.role) return "no profile — never finished onboarding";
+        if (!u.dateOfBirth) return "no date of birth — the 18+ gate hides them";
+        if (u.suspendedUntil && u.suspendedUntil > Date.now()) return "suspended";
+        return "not returned by the floor query";
+      };
+      const missing = users.filter(u => !shown.has(u.id || u.userId));
+
+      const row = p => `<div class="card" style="margin-bottom:8px;padding:12px">
+        <div class="row" style="gap:10px">
+          ${gradSm(typeof p.hue === "number" ? Math.round(p.hue * 360) : hueFrom(p.userId || p.name),
+                   p.name || "—", (p.photos && p.photos[0] && p.photos[0].url) || null)}
+          <div class="grow">
+            <div style="font-family:var(--serif);font-weight:800">${esc(p.name || "—")}
+              <span class="muted" style="font-size:12px">${p.age || "?"}</span>
+              ${p.verifiedAt ? verifiedBadge("sm") : ""}</div>
+            <div class="faint" style="font-size:12px">${esc(p.location || "no location")} · ${money(p.startingBid || 0)} floor${
+              (p.photos && p.photos.length) ? "" : ' · <span style="color:var(--warning)">no photo</span>'}</div>
+          </div>
+          <span class="pill" style="font-size:10px;background:${p.role === "woman" ? "rgba(224,96,122,.18)" : "rgba(230,184,0,.18)"};color:${p.role === "woman" ? "var(--rose)" : "var(--gold)"}">${p.role === "woman" ? "Lot" : "Bidder"}</span>
+        </div></div>`;
+
+      const section = (title, items, empty) =>
+        `<div class="kicker" style="margin:16px 0 8px">${title}</div>` +
+        (items.length ? items : `<div class="card muted" style="padding:12px">${empty}</div>`);
+
+      $("#adm-floor").outerHTML = `<div id="adm-floor">
+        ${women.error || men.error ? `<div class="card" style="border-color:var(--danger);color:var(--danger);padding:12px">Floor query failed: ${esc(women.error || men.error)}</div>` : ""}
+        ${section(`Lots on the floor — ${list(women).length}`, list(women).map(row).join(""),
+                  "No women visible. Bidders see an empty floor.")}
+        ${section(`Bidders on the floor — ${list(men).length}`, list(men).map(row).join(""),
+                  "No men visible.")}
+        ${section(`Accounts NOT on the floor — ${missing.length}`,
+                  missing.map(u => `<div class="card" style="margin-bottom:8px;padding:12px">
+                    <div style="font-family:var(--serif);font-weight:800">${esc(u.name || "—")}
+                      <span class="muted" style="font-size:11px">${esc((u.id || "").slice(0, 8))}</span></div>
+                    <div class="faint" style="font-size:12px;color:var(--warning)">${esc(reason(u))}</div>
+                  </div>`).join(""),
+                  "Every account is on the floor.")}
+        <div class="faint" style="margin-top:14px;font-size:11px">The floor query excludes you, so your own account never appears here.</div>
+      </div>`;
+    } catch (e) {
+      $("#adm-floor").innerHTML = `<div class="faint">Error: ${esc(e.message)}</div>`;
+    }
+  }
 
   async function adminDash() {
     app.innerHTML = `<div class="screen">${adminNav("dash")}
