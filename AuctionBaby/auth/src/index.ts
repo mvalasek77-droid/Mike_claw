@@ -75,6 +75,14 @@
 interface Env {
   DB: D1Database;
   SESSION_SECRET: string;
+  /**
+   * Server-side admin-console credential hash. REQUIRED in production (set as
+   * a Worker secret — hex-encoded HMAC-SHA256 over `username:password` with
+   * ADMIN_LOGIN_SALT). Kept out of source: the hash pins a known password, so
+   * a code reader could brute-force it offline. The Worker refuses to boot if
+   * neither the secret nor a local .dev.vars fallback is present.
+   */
+  ADMIN_LOGIN_HASH_HEX?: string;
   APPLE_CLIENT_ID: string;         // e.g. "com.valasek.auctionbaby" (bundle id)
   WEB_CLIENT_ID?: string;          // Sign-in-with-Apple-for-Web Services ID (e.g. "com.valasek.auctionbaby.web")
   SESSION_TTL_SECONDS?: string;    // default 30 days
@@ -557,8 +565,8 @@ async function handleMe(request: Request, env: Env): Promise<Response> {
  *  messages, no user enumeration.
  */
 const ADMIN_LOGIN_SALT = "AuctionBaby-Admin-2026";
-const ADMIN_LOGIN_HASH_HEX =
-  "bb90ac932b3460870f09796f19be59afc83109cb062f8eb8c006d07389c04171";
+// (credential hash moved to the ADMIN_LOGIN_HASH_HEX Worker secret — see
+//  adminLoginHashHex(); never re-pin it in source.)
 
 // Per-isolate failure throttle keyed by client IP. Resets on cold start and is
 // per-colo — not a hard ceiling, but enough to make online guessing of the
@@ -566,6 +574,34 @@ const ADMIN_LOGIN_HASH_HEX =
 const adminLoginFailures = new Map<string, { n: number; blockedUntil: number }>();
 const ADMIN_LOGIN_MAX_FAILS = 10;
 const ADMIN_LOGIN_WINDOW_MS = 5 * 60_000;
+
+/**
+ * Resolve the admin-console credential hash at request time.
+ *
+ * Production: ADMIN_LOGIN_HASH_HEX **Worker secret** (moved out of source on
+ * 2026-08-29 — the pinned hash encodes a known password, so shipping it in the
+ * repo let anyone with code access brute-force the pair offline).
+ *
+ * Local dev: .dev.vars
+ *   ADMIN_LOGIN_HASH_HEX=<hex>     ← preferred, exact same value
+ *   ADMIN_LOGIN_USER=admin         ← optional convenience; recomputes the hash
+ *   ADMIN_LOGIN_PASSWORD=...         from user:password via ADMIN_LOGIN_SALT
+ *
+ * Returns null (→ 500 on login attempts) when neither is configured, instead
+ * of silently accepting every credential.
+ */
+async function adminLoginHashHex(env: Env): Promise<string | null> {
+  if (env.ADMIN_LOGIN_HASH_HEX && /^[0-9a-f]{64}$/i.test(env.ADMIN_LOGIN_HASH_HEX)) {
+    return env.ADMIN_LOGIN_HASH_HEX.toLowerCase();
+  }
+  // Dev fallback: derive the hash from plaintext dev-vars credentials.
+  const u = (env as any).ADMIN_LOGIN_USER, p = (env as any).ADMIN_LOGIN_PASSWORD;
+  if (u && p) {
+    const sig = await hmacSha256(ADMIN_LOGIN_SALT, `${u}:${p}`);
+    return [...sig].map(b => b.toString(16).padStart(2, "0")).join("");
+  }
+  return null;
+}
 
 async function handleAdminLogin(request: Request, env: Env): Promise<Response> {
   if (!env.SESSION_SECRET) return err("Server misconfigured: SESSION_SECRET unset", 500);
@@ -592,9 +628,11 @@ async function handleAdminLogin(request: Request, env: Env): Promise<Response> {
     }
   }
 
+  const expected = await adminLoginHashHex(env);
+  if (!expected) return err("Server misconfigured: ADMIN_LOGIN_HASH_HEX unset", 500);
   const sig = await hmacSha256(ADMIN_LOGIN_SALT, `${username}:${password}`);
   const hex = [...sig].map(b => b.toString(16).padStart(2, "0")).join("");
-  if (!(await constantTimeEqual(hex, ADMIN_LOGIN_HASH_HEX))) {
+  if (!(await constantTimeEqual(hex, expected))) {
     const rec = adminLoginFailures.get(ip) ?? { n: 0, blockedUntil: 0 };
     rec.n += 1;
     rec.blockedUntil = now + ADMIN_LOGIN_WINDOW_MS;

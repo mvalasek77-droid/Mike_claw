@@ -1820,15 +1820,10 @@
   const adminAuthed = () => !!sessionStorage.getItem(ADMIN_KEY);
   const adminLogout = () => sessionStorage.removeItem(ADMIN_KEY);
 
-  async function hmacGate(user, pass) {
-    const salt = "AuctionBaby-Admin-2026";
-    const enc = new TextEncoder();
-    const key = await crypto.subtle.importKey("raw", enc.encode(salt), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-    const sig = await crypto.subtle.sign("HMAC", key, enc.encode(user + ":" + pass));
-    const hex = [...new Uint8Array(sig)].map(b => b.toString(16).padStart(2, "0")).join("");
-    const valid = "bb90ac932b3460870f09796f19be59afc83109cb062f8eb8c006d07389c04171";
-    return hex === valid;
-  }
+  // NOTE: the admin credential check lives ONLY on the server now
+  // (POST /auth/admin-login, hash kept as a Worker secret). A previous
+  // client-side HMAC gate here pinned the credential hash in public
+  // source — removed 2026-08-29. The console requires the backend.
 
   function adminRouter(h) {
     if (!adminAuthed() && h !== "admin") { go("/admin"); return; }
@@ -1875,10 +1870,10 @@
           return toast(e.message || "Invalid credentials.");
         }
       } else if (!CONFIGURED()) {
-        // Demo mode (no backend): keep the original local HMAC check so the
-        // console UI stays reachable offline. Live mode never uses this.
-        d = await hmacGate(user, pass) ? { ok: true } : null;
-        if (!d) return toast("Invalid credentials.");
+        // Demo mode (no backend): there is no admin surface offline — the
+        // credential check is server-side only, so say so instead of
+        // pretending to authenticate.
+        return toast("Admin console needs the backend. Connect and retry.");
       } else {
         return toast("Backend unavailable.");
       }
