@@ -1879,11 +1879,13 @@
       }
 
       // Don't trust the flag alone — confirm the returned session is actually
-      // an admin account before unlocking the console UI.
+      // an admin account before unlocking the console UI. API.me() returns the
+      // user object directly (unwrapped for the Stripe calls), so read the flag
+      // off the flat shape — NOT me.user.isAdmin (undefined → false rejects).
       let confirmedAdmin = false;
       try {
         const me = await API.me();
-        confirmedAdmin = !!(me && me.user && me.user.isAdmin === true);
+        confirmedAdmin = !!me && (me.isAdmin === true || (me.user && me.user.isAdmin === true));
       } catch (e) { /* fall through to denial below */ }
       if (!confirmedAdmin) {
         API.signOutLocal();
