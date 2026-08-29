@@ -389,6 +389,13 @@
       lot.verified = !!S.me.verified;
     }
   }
+  // Guests get a signup prompt where the tab bar would be — the other tabs all
+  // need an account, so showing them would only lead to dead ends.
+  const guestBar = () => `<div class="tabbar" style="display:block;padding:10px 14px">
+      <button class="btn" id="guest-join" style="width:100%">Create an account to bid</button>
+      <div class="faint" style="text-align:center;margin-top:6px;font-size:12px">Browsing as a guest</div>
+    </div>`;
+
   const tabbar = () => {
     const first = ["floor", "▦", "Floor"];
     const unread = (S.matches || []).filter(m => m.unread).length;
@@ -401,7 +408,17 @@
   // ================= SCREENS =================
   function render() {
     const h = location.hash.replace(/^#\/?/, "");
-    if (!S.registered) return onboarding();
+    // Guest preview: browse the floor and open any lot without an account.
+    // Anything that acts on another person — bidding, matches, the store —
+    // still needs a signup, so guests get the shop window, not the till.
+    if (!S.registered) {
+      if (guest && (h === "browse" || h === "peek" || h.startsWith("lot/"))) {
+        if (h.startsWith("lot/")) return lotDetail(h.split("/")[1]);
+        tab = "floor"; return floor();
+      }
+      if (h === "peek") { guest = true; go("/browse"); tab = "floor"; return floor(); }
+      return onboarding();
+    }
     if (h.startsWith("lot/")) return lotDetail(h.split("/")[1]);
     if (h.startsWith("chat/")) return chat(h.split("/")[1]);
     if (h === "matches") { tab = "matches"; return matches(); }
@@ -419,6 +436,9 @@
   let obInterests = [...(S.me.interests || [])];
   // Set when the picker came back empty, so onboarding can explain why the
   // button looked dead and offer a way past it.
+  // Guest preview. Deliberately not persisted to S — it lives for the tab, so
+  // a guest who reloads lands back on onboarding rather than in a half-state.
+  let guest = /[#/](peek|browse)\b/.test(location.hash) && !S.registered;
   let obPhotoBlocked = false;
   let obPhotoNagged = false;   // photo prompt is shown once, then not enforced
   let photoBlockedOnProfile = false;  // same recovery offer on the profile screen
@@ -486,6 +506,8 @@
       <div class="card"><div style="display:flex;flex-wrap:wrap;gap:8px">${interestChips}</div></div>
 
       <button class="btn" id="ob-go" style="margin-top:18px">Step onto the floor</button>
+      <button class="btn ghost" id="ob-peek" style="margin-top:10px">Look around first ▸</button>
+      <div class="faint" style="text-align:center;margin-top:6px;font-size:12.5px">See tonight's floor without an account. You'll need one to bid.</div>
       <div class="disclosure">A bid is the budget you commit to spend on the date itself — dinner, drinks, the evening. It is never a payment to another person.</div>
     </div>`;
     app.querySelectorAll("[data-role]").forEach(b => b.onclick = () => { S.role = b.dataset.role; save(); onboarding(); });
@@ -554,6 +576,7 @@
         } catch (e) { toast("Dev login: " + e.message); }
       };
     }
+    $("#ob-peek").onclick = () => { guest = true; go("/browse"); };
     $("#ob-go").onclick = async () => {
       const name = $("#ob-name").value.trim();
       const dob = ($("#ob-dob") || {}).value || "";
@@ -750,7 +773,7 @@
         <span class="floor-header-count">${floorSearch ? floorData.length + " / " + allCount : allCount}</span>
       </div>
       ${floorData.length ? (hero ? lotCard(hero, !floorSearch) : "") + rest.map(w => lotCard(w, false)).join("") : `<div class="card muted">No results for "${esc(floorSearch)}"</div>`}
-    </div>${tabbar()}`;
+    </div>${guest ? guestBar() : tabbar()}`;
     const si = $("#floorSearch");
     if (si) {
       si.addEventListener("input", () => { floorSearch = si.value; floor(); });
@@ -906,7 +929,12 @@
       : `<button class="btn" data-bid="${w.id}">Bid · floor ${money(w.startingBid)}</button>`}</div>`;
 
     app.querySelector("[data-back]").onclick = () => go("/floor");
-    const bidBtn = app.querySelector("[data-bid]"); if (bidBtn) bidBtn.onclick = () => bidSheet(w);
+    const bidBtn = app.querySelector("[data-bid]");
+    if (bidBtn) bidBtn.onclick = () => {
+      // A guest can look at a lot but not bid on a real person.
+      if (guest) { toast("Create an account to place a bid."); return joinFromGuest(); }
+      bidSheet(w);
+    };
     const rbtn = app.querySelector("[data-report]"); if (rbtn) rbtn.onclick = () => reportLotSheet(w);
     wirePhotoPager(w);
     app.querySelectorAll("[data-bid-prompt]").forEach(b => {
@@ -2131,7 +2159,13 @@
   }
 
   // ---- shared wiring for lists/tabs ----
+  // Leaving guest mode is the one action a guest can take: drop back to
+  // onboarding with the form intact.
+  function joinFromGuest() { guest = false; go("/"); onboarding(); }
+
   function wire() {
+    const join = app.querySelector("#guest-join");
+    if (join) join.onclick = joinFromGuest;
     app.querySelectorAll("[data-lot]").forEach(b => b.onclick = () => go("/lot/" + b.dataset.lot));
     app.querySelectorAll("[data-chat]").forEach(b => b.onclick = () => go("/chat/" + b.dataset.chat));
     app.querySelectorAll("[data-go]").forEach(b => b.onclick = () => go("/" + b.dataset.go));
