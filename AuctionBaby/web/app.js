@@ -260,8 +260,9 @@
     ["Theo Adler", 38, 750, "Gallery opening, then a late dinner. I'll make it worth the yes."],
     ["Dominic Cross", 29, 300, "Coffee that turns into a long walk. Low pressure, high effort."],
   ].map(([name, age, amount, note]) => ({ id: uid(), name, age, amount, note, hue: hueFrom(name) })));
+  const seedDemo = () => seedFloor().map(s => ({ ...s, demo: true }));
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) { console.warn("save failed (quota?):", e.message); } };
-  if (!S.floor || !S.floor.length) { S.floor = seedFloor(); save(); }
+  if (!S.floor || !S.floor.length) { S.floor = seedDemo(); save(); }
   // Restore or retire a Spotlight Boost left over from a previous session.
   // This sits below `save` deliberately — it needs to persist the cleanup, and
   // `save` is a const that isn't initialised any earlier.
@@ -734,10 +735,10 @@
       if (CONFIGURED() && SIGNED_IN()) {
         floorData = S.womenFloor || [];
       } else {
-        floorData = seedFloor();
+        floorData = seedDemo();
       }
     }
-    if (!floorData || !floorData.length) { floorData = seedFloor(); }
+    if (!floorData || !floorData.length) { floorData = seedDemo(); }
     // Work on a copy — never reorder the persisted floor in place.
     floorData = floorData.slice();
     // A woman always sees her own listing on the floor. The server omits the
@@ -1785,9 +1786,9 @@
     const da = $("#delacct"); if (da) da.onclick = async () => {
       if (!confirm("Permanently delete your account? This can't be undone.")) return;
       try { await API.deleteAccount(); } catch (e) { /* proceed with local wipe */ }
-      API.signOutLocal(); S = fresh(); S.floor = seedFloor(); obPhoto = null; obInterests = []; save(); toast("Account deleted."); go("/"); onboarding();
+      API.signOutLocal(); S = fresh(); S.floor = seedDemo(); obPhoto = null; obInterests = []; save(); toast("Account deleted."); go("/"); onboarding();
     };
-    $("#reset").onclick = () => { if (confirm("Reset everything?")) { S = fresh(); S.floor = seedFloor(); obPhoto = null; obInterests = []; save(); go("/"); onboarding(); } };
+    $("#reset").onclick = () => { if (confirm("Reset everything?")) { S = fresh(); S.floor = seedDemo(); obPhoto = null; obInterests = []; save(); go("/"); onboarding(); } };
     $("#bugreport").onclick = bugReportSheet;
     wire();
   }
