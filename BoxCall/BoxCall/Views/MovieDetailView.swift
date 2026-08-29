@@ -236,11 +236,17 @@ struct MovieDetailView: View {
     }
 
     private var sidePicker: some View {
-        Picker("Side", selection: $showPutSide) {
-            Text("CALLS (bullish)").tag(false)
-            Text("PUTS (bearish)").tag(true)
+        VStack(alignment: .leading, spacing: 6) {
+            Picker("Side", selection: $showPutSide) {
+                Text("BIGGER · Calls").tag(false)
+                Text("SMALLER · Puts").tag(true)
+            }
+            .pickerStyle(.segmented)
+            Text(showPutSide
+                 ? "Puts pay you when the movie opens BELOW your chosen number."
+                 : "Calls pay you when the movie opens ABOVE your chosen number.")
+                .font(.caption).foregroundStyle(.secondary)
         }
-        .pickerStyle(.segmented)
     }
 
     private var chainHeader: some View {

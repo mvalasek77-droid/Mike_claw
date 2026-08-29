@@ -1,29 +1,40 @@
 import SwiftUI
 
-/// The BoxCall design system. Single source of truth for colors,
-/// spacing, radii, motion, and surface treatments. Every accent value
-/// lives here so a redesign is one file.
+/// The BoxCall design system — an old-school movie house on the phone.
 ///
-/// Surfaces use iOS 26's Liquid Glass (`glassEffect`) on-device and
-/// gracefully fall back to `Material.ultraThinMaterial` on 17-25.
+/// Palette borrows from vintage cinema: **marquee gold** for accents,
+/// **velvet red** for headline surfaces, **cream** for readable text on
+/// dark, and a warm-tinted **stage black** for the backdrop. Type mixes
+/// a display serif for headlines with the system sans for chrome, the
+/// way a real ticket stub does. On iOS 26 the surfaces use Liquid Glass;
+/// on 17–25 they fall back to `ultraThinMaterial` with a matching tint.
 enum Theme {
 
-    // MARK: - Palette (semantic — light + dark identical for now)
-    static let accent   = Color(red: 1.0,  green: 0.55, blue: 0.12)   // BoxCall orange
-    static let accentSoft = Color(red: 1.0, green: 0.69, blue: 0.4)
-    static let bull    = Color(red: 0.29, green: 0.87, blue: 0.50)    // profit / call
-    static let bear    = Color(red: 0.94, green: 0.27, blue: 0.27)    // loss / put
-    static let neutral  = Color(white: 0.55)
+    // MARK: - Palette
+    static let marqueeGold  = Color(red: 0.80, green: 0.66, blue: 0.19)  // #C9A930
+    static let bulbGlow     = Color(red: 0.97, green: 0.83, blue: 0.42)  // #F7D46A
+    static let velvetRed    = Color(red: 0.47, green: 0.05, blue: 0.11)  // #7A0C1C
+    static let cream        = Color(red: 0.96, green: 0.91, blue: 0.83)  // #F5E9D3
+    static let stageBlack   = Color(red: 0.04, green: 0.03, blue: 0.02)  // #0A0806
 
-    // Reputation-tier colors mirror Tier.color but sourced from theme.
+    /// Legacy alias so older call sites don't break during the rename.
+    static let accent      = marqueeGold
+    static let accentSoft  = bulbGlow
+
+    // Semantic (kept green/red because charts trump theme for legibility)
+    static let bull        = Color(red: 0.29, green: 0.87, blue: 0.50)
+    static let bear        = Color(red: 0.94, green: 0.27, blue: 0.27)
+    static let neutral     = Color(white: 0.55)
+
+    // Tier colors (unchanged — mirrored in Tier.color)
     static let tierRookie      = Color.gray
     static let tierAnalyst     = Color.blue
-    static let tierInsider     = Color.yellow
+    static let tierInsider     = marqueeGold
     static let tierProducer    = Color.purple
     static let tierStudioHead  = Color.pink
-    static let tierOracle      = Color.orange
+    static let tierOracle      = marqueeGold
 
-    // MARK: - Radii (matches iOS 26 continuous corner curve)
+    // MARK: - Radii (continuous curves — no sharp corners in a movie palace)
     enum Radius {
         static let xs: CGFloat = 6
         static let sm: CGFloat = 10
@@ -32,7 +43,7 @@ enum Theme {
         static let xl: CGFloat = 28
     }
 
-    // MARK: - Spacing scale (4-pt grid)
+    // MARK: - Spacing (4-pt grid)
     enum Space {
         static let xxs: CGFloat = 2
         static let xs:  CGFloat = 4
@@ -41,6 +52,17 @@ enum Theme {
         static let lg:  CGFloat = 16
         static let xl:  CGFloat = 24
         static let xxl: CGFloat = 32
+    }
+
+    // MARK: - Type ramps
+    enum Type {
+        /// Serif display for headlines — evokes a repertory theater program.
+        static let marqueeTitle  = Font.system(.largeTitle, design: .serif).weight(.bold)
+        static let marqueeH1     = Font.system(.title,      design: .serif).weight(.bold)
+        static let marqueeH2     = Font.system(.title2,     design: .serif).weight(.semibold)
+        /// Body + labels stay sans for legibility.
+        static let bodySans      = Font.system(.body)
+        static let labelSans     = Font.system(.caption).weight(.semibold)
     }
 
     // MARK: - Motion
@@ -52,11 +74,8 @@ enum Theme {
     }
 }
 
-// MARK: - Glass surface modifier
+// MARK: - Glass surface (Liquid Glass on iOS 26, material fallback)
 
-/// A card / sheet surface that uses iOS 26 Liquid Glass when
-/// available, and Material.ultraThinMaterial as a graceful fallback.
-/// Callers pass a corner radius so it can nest inside any layout.
 struct GlassSurface: ViewModifier {
     var cornerRadius: CGFloat = Theme.Radius.md
     var tint: Color? = nil
@@ -74,7 +93,6 @@ struct GlassSurface: ViewModifier {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
         #if compiler(>=6.2)
         if #available(iOS 26.0, *) {
-            // Liquid Glass — depth + refraction handled by the system.
             shape.glassEffect(.regular.tint(tint ?? .clear.opacity(0.001)))
         } else {
             shape.fill(.ultraThinMaterial)
@@ -96,7 +114,6 @@ struct GlassSurface: ViewModifier {
 }
 
 extension View {
-    /// Wrap content in a Liquid Glass surface (falls back on iOS < 26).
     func glassSurface(radius: CGFloat = Theme.Radius.md,
                       tint: Color? = nil,
                       stroke: Color? = nil) -> some View {
@@ -104,12 +121,55 @@ extension View {
     }
 }
 
+// MARK: - Cinema marquee
+
+/// A row of glowing marquee bulbs. Used above key surfaces (hero cards,
+/// season header) as a signature theatrical accent.
+struct MarqueeBulbs: View {
+    var count: Int = 12
+    @State private var flicker = false
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(0..<count, id: \.self) { i in
+                Circle()
+                    .fill(Theme.bulbGlow)
+                    .frame(width: 6, height: 6)
+                    .shadow(color: Theme.bulbGlow.opacity(0.7), radius: flicker ? 3 : 5)
+                    .opacity(flicker ? 0.75 : 1.0)
+                    .animation(
+                        .easeInOut(duration: 1.2)
+                            .repeatForever(autoreverses: true)
+                            .delay(Double(i) * 0.07),
+                        value: flicker
+                    )
+            }
+        }
+        .onAppear { flicker.toggle() }
+    }
+}
+
+/// A ticket-stub divider — a horizontal line with a scalloped/perforated
+/// midpoint. Used between sections on the Movie Detail hero.
+struct TicketStubDivider: View {
+    var body: some View {
+        HStack(spacing: 0) {
+            Rectangle().fill(Theme.marqueeGold.opacity(0.35)).frame(height: 1)
+            ForEach(0..<12, id: \.self) { _ in
+                Circle().fill(Theme.marqueeGold.opacity(0.35))
+                    .frame(width: 3, height: 3)
+                    .padding(.horizontal, 3)
+            }
+            Rectangle().fill(Theme.marqueeGold.opacity(0.35)).frame(height: 1)
+        }
+        .frame(height: 6)
+    }
+}
+
 // MARK: - Depth pressable button style
 
-/// A press-in-with-a-satisfying-drop button style. Uses spring motion
-/// + subtle shadow so tap targets feel physical, not flat.
 struct DepthButtonStyle: ButtonStyle {
-    var tint: Color = Theme.accent
+    var tint: Color = Theme.marqueeGold
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label

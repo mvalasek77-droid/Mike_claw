@@ -24,6 +24,7 @@ struct ScenarioPrimer: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             headerBadge
+            plainEnglishTLDR
             youAreBuyingLine
             Divider().padding(.vertical, 2)
             winCondition
@@ -41,6 +42,22 @@ struct ScenarioPrimer: View {
         )
     }
 
+    /// The 8-year-old-can-understand version, in one sentence.
+    private var plainEnglishTLDR: some View {
+        let overUnder = contract.side == .call ? "over" : "under"
+        return HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "sparkles")
+                .foregroundStyle(sideColor)
+                .font(.caption)
+                .padding(.top, 2)
+            Text(.init("**In plain English:** you're betting **\(movie.title)** opens **\(overUnder) $\(Int(contract.strikeMillions)) million** this weekend."))
+                .font(.callout)
+                .foregroundStyle(.primary.opacity(0.9))
+        }
+        .padding(10)
+        .background(RoundedRectangle(cornerRadius: 8).fill(.white.opacity(0.04)))
+    }
+
     private var sideColor: Color { contract.side == .call ? .green : .red }
 
     private var headerBadge: some View {
@@ -48,11 +65,14 @@ struct ScenarioPrimer: View {
             Image(systemName: contract.side == .call ? "arrow.up.right.circle.fill"
                                                       : "arrow.down.right.circle.fill")
                 .foregroundStyle(sideColor)
-            Text(contract.side == .call ? "You're going BULLISH" : "You're going BEARISH")
+            Text(contract.side.plain)      // "BIGGER" / "SMALLER"
                 .font(.caption.weight(.heavy))
                 .foregroundStyle(sideColor)
+            Text("opening than the strike")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
             Spacer()
-            Text(contract.side.display)
+            Text(contract.side.display)    // technical CALL/PUT chip
                 .font(.caption2.weight(.heavy))
                 .padding(.horizontal, 6).padding(.vertical, 2)
                 .background(Capsule().fill(sideColor.opacity(0.25)))

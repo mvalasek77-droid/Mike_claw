@@ -71,57 +71,42 @@ final class SocialService: ObservableObject {
 
     private func seedReviews() {
         let m = MarketService.shared
-        guard let starmap = m.movie(id: "m_starmap"),
-              let neon    = m.movie(id: "m_neon"),
-              let atlas   = m.movie(id: "m_atlas"),
-              let prowl   = m.movie(id: "m_prowl"),
-              let glacier = m.movie(id: "m_glacier"),
-              let paper   = m.movie(id: "m_paperhouse") else { return }
-
-        reviews = [
-            .init(id: UUID(), authorHandle: "popcornshark", authorTier: .studioHead,
-                  authorIsCurrentUser: false,
-                  movieId: starmap.id, movieTitle: starmap.title, moviePosterEmoji: starmap.posterEmoji,
-                  headline: "The universe expands. My interest doesn't.",
-                  body: "By the fifth Starmap the ceiling is visible — you can see where the cape flutters, where the joke was written, where the reshoots patched a plot hole with a monologue. Tracking still thinks $168M because the brand carries it, but presales are soft in the top-25 and the trailer's Rotten Tomatoes leak reads like an obituary. Fading calls at $155.",
-                  rating: 2, createdAt: Date().addingTimeInterval(-3600 * 4),
-                  likes: 312, isLikedByMe: false),
-            .init(id: UUID(), authorHandle: "indieyoda", authorTier: .producer,
-                  authorIsCurrentUser: false,
-                  movieId: neon.id, movieTitle: neon.title, moviePosterEmoji: neon.posterEmoji,
-                  headline: "The sleeper of the season.",
-                  body: "A24 knows what it's doing. Letterboxd early reviews are averaging 4.1, TikTok's discovered the soundtrack, and the trailer is doing quiet numbers with high completion rates — the tell. Consensus $12M is a floor, not a ceiling. I'm long calls at every strike up to $18M.",
-                  rating: 4, createdAt: Date().addingTimeInterval(-3600 * 8),
-                  likes: 187, isLikedByMe: true),
-            .init(id: UUID(), authorHandle: "openingnight", authorTier: .insider,
-                  authorIsCurrentUser: false,
-                  movieId: atlas.id, movieTitle: atlas.title, moviePosterEmoji: atlas.posterEmoji,
-                  headline: "Old-fashioned in the best way.",
-                  body: "Two hours and eighteen minutes of a movie that trusts its audience. Adult drama sold on movie-star charisma — a lost art. Warner marketing has been quiet, which usually means confidence. Consensus $58M feels ten million light to me.",
-                  rating: 4, createdAt: Date().addingTimeInterval(-3600 * 12),
-                  likes: 94, isLikedByMe: false),
-            .init(id: UUID(), authorHandle: "marqueemaven", authorTier: .insider,
-                  authorIsCurrentUser: false,
-                  movieId: prowl.id, movieTitle: prowl.title, moviePosterEmoji: prowl.posterEmoji,
-                  headline: "Buried alive by its own studio.",
-                  body: "Blumhouse released three genre movies this month. Guess which one the marketing team gave up on? Prowl gets a promo push worth about seven dollars and a poster. Consensus $21M is fantasy — this opens single digits and I'll take the Bomb Caller badge, thanks.",
-                  rating: 2, createdAt: Date().addingTimeInterval(-3600 * 18),
-                  likes: 71, isLikedByMe: false),
-            .init(id: UUID(), authorHandle: "greenlight", authorTier: .analyst,
-                  authorIsCurrentUser: false,
-                  movieId: glacier.id, movieTitle: glacier.title, moviePosterEmoji: glacier.posterEmoji,
-                  headline: "Solid thriller in a soft weekend.",
-                  body: "Universal did their homework on the marketing. Adult thrillers in the $30-40M range have overperformed all year. Nothing to short here; nothing to blow the doors off either. Consensus $34M is fair.",
-                  rating: 3, createdAt: Date().addingTimeInterval(-3600 * 24),
-                  likes: 44, isLikedByMe: false),
-            .init(id: UUID(), authorHandle: "trailerbait", authorTier: .analyst,
-                  authorIsCurrentUser: false,
-                  movieId: paper.id, movieTitle: paper.title, moviePosterEmoji: paper.posterEmoji,
-                  headline: "Searchlight prestige on autopilot.",
-                  body: "You've seen this movie before. Sometimes that's a compliment. The tracking is honest; the audience is loyal; the theatrical run will be short and the streaming tail will pay the bills. Neutral.",
-                  rating: 3, createdAt: Date().addingTimeInterval(-3600 * 30),
-                  likes: 18, isLikedByMe: false)
+        // Pick any real movie ids that are in the seed; skip missing.
+        let picks = m.movies.prefix(6)
+        var out: [Review] = []
+        let seedPacks: [(String, Tier, String, String, Int, Int, Bool)] = [
+            ("popcornshark",  .studioHead, "Franchise fatigue is a real number.",
+             "This one carries the tentpole load for the quarter. Presales are strong in the top-25 markets but softer in the flyover, and the trailer's Rotten Tomatoes leak reads middling. I'd fade the highest strikes and buy the mid-body.",
+             312, 4, false),
+            ("indieyoda",     .producer,   "Underestimated. Again.",
+             "The tracking model doesn't know how to price this. Letterboxd early reviews are running hot and the marketing pivot in the last two weeks landed. Consensus feels ten to fifteen million light.",
+             187, 8, true),
+            ("openingnight",  .insider,    "Old-fashioned in the best way.",
+             "The audience for this shows up. Adult drama sold on movie-star charisma — a lost art. The studio's been quiet in press which usually means confidence. I'm long the money strike.",
+             94,  12, false),
+            ("marqueemaven",  .insider,    "Great trailer, no reason to see it opening weekend.",
+             "Streaming will absorb this in three weeks. The core audience already knows the plot from the marketing. Not a bomb — just a slow build.",
+             71,  18, false),
+            ("greenlight",    .analyst,    "Priced fairly. Not much edge either way.",
+             "Genre plays in this budget range have overperformed all year. Nothing to short; nothing to swing for the fence on. Consensus is honest.",
+             44,  24, false),
+            ("trailerbait",   .analyst,    "Prestige on autopilot.",
+             "You've seen this movie before. Sometimes that's a compliment. The tracking is honest; the audience is loyal; the theatrical run will be short. Neutral.",
+             18,  30, false),
         ]
+        for (pack, movie) in zip(seedPacks, picks) {
+            out.append(.init(
+                id: UUID(),
+                authorHandle: pack.0, authorTier: pack.1,
+                authorIsCurrentUser: false,
+                movieId: movie.id, movieTitle: movie.title,
+                moviePosterEmoji: movie.posterEmoji,
+                headline: pack.2, body: pack.3, rating: pack.5 == 0 ? 3 : min(5, pack.5),
+                createdAt: Date().addingTimeInterval(-3600 * Double(pack.5)),
+                likes: pack.4, isLikedByMe: pack.6
+            ))
+        }
+        reviews = out
     }
 
     // MARK: - Publishing
@@ -200,46 +185,33 @@ final class SocialService: ObservableObject {
     // MARK: - Mock seed
 
     private func seedFeed() {
-        let market = MarketService.shared
-        guard let starmap = market.movie(id: "m_starmap"),
-              let neon    = market.movie(id: "m_neon"),
-              let atlas   = market.movie(id: "m_atlas"),
-              let prowl   = market.movie(id: "m_prowl") else { return }
-
-        feed = [
-            .init(id: UUID(), authorHandle: "popcornshark", authorTier: .studioHead,
-                  authorIsCurrentUser: false,
-                  movieId: starmap.id, movieTitle: starmap.title, moviePosterEmoji: starmap.posterEmoji,
-                  side: .put, strikeMillions: 155, quantity: 20, entryPremium: 6.20,
-                  hotTake: "Rotten reviews out of the premiere. Fatigue is real — trims 12–18M off tracking.",
-                  createdAt: Date().addingTimeInterval(-3600),
-                  likes: 214, isLikedByMe: false,
-                  comments: [
-                    .init(id: UUID(), authorHandle: "indieyoda", authorTier: .producer,
-                          body: "Bold with $155 as the strike. I like it.", createdAt: Date().addingTimeInterval(-1800))
-                  ],
-                  outcome: nil),
-            .init(id: UUID(), authorHandle: "indieyoda", authorTier: .producer,
-                  authorIsCurrentUser: false,
-                  movieId: neon.id, movieTitle: neon.title, moviePosterEmoji: neon.posterEmoji,
-                  side: .call, strikeMillions: 12, quantity: 40, entryPremium: 2.80,
-                  hotTake: "A24 sleeper. Letterboxd is heating up faster than tracking suggests.",
-                  createdAt: Date().addingTimeInterval(-7200),
-                  likes: 88, isLikedByMe: false, comments: [], outcome: nil),
-            .init(id: UUID(), authorHandle: "greenlight", authorTier: .analyst,
-                  authorIsCurrentUser: false,
-                  movieId: atlas.id, movieTitle: atlas.title, moviePosterEmoji: atlas.posterEmoji,
-                  side: .call, strikeMillions: 62, quantity: 15, entryPremium: 5.10,
-                  hotTake: nil,
-                  createdAt: Date().addingTimeInterval(-10_800),
-                  likes: 12, isLikedByMe: false, comments: [], outcome: nil),
-            .init(id: UUID(), authorHandle: "marqueemaven", authorTier: .insider,
-                  authorIsCurrentUser: false,
-                  movieId: prowl.id, movieTitle: prowl.title, moviePosterEmoji: prowl.posterEmoji,
-                  side: .put, strikeMillions: 18, quantity: 25, entryPremium: 3.40,
-                  hotTake: "Blumhouse over-saturated this month. Prowl gets buried.",
-                  createdAt: Date().addingTimeInterval(-14_400),
-                  likes: 41, isLikedByMe: true, comments: [], outcome: nil)
+        // Adapt to whichever movies the market catalog exposes right
+        // now — real TMDB fetch, mock seed, or something in between.
+        let movies = MarketService.shared.movies.prefix(4)
+        guard !movies.isEmpty else { return }
+        let seeds: [(String, Tier, ContractSide, Double, Int, Double, String?, Int, Bool)] = [
+            ("popcornshark", .studioHead, .put,  Double(Int(movies.first?.consensusOpeningMillions ?? 60) - 5),
+             20, 6.20, "Tracking looks generous. Fading strength.", 214, false),
+            ("indieyoda",    .producer,   .call, Double(Int(movies.dropFirst().first?.consensusOpeningMillions ?? 20)),
+             40, 2.80, "Letterboxd is heating up faster than tracking suggests.", 88, false),
+            ("greenlight",   .analyst,    .call, Double(Int(movies.dropFirst(2).first?.consensusOpeningMillions ?? 40) + 4),
+             15, 5.10, nil, 12, false),
+            ("marqueemaven", .insider,    .put,  Double(Int(movies.dropFirst(3).first?.consensusOpeningMillions ?? 20) - 3),
+             25, 3.40, "Marketing was too quiet. Getting buried.", 41, true),
         ]
+        feed = zip(seeds, movies).map { seed, movie in
+            SocialPost(
+                id: UUID(), authorHandle: seed.0, authorTier: seed.1,
+                authorIsCurrentUser: false,
+                movieId: movie.id, movieTitle: movie.title,
+                moviePosterEmoji: movie.posterEmoji,
+                side: seed.2, strikeMillions: seed.3,
+                quantity: seed.4, entryPremium: seed.5,
+                hotTake: seed.6,
+                createdAt: Date().addingTimeInterval(-Double(seed.7 * 30)),
+                likes: seed.7, isLikedByMe: seed.8,
+                comments: [], outcome: nil
+            )
+        }
     }
 }

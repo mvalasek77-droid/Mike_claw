@@ -4,6 +4,10 @@ enum ContractSide: String, Codable, CaseIterable, Identifiable {
     case call, put
     var id: String { rawValue }
     var display: String { self == .call ? "CALL" : "PUT" }
+    /// Plain-English label for people who don't speak options.
+    /// Used alongside `display` in every user-facing surface.
+    var plain: String { self == .call ? "BIGGER" : "SMALLER" }
+    var verb: String  { self == .call ? "beats" : "misses" }
     var bullish: Bool { self == .call }
 }
 

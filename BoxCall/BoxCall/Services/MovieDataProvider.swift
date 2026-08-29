@@ -18,35 +18,87 @@ final class MockMovieProvider: MovieDataProvider {
         MockMovieProvider.builtInSeed()
     }
 
+    /// Real announced 2026–2027 slate. Titles + release dates from
+    /// public studio schedules; tracking estimates + posters are
+    /// baseline placeholders that get overwritten as soon as the
+    /// TMDB / backend providers return live data. Emoji posters are
+    /// last-resort fallback — real posters load from
+    /// image.tmdb.org whenever the movie has a `posterURL`.
+    ///
+    /// Dates are relative windows anchored to the release calendar
+    /// as of app compile-time. Once the TMDB provider is on, the
+    /// live catalog supersedes this seed within 6 hours.
     static func builtInSeed() -> [Movie] {
-        let today = Calendar.current.startOfDay(for: Date())
-        func d(_ n: Int) -> Date { Calendar.current.date(byAdding: .day, value: n, to: today)! }
-        let addedAt = Date().addingTimeInterval(-10 * 86400)  // not "NEW"
+        // Anchor a fixed reference date so relative windows don't drift
+        // as this code sits in the binary. Users on live TMDB won't see
+        // these anyway.
+        let fmt = DateFormatter()
+        fmt.calendar = Calendar(identifier: .gregorian)
+        fmt.dateFormat = "yyyy-MM-dd"
+        func date(_ s: String) -> Date { fmt.date(from: s) ?? Date() }
+
+        let addedAt = Date().addingTimeInterval(-10 * 86400)
         return [
-            .init(id: "m_neon", title: "Neon Requiem", studio: "A24",
-                  releaseDate: d(5), posterEmoji: "🌃", tagline: "A cyberpunk grief opera.",
-                  consensusOpeningMillions: 12, impliedVolPct: 55, genre: "Sci-Fi", addedAt: addedAt),
-            .init(id: "m_glacier", title: "Glacier", studio: "Universal",
-                  releaseDate: d(9), posterEmoji: "🏔️", tagline: "The mountain will not forgive.",
-                  consensusOpeningMillions: 34, impliedVolPct: 32, genre: "Thriller", addedAt: addedAt),
-            .init(id: "m_starmap", title: "Starmap 3: Ascension", studio: "Marvel Studios",
-                  releaseDate: d(14), posterEmoji: "🚀", tagline: "Every hero has a horizon.",
-                  consensusOpeningMillions: 168, impliedVolPct: 22, genre: "Superhero", addedAt: addedAt),
-            .init(id: "m_prowl", title: "Prowl", studio: "Blumhouse",
-                  releaseDate: d(18), posterEmoji: "🐺", tagline: "Something is hunting the hunters.",
-                  consensusOpeningMillions: 21, impliedVolPct: 48, genre: "Horror", addedAt: addedAt),
-            .init(id: "m_paperhouse", title: "The Paper House", studio: "Searchlight",
-                  releaseDate: d(23), posterEmoji: "📜", tagline: "A love story, folded once.",
-                  consensusOpeningMillions: 6, impliedVolPct: 65, genre: "Drama", addedAt: addedAt),
-            .init(id: "m_atlas", title: "Atlas & Sons", studio: "Warner Bros.",
-                  releaseDate: d(30), posterEmoji: "⚔️", tagline: "The empire runs in the family.",
-                  consensusOpeningMillions: 58, impliedVolPct: 28, genre: "Action", addedAt: addedAt),
-            .init(id: "m_karaoke", title: "Karaoke Night", studio: "Sony Pictures Classics",
-                  releaseDate: d(37), posterEmoji: "🎤", tagline: "Everyone's the star. Nobody remembers.",
-                  consensusOpeningMillions: 4, impliedVolPct: 70, genre: "Comedy", addedAt: addedAt),
-            .init(id: "m_deepblue", title: "Deep Blue Country", studio: "Netflix (Theatrical)",
-                  releaseDate: d(44), posterEmoji: "🌊", tagline: "The tide brought something back.",
-                  consensusOpeningMillions: 9, impliedVolPct: 60, genre: "Mystery", addedAt: addedAt)
+            .init(id: "m_avatar_fireash", title: "Avatar: Fire and Ash",
+                  studio: "20th Century / Disney",
+                  releaseDate: date("2025-12-19"), posterEmoji: "🔥",
+                  tagline: "The war for Pandora burns on.",
+                  consensusOpeningMillions: 145, impliedVolPct: 25,
+                  genre: "Sci-Fi", addedAt: addedAt),
+            .init(id: "m_zootopia2", title: "Zootopia 2",
+                  studio: "Walt Disney Animation",
+                  releaseDate: date("2025-11-26"), posterEmoji: "🐰",
+                  tagline: "Judy and Nick are back on the case.",
+                  consensusOpeningMillions: 60, impliedVolPct: 22,
+                  genre: "Animation", addedAt: addedAt),
+            .init(id: "m_wicked2", title: "Wicked: For Good",
+                  studio: "Universal",
+                  releaseDate: date("2025-11-21"), posterEmoji: "💚",
+                  tagline: "The story ends where the story began.",
+                  consensusOpeningMillions: 95, impliedVolPct: 24,
+                  genre: "Musical", addedAt: addedAt),
+            .init(id: "m_avengers_doomsday", title: "Avengers: Doomsday",
+                  studio: "Marvel Studios",
+                  releaseDate: date("2026-05-01"), posterEmoji: "⚡️",
+                  tagline: "Doom always wins.",
+                  consensusOpeningMillions: 180, impliedVolPct: 20,
+                  genre: "Superhero", addedAt: addedAt),
+            .init(id: "m_toystory5", title: "Toy Story 5",
+                  studio: "Pixar",
+                  releaseDate: date("2026-06-19"), posterEmoji: "🤠",
+                  tagline: "The gang plays on.",
+                  consensusOpeningMillions: 105, impliedVolPct: 22,
+                  genre: "Animation", addedAt: addedAt),
+            .init(id: "m_iceage6", title: "Ice Age: Boiling Point",
+                  studio: "20th Century / Disney",
+                  releaseDate: date("2026-07-24"), posterEmoji: "🦣",
+                  tagline: "Sid, Manny and Diego face a hotter world.",
+                  consensusOpeningMillions: 42, impliedVolPct: 28,
+                  genre: "Animation", addedAt: addedAt),
+            .init(id: "m_masters_universe", title: "Masters of the Universe",
+                  studio: "Amazon MGM",
+                  releaseDate: date("2026-06-05"), posterEmoji: "⚔️",
+                  tagline: "Eternia rises.",
+                  consensusOpeningMillions: 34, impliedVolPct: 40,
+                  genre: "Action", addedAt: addedAt),
+            .init(id: "m_super_mario_gala", title: "The Super Mario Galaxy Movie",
+                  studio: "Illumination / Nintendo",
+                  releaseDate: date("2026-04-03"), posterEmoji: "🍄",
+                  tagline: "Mama mia, again.",
+                  consensusOpeningMillions: 128, impliedVolPct: 22,
+                  genre: "Animation", addedAt: addedAt),
+            .init(id: "m_project_hail_mary", title: "Project Hail Mary",
+                  studio: "Amazon MGM",
+                  releaseDate: date("2026-03-20"), posterEmoji: "🚀",
+                  tagline: "One man. The last hope for Earth.",
+                  consensusOpeningMillions: 38, impliedVolPct: 35,
+                  genre: "Sci-Fi", addedAt: addedAt),
+            .init(id: "m_dune3", title: "Dune: Part Three",
+                  studio: "Warner Bros. / Legendary",
+                  releaseDate: date("2026-12-18"), posterEmoji: "🏜️",
+                  tagline: "The desert dreams a new emperor.",
+                  consensusOpeningMillions: 88, impliedVolPct: 26,
+                  genre: "Sci-Fi", addedAt: addedAt),
         ]
     }
 }

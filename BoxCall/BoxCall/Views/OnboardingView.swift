@@ -60,8 +60,8 @@ struct OnboardingView: View {
 
     private var callSlide: some View {
         slide(emoji: "🟢",
-              title: "Calls — bullish.",
-              body: "Buy Calls when you think a movie will open BIGGER than the crowd expects. Pay the premium up front; get paid the amount above the strike.") {
+              title: "Betting BIGGER.",
+              body: "Pick a movie. Pick a dollar number. If it opens ABOVE your number, you win. Every million above your number pays you more. Max loss is just what you paid to enter. (Real name: a Call.)") {
             PayoffChart(side: .call, strike: 100, premium: 12, multiplier: 1)
                 .padding(.horizontal, 8)
         }
@@ -69,8 +69,8 @@ struct OnboardingView: View {
 
     private var putSlide: some View {
         slide(emoji: "🔴",
-              title: "Puts — bearish.",
-              body: "Buy Puts when you smell a bomb. You get paid the amount the movie opens BELOW the strike. Max loss is just the premium.") {
+              title: "Betting SMALLER.",
+              body: "Same idea — the other direction. If the movie opens BELOW your number, you win. Every million below pays you more. Max loss is still just the entry price. (Real name: a Put.)") {
             PayoffChart(side: .put, strike: 40, premium: 6, multiplier: 1)
                 .padding(.horizontal, 8)
         }

@@ -161,13 +161,42 @@ struct TheBigIdeaSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             LearnHeader(index: 1, title: LearnSection.theBigIdea.title)
-            LearnParagraph("Every big movie opens on a Friday and the studio reports a domestic three-day box-office number Monday morning. BoxCall lets you take a position on that number, in play-money Reel Coins.")
-            LearnParagraph("Each movie has an options chain with strikes above and below the current consensus estimate. You pick a strike and either go Call (bullish — you think it opens higher) or Put (bearish — you think it opens lower). Your payoff scales with how right you are.")
+
+            // Plain-English TL;DR before the finance vocabulary lands.
+            VStack(alignment: .leading, spacing: 8) {
+                Text("The 30-second version")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.orange)
+                Text("Every movie opens on a Friday. By Monday morning we know the number — say, **$92M for Toy Story 5**.")
+                    .font(.callout)
+                Text("BoxCall lets you place a friendly bet before that number comes in.")
+                    .font(.callout)
+                Text("Pick a number (a **strike**). Bet **BIGGER** or **SMALLER**. If you're right, you get paid in Reel Coins. If you're wrong, you lose what you paid to enter the bet — never more.")
+                    .font(.callout)
+                Text("That's the whole game. Everything below is detail.")
+                    .font(.callout.italic())
+                    .foregroundStyle(.secondary)
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 10).fill(.orange.opacity(0.10)))
+
+            LearnParagraph("The formal terms: a bet on BIGGER is called a **Call**, and a bet on SMALLER is called a **Put**. Both live on an **options chain** — a list of strikes above and below the current estimate. You choose the strike, you choose the direction, and your payoff scales with how right you are.")
             HStack(spacing: 10) {
-                bullet("🟢", "Call = bullish", "You get paid when the movie opens above your strike.")
-                bullet("🔴", "Put = bearish",  "You get paid when the movie opens below your strike.")
+                bullet("🟢", "BIGGER = Call", "You win if the movie opens ABOVE your strike.")
+                bullet("🔴", "SMALLER = Put",  "You win if the movie opens BELOW your strike.")
             }
             .padding(.top, 4)
+
+            // Concrete analogy — a friend making the same bet at a bar.
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Like this:").font(.caption.weight(.bold)).foregroundStyle(.secondary)
+                Text("Your friend bets you \\$5 that Avengers: Doomsday opens above \\$180M. If it opens at \\$200M, you owe him \\$5. If it opens at \\$150M, he owes you \\$5. BoxCall is that, times ten movies, on your phone, in play-money.")
+                    .font(.callout)
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 10).fill(Color(.secondarySystemBackground)))
         }
     }
 
