@@ -1,7 +1,7 @@
 /* Auction Baby PWA service worker — network-first for code, cache-first for images.
    This means updates are picked up automatically on every page load without
    the user needing to hard-reload. Falls back to cache when offline. */
-const CACHE = "auctionbaby-v48";
+const CACHE = "auctionbaby-v49";
 const ASSETS = [
   "./", "./index.html", "./styles.css", "./app.js", "./api.js", "./config.js",
   "./manifest.webmanifest", "./icons/icon.svg", "./icons/icon-180.png",
