@@ -286,16 +286,6 @@ enum SampleData {
                     interests: ["Food", "Fitness", "Travel", "Dogs"],
                     isCopycat: true, copycatStyle: .poolside),
 
-            Profile(name: "Harper Lane", age: 26, role: .woman, location: "Byron Bay, Australia",
-                    bio: "Surf instructor half the year, content creator the other half. I'll outswim you and outeat you — and smile the whole time.",
-                    hue: 0.05,
-                    photoName: "photo-harper",
-                    prompts: [
-                        Prompt(question: "My ideal date", answer: "Beach, tacos, sunset. In that order. Bonus if you can keep up in the water."),
-                    ],
-                    interests: ["Fitness", "Travel", "Food", "Music"],
-                    isCopycat: true, copycatStyle: .beach),
-
             Profile(name: "Dana Walsh", age: 33, role: .woman, location: "Tribeca, New York",
                     bio: "Pilates studio owner. My mornings start at 5:30 and I wouldn't have it any other way. Looking for someone who matches the energy.",
                     hue: 0.90,
