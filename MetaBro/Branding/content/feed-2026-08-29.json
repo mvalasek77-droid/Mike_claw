@@ -1,78 +1,48 @@
 {
-  "generated_for": "2026-08-29T18",
+  "generated_for": "2026-08-29T22",
   "posts": [
     {
       "community": {
-        "id": "1e27fcd8-c8ff-7cac-af7b-60a88268cbe1",
-        "name": "Garage Gearheads",
-        "slug": "cars",
-        "member_count": 141200,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/cars.png",
+        "id": "ad1f28f2-deee-3630-ebff-760d7a720f9e",
+        "name": "Dad Mode",
+        "slug": "fatherhood",
+        "member_count": 58700,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fatherhood.png",
         "is_joined": true
       },
-      "title": "Detailing Sunday",
-      "body": "Clay bar, two-stage polish, ceramic. Paint looks wet. Worth it.",
-      "score": 97,
+      "title": "Tips for a 5am toddler?",
+      "body": "He's up before the sun. How do you bros keep your sanity?",
+      "score": 129,
       "reactions": [],
       "my_reaction": null,
       "awards": [
         {
           "kind": "champ",
-          "count": 1
+          "count": 3
         }
       ],
-      "id": "2891cd6f-790b-6a14-09d9-cdb3ca871ff0",
+      "id": "d2f49a5d-8884-5b43-5660-5b8e4f3726e2",
       "author": {
-        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
-        "handle": "@coachdave",
-        "display_name": "Dave",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
-        "bro_cred": 9300
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
       },
       "image_url": null,
-      "comment_count": 87,
-      "created_at": "2026-08-29T17:33:34+00:00",
+      "comment_count": 54,
+      "created_at": "2026-08-29T18:55:19+00:00",
       "my_vote": 0
     },
     {
       "community": null,
       "title": null,
       "body": "Anyone up for a sunrise hike this weekend?",
-      "score": 84,
+      "score": 45,
       "reactions": [
         {
           "kind": "strong",
-          "count": 25
-        },
-        {
-          "kind": "like",
-          "count": 7
-        }
-      ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "1d7112da-6392-ce65-f3ce-34d47de9579d",
-      "author": {
-        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
-        "handle": "@newbro",
-        "display_name": "Sam",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
-        "bro_cred": 40
-      },
-      "image_url": null,
-      "comment_count": 7,
-      "created_at": "2026-08-29T17:24:34+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": null,
-      "title": null,
-      "body": "Anyone up for a sunrise hike this weekend?",
-      "score": 61,
-      "reactions": [
-        {
-          "kind": "strong",
-          "count": 19
+          "count": 18
         },
         {
           "kind": "like",
@@ -81,7 +51,7 @@
       ],
       "my_reaction": null,
       "awards": [],
-      "id": "6f0b38e0-350e-efc4-78ad-ccdc7c79367f",
+      "id": "ee898cf4-d4fc-55d0-22e7-a02751445529",
       "author": {
         "id": "bb5a2bd9-5ff6-b2d4-8c47-662f9908097f",
         "handle": "@rajlifts",
@@ -90,65 +60,98 @@
         "bro_cred": 3050
       },
       "image_url": null,
-      "comment_count": 24,
-      "created_at": "2026-08-29T15:48:34+00:00",
+      "comment_count": 86,
+      "created_at": "2026-08-29T21:40:19+00:00",
       "my_vote": 0
     },
     {
       "community": {
-        "id": "22aca3d4-e132-fb9a-d97f-d6efb9771f45",
-        "name": "Iron Bro-hood",
-        "slug": "fitness",
-        "member_count": 182000,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fitness.png",
+        "id": "369ccbe1-980c-cd6b-4b8b-e6cb2c492438",
+        "name": "Grill Masters",
+        "slug": "bbq",
+        "member_count": 96400,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/bbq.png",
         "is_joined": true
       },
-      "title": "Mobility > maxing out",
-      "body": "Ten minutes of hips and shoulders before every session. Game changer.",
-      "score": 94,
+      "title": "Reverse sear is the only way",
+      "body": "Smoke to 120, rest, then blast it. Edge to edge pink every time.",
+      "score": 149,
       "reactions": [],
       "my_reaction": null,
       "awards": [
         {
           "kind": "champ",
-          "count": 2
+          "count": 1
         }
       ],
-      "id": "1f548702-f669-fa59-2d9e-86945c2a893f",
+      "id": "1f7b82cd-34d8-e9af-054d-56590cc5f58f",
       "author": {
-        "id": "550c58e9-f006-03d7-e005-01cf109b1c20",
-        "handle": "@coachmike",
-        "display_name": "Coach Mike",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachmike.png",
-        "bro_cred": 4200
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
       },
       "image_url": null,
-      "comment_count": 61,
-      "created_at": "2026-08-29T13:23:34+00:00",
+      "comment_count": 78,
+      "created_at": "2026-08-29T17:49:19+00:00",
       "my_vote": 0
     },
     {
       "community": null,
       "title": null,
       "body": "Pickup basketball this Saturday at Riverside. Who's in?",
-      "score": 77,
+      "score": 58,
       "reactions": [
         {
           "kind": "strong",
-          "count": 29
+          "count": 15
         },
         {
           "kind": "respect",
-          "count": 23
+          "count": 19
         },
         {
           "kind": "lol",
-          "count": 23
+          "count": 8
         }
       ],
       "my_reaction": null,
       "awards": [],
-      "id": "c7c3873b-788a-5590-854c-4203f458a594",
+      "id": "f03d8f67-14a3-4aa3-8bfd-b498f42d93b9",
+      "author": {
+        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
+        "handle": "@coachdave",
+        "display_name": "Dave",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
+        "bro_cred": 9300
+      },
+      "image_url": null,
+      "comment_count": 11,
+      "created_at": "2026-08-29T20:46:19+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "369ccbe1-980c-cd6b-4b8b-e6cb2c492438",
+        "name": "Grill Masters",
+        "slug": "bbq",
+        "member_count": 96400,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/bbq.png",
+        "is_joined": true
+      },
+      "title": "Best cheap smoker under $300?",
+      "body": "Looking to upgrade from the kettle. What are you bros running?",
+      "score": 305,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [
+        {
+          "kind": "champ",
+          "count": 1
+        }
+      ],
+      "id": "0826eb4e-b1fc-2f82-f1cf-2c649000d2b1",
       "author": {
         "id": "bb5a2bd9-5ff6-b2d4-8c47-662f9908097f",
         "handle": "@rajlifts",
@@ -157,42 +160,42 @@
         "bro_cred": 3050
       },
       "image_url": null,
-      "comment_count": 12,
-      "created_at": "2026-08-29T15:08:34+00:00",
+      "comment_count": 63,
+      "created_at": "2026-08-29T19:31:19+00:00",
       "my_vote": 0
     },
     {
       "community": null,
       "title": null,
       "body": "Pickup basketball this Saturday at Riverside. Who's in?",
-      "score": 71,
+      "score": 22,
       "reactions": [
         {
           "kind": "strong",
-          "count": 11
+          "count": 25
         },
         {
           "kind": "respect",
-          "count": 18
+          "count": 33
         },
         {
           "kind": "lol",
-          "count": 35
+          "count": 30
         }
       ],
       "my_reaction": null,
       "awards": [],
-      "id": "ac7ee16e-ae23-88e4-3521-aecbf1ede7b1",
+      "id": "bcbace87-1c67-8692-a5c4-6ea70f616b9c",
       "author": {
-        "id": "bb5a2bd9-5ff6-b2d4-8c47-662f9908097f",
-        "handle": "@rajlifts",
-        "display_name": "Raj",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/rajlifts.png",
-        "bro_cred": 3050
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
       },
       "image_url": null,
-      "comment_count": 109,
-      "created_at": "2026-08-29T12:27:34+00:00",
+      "comment_count": 65,
+      "created_at": "2026-08-29T18:53:19+00:00",
       "my_vote": 0
     }
   ],
