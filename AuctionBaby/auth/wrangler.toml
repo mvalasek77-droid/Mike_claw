@@ -40,7 +40,7 @@ SESSION_TTL_SECONDS = "2592000"
 #   3. Set ADMIN_EMAIL below and redeploy
 # RESEND_FROM is optional — the default shared sender reaches your own verified
 # address without owning a domain. Set it once you have a domain on Resend.
-ADMIN_EMAIL = ""
+ADMIN_EMAIL = "mvalasek77@gmail.com"
 # RESEND_FROM = "Auction Baby <alerts@yourdomain.com>"
 # Public base URL for the R2 photos bucket. Set to your r2.dev subdomain
 # (e.g. https://pub-abc123.r2.dev) OR a custom domain fronting the bucket.
