@@ -80,6 +80,10 @@ struct WatchfighterCanvas: View {
 
         drawArenaSetPieces(in: &context, size: size, palette: palette)
 
+        if state.chapter == .cinderGate || state.finisherTimer > 0 {
+            drawHellLandscape(in: &context, size: size)
+        }
+
         let floorTop = size.height * 0.67
         let floorRect = CGRect(x: 0, y: floorTop, width: size.width, height: size.height - floorTop)
         context.fill(
@@ -433,6 +437,73 @@ struct WatchfighterCanvas: View {
         default:
             break
         }
+    }
+
+    private func drawHellLandscape(in context: inout GraphicsContext, size: CGSize) {
+        let time = CGFloat(date.timeIntervalSinceReferenceDate)
+        let horizon = size.height * 0.58
+
+        let inferno = CGRect(x: 0, y: size.height * 0.28, width: size.width, height: size.height * 0.40)
+        context.fill(
+            Path(inferno),
+            with: .linearGradient(
+                Gradient(colors: [
+                    Color.black.opacity(0),
+                    Color(red: 0.42, green: 0.015, blue: 0.005).opacity(0.72),
+                    Color(red: 1.0, green: 0.16, blue: 0.015).opacity(0.88)
+                ]),
+                startPoint: CGPoint(x: size.width * 0.5, y: inferno.minY),
+                endPoint: CGPoint(x: size.width * 0.5, y: inferno.maxY)
+            )
+        )
+
+        var cliffs = Path()
+        cliffs.move(to: CGPoint(x: 0, y: horizon))
+        for index in 0...12 {
+            let x = CGFloat(index) / 12 * size.width
+            let peak = CGFloat((index * 11) % 5)
+            cliffs.addLine(to: CGPoint(x: x, y: horizon - size.height * (0.05 + peak * 0.018)))
+        }
+        cliffs.addLine(to: CGPoint(x: size.width, y: size.height * 0.69))
+        cliffs.addLine(to: CGPoint(x: 0, y: size.height * 0.69))
+        cliffs.closeSubpath()
+        context.fill(cliffs, with: .color(Color(red: 0.055, green: 0.008, blue: 0.006).opacity(0.92)))
+        context.stroke(cliffs, with: .color(Color.watchfighterRed.opacity(0.58)), lineWidth: 1.2)
+
+        for index in 0..<11 {
+            let phase = time * (4.2 + CGFloat(index % 3) * 0.55) + CGFloat(index) * 1.7
+            let sway = sin(phase) * size.width * 0.012
+            let x = size.width * (0.04 + CGFloat(index) * 0.092)
+            let flameHeight = size.height * (0.10 + CGFloat((index * 7) % 4) * 0.025)
+            let baseY = size.height * 0.69
+
+            var flame = Path()
+            flame.move(to: CGPoint(x: x - size.width * 0.035, y: baseY))
+            flame.addQuadCurve(
+                to: CGPoint(x: x + sway, y: baseY - flameHeight),
+                control: CGPoint(x: x - size.width * 0.015 + sway, y: baseY - flameHeight * 0.48)
+            )
+            flame.addQuadCurve(
+                to: CGPoint(x: x + size.width * 0.035, y: baseY),
+                control: CGPoint(x: x + size.width * 0.025 + sway, y: baseY - flameHeight * 0.42)
+            )
+            flame.closeSubpath()
+            context.fill(flame, with: .linearGradient(
+                Gradient(colors: [Color.watchfighterGold, Color(red: 1.0, green: 0.08, blue: 0.01), .black.opacity(0.12)]),
+                startPoint: CGPoint(x: x, y: baseY),
+                endPoint: CGPoint(x: x + sway, y: baseY - flameHeight)
+            ))
+        }
+
+        var lava = Path()
+        lava.move(to: CGPoint(x: 0, y: size.height * 0.655))
+        for index in 0...8 {
+            let x = CGFloat(index) / 8 * size.width
+            let ripple = sin(time * 2.8 + CGFloat(index)) * size.height * 0.008
+            lava.addLine(to: CGPoint(x: x, y: size.height * 0.655 + ripple))
+        }
+        context.stroke(lava, with: .color(Color.watchfighterRed.opacity(0.62)), lineWidth: 5.4)
+        context.stroke(lava, with: .color(Color.watchfighterGold.opacity(0.90)), lineWidth: 2.2)
     }
 
     private func arenaPalette(_ chapter: StoryChapter) -> ArenaPalette {

@@ -9,16 +9,22 @@
 /* Begin PBXBuildFile section */
 		0293AB2BBC83A6717615E93F /* finish.aiff in Resources */ = {isa = PBXBuildFile; fileRef = E61D70098C8CF9111299F861 /* finish.aiff */; };
 		0527B076DD0C326946F41833 /* titan.aiff in Resources */ = {isa = PBXBuildFile; fileRef = 78FBE9BD6947615721DAA6E6 /* titan.aiff */; };
+		23273FEA4523F135AC5B4F7E /* guard.aiff in Resources */ = {isa = PBXBuildFile; fileRef = 5E658E7900C83FA8BAF3FBC8 /* guard.aiff */; };
 		267A758DA4A395958F693759 /* ko.aiff in Resources */ = {isa = PBXBuildFile; fileRef = 408E0FBC86FFDAC20170CBB6 /* ko.aiff */; };
+		29B16B644F11C7E6E2641AC6 /* special-impact.aiff in Resources */ = {isa = PBXBuildFile; fileRef = C2409A0F4691E66A1CCB60C0 /* special-impact.aiff */; };
 		542AA00DA1C4918741A5966B /* fight.aiff in Resources */ = {isa = PBXBuildFile; fileRef = 70C76F1029A3DCD4FF3A179A /* fight.aiff */; };
 		5D0C0B3D327375F8E7B82AE5 /* WatchfighterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4B4BCEA3DD1D10FB2337FA3 /* WatchfighterApp.swift */; };
 		73B15B7E212196FBBEC0F307 /* WatchfighterCanvas.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0A0FBE11CFC6EE6B0C7C438 /* WatchfighterCanvas.swift */; };
 		802F4C76709526A1BF742503 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F9270812C53D256844FC95A2 /* PrivacyInfo.xcprivacy */; };
 		8947DF4728D1DFB9BA651899 /* GameModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E38456E989C77F8BB7432002 /* GameModels.swift */; };
 		93F4DFB52320344BD66291A0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D6DD99E63697D3E878C4FB94 /* Assets.xcassets */; };
+		A25B2344A8B0A36FC387076A /* PurchaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3612F3BB3CF8BC8006893BAB /* PurchaseManager.swift */; };
+		A390F0CC001AA3E3B23080F5 /* punch.aiff in Resources */ = {isa = PBXBuildFile; fileRef = 8B54EFF342D34014E297C450 /* punch.aiff */; };
 		A3DF0A860E592F13FBA8231C /* WatchfighterEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0438C4BD99040DFA0D82D6A3 /* WatchfighterEngine.swift */; };
 		B64C101DB740C3230C2675E4 /* GameScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85D23549AF431EC3C26A8F57 /* GameScreen.swift */; };
 		D4B758BFB4993410242D9577 /* million.aiff in Resources */ = {isa = PBXBuildFile; fileRef = E121CFE68079B07270C30F3B /* million.aiff */; };
+		DABB4B77563476FEE7E83A4C /* fight-theme.wav in Resources */ = {isa = PBXBuildFile; fileRef = 7EBD87AF19B7A65615B51F8D /* fight-theme.wav */; };
+		DCA742AB380E112214C38185 /* kick.aiff in Resources */ = {isa = PBXBuildFile; fileRef = 03163D662777757B2BBAD01F /* kick.aiff */; };
 		E721A111B61AEC713376D429 /* WatchfighterTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AC15B132392E61BAB9F5A4C /* WatchfighterTheme.swift */; };
 		F95DA83F3769B700C8CF1B2F /* WatchfighterEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76F6D21CBE8A7383B6B55724 /* WatchfighterEngineTests.swift */; };
 		FA7A9F5F506ACC635041FD7E /* combo.aiff in Resources */ = {isa = PBXBuildFile; fileRef = 61D75D7216D9CC6FCA19B7C9 /* combo.aiff */; };
@@ -35,17 +41,23 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		03163D662777757B2BBAD01F /* kick.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = kick.aiff; sourceTree = "<group>"; };
 		0438C4BD99040DFA0D82D6A3 /* WatchfighterEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchfighterEngine.swift; sourceTree = "<group>"; };
 		1AC15B132392E61BAB9F5A4C /* WatchfighterTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchfighterTheme.swift; sourceTree = "<group>"; };
+		3612F3BB3CF8BC8006893BAB /* PurchaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseManager.swift; sourceTree = "<group>"; };
 		408E0FBC86FFDAC20170CBB6 /* ko.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = ko.aiff; sourceTree = "<group>"; };
+		5E658E7900C83FA8BAF3FBC8 /* guard.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = guard.aiff; sourceTree = "<group>"; };
 		61D75D7216D9CC6FCA19B7C9 /* combo.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = combo.aiff; sourceTree = "<group>"; };
 		70C76F1029A3DCD4FF3A179A /* fight.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = fight.aiff; sourceTree = "<group>"; };
 		76F6D21CBE8A7383B6B55724 /* WatchfighterEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchfighterEngineTests.swift; sourceTree = "<group>"; };
 		78FBE9BD6947615721DAA6E6 /* titan.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = titan.aiff; sourceTree = "<group>"; };
+		7EBD87AF19B7A65615B51F8D /* fight-theme.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "fight-theme.wav"; sourceTree = "<group>"; };
 		80F0793607A0DCB730BF7296 /* Watchfighter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Watchfighter.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		85D23549AF431EC3C26A8F57 /* GameScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameScreen.swift; sourceTree = "<group>"; };
+		8B54EFF342D34014E297C450 /* punch.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = punch.aiff; sourceTree = "<group>"; };
 		A4B4BCEA3DD1D10FB2337FA3 /* WatchfighterApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchfighterApp.swift; sourceTree = "<group>"; };
 		B0A0FBE11CFC6EE6B0C7C438 /* WatchfighterCanvas.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchfighterCanvas.swift; sourceTree = "<group>"; };
+		C2409A0F4691E66A1CCB60C0 /* special-impact.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = "special-impact.aiff"; sourceTree = "<group>"; };
 		D6DD99E63697D3E878C4FB94 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		E121CFE68079B07270C30F3B /* million.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = million.aiff; sourceTree = "<group>"; };
 		E38456E989C77F8BB7432002 /* GameModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameModels.swift; sourceTree = "<group>"; };
@@ -72,10 +84,19 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		5F19B1F8F7BA78A82754E73D /* Music */ = {
+			isa = PBXGroup;
+			children = (
+				7EBD87AF19B7A65615B51F8D /* fight-theme.wav */,
+			);
+			path = Music;
+			sourceTree = "<group>";
+		};
 		8626BA9B5D5A4C4CF335429A /* Watchfighter */ = {
 			isa = PBXGroup;
 			children = (
 				EA2399151578221E84C1F799 /* Game */,
+				D948B245D74B166355A2F95C /* Purchases */,
 				E197E8B11EE16324236621B7 /* Resources */,
 				D926A3FDFF2C73CBDE0C890B /* Theme */,
 				A4B4BCEA3DD1D10FB2337FA3 /* WatchfighterApp.swift */,
@@ -96,6 +117,17 @@
 			path = Voice;
 			sourceTree = "<group>";
 		};
+		CDC8A76F0419F64994A76D9F /* Impact */ = {
+			isa = PBXGroup;
+			children = (
+				5E658E7900C83FA8BAF3FBC8 /* guard.aiff */,
+				03163D662777757B2BBAD01F /* kick.aiff */,
+				8B54EFF342D34014E297C450 /* punch.aiff */,
+				C2409A0F4691E66A1CCB60C0 /* special-impact.aiff */,
+			);
+			path = Impact;
+			sourceTree = "<group>";
+		};
 		D926A3FDFF2C73CBDE0C890B /* Theme */ = {
 			isa = PBXGroup;
 			children = (
@@ -104,9 +136,19 @@
 			path = Theme;
 			sourceTree = "<group>";
 		};
+		D948B245D74B166355A2F95C /* Purchases */ = {
+			isa = PBXGroup;
+			children = (
+				3612F3BB3CF8BC8006893BAB /* PurchaseManager.swift */,
+			);
+			path = Purchases;
+			sourceTree = "<group>";
+		};
 		E197E8B11EE16324236621B7 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				CDC8A76F0419F64994A76D9F /* Impact */,
+				5F19B1F8F7BA78A82754E73D /* Music */,
 				90B334320036862FEF8B1FD4 /* Voice */,
 				D6DD99E63697D3E878C4FB94 /* Assets.xcassets */,
 				F9270812C53D256844FC95A2 /* PrivacyInfo.xcprivacy */,
@@ -215,10 +257,15 @@
 				93F4DFB52320344BD66291A0 /* Assets.xcassets in Resources */,
 				802F4C76709526A1BF742503 /* PrivacyInfo.xcprivacy in Resources */,
 				FA7A9F5F506ACC635041FD7E /* combo.aiff in Resources */,
+				DABB4B77563476FEE7E83A4C /* fight-theme.wav in Resources */,
 				542AA00DA1C4918741A5966B /* fight.aiff in Resources */,
 				0293AB2BBC83A6717615E93F /* finish.aiff in Resources */,
+				23273FEA4523F135AC5B4F7E /* guard.aiff in Resources */,
+				DCA742AB380E112214C38185 /* kick.aiff in Resources */,
 				267A758DA4A395958F693759 /* ko.aiff in Resources */,
 				D4B758BFB4993410242D9577 /* million.aiff in Resources */,
+				A390F0CC001AA3E3B23080F5 /* punch.aiff in Resources */,
+				29B16B644F11C7E6E2641AC6 /* special-impact.aiff in Resources */,
 				0527B076DD0C326946F41833 /* titan.aiff in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -240,6 +287,7 @@
 			files = (
 				8947DF4728D1DFB9BA651899 /* GameModels.swift in Sources */,
 				B64C101DB740C3230C2675E4 /* GameScreen.swift in Sources */,
+				A25B2344A8B0A36FC387076A /* PurchaseManager.swift in Sources */,
 				5D0C0B3D327375F8E7B82AE5 /* WatchfighterApp.swift in Sources */,
 				73B15B7E212196FBBEC0F307 /* WatchfighterCanvas.swift in Sources */,
 				A3DF0A860E592F13FBA8231C /* WatchfighterEngine.swift in Sources */,
@@ -422,16 +470,20 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = UDM4W27W9V;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Watchfighter;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_WKApplication = YES;
 				INFOPLIST_KEY_WKWatchOnly = YES;
+				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.valasek.watchfighter;
 				PRODUCT_MODULE_NAME = Watchfighter;
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = 4;
+				VERSIONING_SYSTEM = "apple-generic";
 				WATCHOS_DEPLOYMENT_TARGET = 10.0;
 			};
 			name = Release;
@@ -441,16 +493,20 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = UDM4W27W9V;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Watchfighter;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_WKApplication = YES;
 				INFOPLIST_KEY_WKWatchOnly = YES;
+				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.valasek.watchfighter;
 				PRODUCT_MODULE_NAME = Watchfighter;
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = 4;
+				VERSIONING_SYSTEM = "apple-generic";
 				WATCHOS_DEPLOYMENT_TARGET = 10.0;
 			};
 			name = Debug;

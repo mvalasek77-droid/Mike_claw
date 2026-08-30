@@ -40,13 +40,9 @@ xcodebuild -project Watchfighter.xcodeproj -scheme Watchfighter -sdk watchsimula
 - Close center press: throw
 - Double tap: dash strike, upgraded to a special when the meter is full
 
+Locked VS fighters can also be unlocked with the non-consumable Full Roster
+in-app purchase (`com.valasek.watchfighter.fullroster`). The purchase screen
+includes Restore Purchases and verifies StoreKit transactions before unlocking.
+
 The game uses SwiftUI, Canvas, and bundled PNG sprite assets, so it has no
 external runtime dependencies.
-
-## Simulator demo
-
-For visual smoke checks without touch input, launch with:
-
-```sh
-SIMCTL_CHILD_WATCHFIGHTER_DEMO=1 xcrun simctl launch --terminate-running-process <watch-udid> com.valasek.watchfighter
-```

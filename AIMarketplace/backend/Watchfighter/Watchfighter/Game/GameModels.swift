@@ -418,8 +418,28 @@ enum FighterArchetype: CaseIterable, Equatable {
             return "DigitizedDrone"
         case .voss:
             return "DigitizedRaider"
-        case .mara, .lennox, .sunny, .nova, .specter, .cosmo, .brass, .volkov, .zara, .cage, .titan:
-            return ""
+        case .mara:
+            return "DigitizedMara"
+        case .lennox:
+            return "DigitizedLennox"
+        case .sunny:
+            return "DigitizedSunny"
+        case .nova:
+            return "DigitizedNova"
+        case .specter:
+            return "DigitizedSpecter"
+        case .cosmo:
+            return "DigitizedCosmo"
+        case .brass:
+            return "DigitizedBrass"
+        case .volkov:
+            return "DigitizedVolkov"
+        case .zara:
+            return "DigitizedZara"
+        case .cage:
+            return "DigitizedCage"
+        case .titan:
+            return "DigitizedTitan"
         case .kairo:
             return "DigitizedWarlord"
         }
@@ -439,30 +459,12 @@ enum FighterArchetype: CaseIterable, Equatable {
             return 385.0 / 640.0
         case .voss:
             return 465.0 / 603.0
-        case .mara:
-            return 0.56
-        case .lennox:
-            return 0.52
-        case .sunny:
-            return 0.54
-        case .nova:
-            return 0.50
-        case .specter:
-            return 0.58
-        case .cosmo:
-            return 0.62
-        case .brass:
-            return 0.64
-        case .volkov:
-            return 0.58
-        case .zara:
-            return 0.52
-        case .cage:
-            return 0.62
+        case .mara, .lennox, .sunny, .nova, .specter, .cosmo, .brass, .volkov, .zara, .cage:
+            return 2.0 / 3.0
         case .kairo:
             return 428.0 / 640.0
         case .titan:
-            return 0.66
+            return 2.0 / 3.0
         }
     }
 
@@ -529,6 +531,11 @@ enum FighterArchetype: CaseIterable, Equatable {
         case .titan:
             return 360
         }
+    }
+
+    /// Extends rounds without flattening the roster's health differences.
+    var arcadeHealth: Int {
+        Int((CGFloat(maxHealth) * 1.45).rounded())
     }
 
     var power: CGFloat {
@@ -729,7 +736,7 @@ enum FighterArchetype: CaseIterable, Equatable {
         case .kairo:
             return "War hammer: heavy armored strikes with brutal guard pressure."
         case .titan:
-            return "Titus is a giant original boxer. Only an 8-hit chain plus full-meter special can drop him."
+            return "FINAL BOSS RULE: Normal attacks cannot kill Titus. Only one secret combo can finish him."
         }
     }
 
@@ -881,8 +888,8 @@ struct DuelFighter: Equatable {
     init(archetype: FighterArchetype, x: CGFloat, facing: CGFloat) {
         self.archetype = archetype
         self.x = x
-        self.health = archetype.maxHealth
-        self.maxHealth = archetype.maxHealth
+        self.health = archetype.arcadeHealth
+        self.maxHealth = archetype.arcadeHealth
         self.meter = 0.24
         self.guardMeter = 1
         self.action = .idle
@@ -907,7 +914,7 @@ struct WatchfighterState: Equatable {
     var phase: FighterPhase = .running
     var score = 0
     var round = 1
-    var roundTimer: TimeInterval = 60
+    var roundTimer: TimeInterval = 99
     var playerWins = 0
     var opponentWins = 0
     var chapter: StoryChapter = .cinderGate
