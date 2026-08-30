@@ -971,9 +971,3 @@ private struct SeededRandomNumberGenerator: RandomNumberGenerator {
         return value ^ (value >> 31)
     }
 }
-
-private extension Comparable {
-    func clamped(to range: ClosedRange<Self>) -> Self {
-        min(max(self, range.lowerBound), range.upperBound)
-    }
-}

@@ -1,6 +1,14 @@
 import CoreGraphics
 import Foundation
 
+extension Comparable {
+    /// Keeps a value inside `range`. Used across the engine, canvas, and UI for
+    /// arena bounds, meters, and normalized progress values.
+    func clamped(to range: ClosedRange<Self>) -> Self {
+        min(max(self, range.lowerBound), range.upperBound)
+    }
+}
+
 enum FighterPhase: Equatable, Sendable {
     case running
     case gameOver

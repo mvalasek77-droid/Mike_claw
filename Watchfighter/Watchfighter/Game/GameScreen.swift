@@ -1944,12 +1944,6 @@ private final class ArcadeMusic {
     }
 }
 
-private extension Comparable {
-    func clamped(to range: ClosedRange<Self>) -> Self {
-        min(max(self, range.lowerBound), range.upperBound)
-    }
-}
-
 // MARK: - FF-style story cutscenes (original content)
 
 /// One narrative text box. `speaker == nil` means the narrator.
