@@ -23,7 +23,7 @@ final class WatchfighterEngineTests: XCTestCase {
         XCTAssertEqual(FighterArchetype.cage.preferredAttack(distance: 0.20, pressure: 0.7, meter: 0), .throwAttack)
         XCTAssertEqual(FighterArchetype.nova.preferredAttack(distance: 0.32, pressure: 0.7, meter: 0), .jumpKick)
         XCTAssertEqual(FighterArchetype.titan.displayName, "TITUS")
-        XCTAssertTrue(FighterArchetype.titan.techniqueSummary.contains("hidden weakness"))
+        XCTAssertTrue(FighterArchetype.titan.techniqueSummary.contains("secret combo"))
         XCTAssertFalse(FighterArchetype.titan.techniqueSummary.contains("8-hit"))
     }
 
