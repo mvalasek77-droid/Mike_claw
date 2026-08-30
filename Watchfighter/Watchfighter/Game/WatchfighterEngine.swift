@@ -35,16 +35,8 @@ private enum FightRuleSet: Equatable {
         self == .tournament
     }
 
-    /// Fights run close to two minutes so a round has room to breathe.
     var roundTimer: TimeInterval {
-        switch self {
-        case .tournament:
-            return 120
-        case .versus:
-            return 120
-        case .learn:
-            return 90
-        }
+        99
     }
 
     var victoryText: String {
@@ -490,7 +482,7 @@ struct WatchfighterEngine {
         if defender.archetype.isMillionBoss, side == .player, action == .special {
             showBanner(
                 millionCounter ? "MILLION SHOT" : "TITUS SHRUGS",
-                millionCounter ? "the impossible counter lands" : "8-hit chain plus full meter",
+                millionCounter ? "the impossible counter lands" : "the hidden weakness remains",
                 duration: 1.0
             )
         } else if side == .opponent, (action == .special || action == .projectile) {

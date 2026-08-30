@@ -29,6 +29,7 @@ struct GameScreen: View {
     @State private var pitPending = false   // a loss happened; show the Pit beat at the next round start
     @State private var seenChapters: Set<StoryChapter> = []   // per-floor beats play once
     @State private var arcadeAudio = ArcadeAudio()
+    @StateObject private var purchases = PurchaseManager()
     @AppStorage("watchfighter.bestScore") private var bestScore = 0
     @AppStorage("watchfighter.unlockedRosterIndex") private var unlockedRosterIndex = 0
     // Dracula is a secret VS-only pick, earned once, after a full tournament clear.
@@ -191,12 +192,25 @@ struct GameScreen: View {
                 if newPhase != .active {
                     lastFrameDate = nil
                     isPressing = false
+                    arcadeAudio.stopMusic()
                 } else {
                     crownFocused = true
+                    arcadeAudio.startMusic()
                 }
+            }
+            .onDisappear {
+                arcadeAudio.stopMusic()
             }
             .onReceive(frameTimer) { date in
                 advance(to: date)
+            }
+            .task {
+                await purchases.prepare()
+            }
+            .onChange(of: purchases.ownsFullRoster) { _, ownsFullRoster in
+                if ownsFullRoster {
+                    unlockedRosterIndex = FighterArchetype.versusRoster.count - 1
+                }
             }
         }
     }
@@ -432,6 +446,31 @@ struct GameScreen: View {
                 .tint(locked ? .gray : Color.watchfighterRed)
                 .disabled(locked)
             }
+
+            if locked, let product = purchases.fullRosterProduct {
+                Button {
+                    Task { await purchases.purchaseFullRoster() }
+                } label: {
+                    Label(purchases.isPurchasing ? "WAIT…" : "UNLOCK ALL \(product.displayPrice)", systemImage: "cart.fill")
+                        .font(.system(size: 8, weight: .black, design: .rounded))
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color.watchfighterGold)
+                .disabled(purchases.isPurchasing)
+
+                Button("RESTORE") {
+                    Task { await purchases.restore() }
+                }
+                .font(.system(size: 7, weight: .bold))
+                .buttonStyle(.plain)
+                .foregroundStyle(.white.opacity(0.72))
+            }
+
+            if let message = purchases.message {
+                Text(message)
+                    .font(.system(size: 7, weight: .black, design: .rounded))
+                    .foregroundStyle(Color.watchfighterMint)
+            }
         }
         .padding(10)
         .background(.black.opacity(0.78), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
@@ -568,8 +607,8 @@ struct GameScreen: View {
 
             Text(rival.techniqueSummary)
                 .font(.system(size: 7, weight: .heavy, design: .rounded))
-                .foregroundStyle(.white.opacity(0.66))
-                .lineLimit(2)
+                .foregroundStyle(rival.isMillionBoss ? Color.watchfighterGold : .white.opacity(0.66))
+                .lineLimit(rival.isMillionBoss ? 3 : 2)
                 .minimumScaleFactor(0.72)
 
             HStack(spacing: 8) {
@@ -1122,6 +1161,7 @@ struct GameScreen: View {
         let beforeChapter = engine.state.chapter
         let beforePlayerWins = engine.state.playerWins
         let beforeOpponentWins = engine.state.opponentWins
+        let beforeStrikeIDs = Set(engine.state.strikes.map(\.id))
 
         let targetX = isPressing ? touchX : CGFloat(crownX)
         let chargedDash = pendingDashStrike && engine.state.player.meter >= 1
@@ -1151,6 +1191,13 @@ struct GameScreen: View {
         engine.tick(delta: delta, input: tickInput)
         pendingDashStrike = false
         voiceTimer = max(0, voiceTimer - delta)
+
+        for strike in engine.state.strikes where !beforeStrikeIDs.contains(strike.id) {
+            if let impact = impactCue(for: strike) {
+                arcadeAudio.play(impact: impact)
+            }
+        }
+
         if engine.state.score > bestScore {
             bestScore = engine.state.score
         }
@@ -1217,6 +1264,22 @@ struct GameScreen: View {
 
     private func playHaptic(_ haptic: WKHapticType) {
         WKInterfaceDevice.current().play(haptic)
+    }
+
+    private func impactCue(for strike: FighterStrike) -> ArcadeImpact? {
+        switch strike.kind {
+        case .blocked:
+            return .block
+        case .special, .projectile, .finisher, .headPop, .bodyBurst, .armDrop:
+            return .special
+        case .throwImpact:
+            return .kick
+        case .hit:
+            let action = strike.side == .player ? engine.state.player.action : engine.state.opponent.action
+            return action == .kick || action == .jumpKick ? .kick : .punch
+        case .blood, .round, .vampireBite:
+            return nil
+        }
     }
 
     private func announce(_ text: String) {
@@ -1638,9 +1701,18 @@ private enum ArcadeCue {
     }
 }
 
+private enum ArcadeImpact: String {
+    case punch
+    case kick
+    case block = "guard"
+    case special = "special-impact"
+}
+
 private final class ArcadeAudio {
-    private var players: [String: AVAudioPlayer] = [:]
-    private var lastPlayedAt = Date.distantPast
+    private var voicePlayers: [String: AVAudioPlayer] = [:]
+    private var impactPlayers: [ArcadeImpact: AVAudioPlayer] = [:]
+    private var lastVoiceAt = Date.distantPast
+    private var lastImpactAt = Date.distantPast
     private let music = ArcadeMusic()
 
     init() {
@@ -1651,7 +1723,17 @@ private final class ArcadeAudio {
             }
             player.volume = 0.72
             player.prepareToPlay()
-            players[fileName] = player
+            voicePlayers[fileName] = player
+        }
+
+        for impact in [ArcadeImpact.punch, .kick, .block, .special] {
+            guard let url = Self.impactURL(for: impact.rawValue),
+                  let player = try? AVAudioPlayer(contentsOf: url) else {
+                continue
+            }
+            player.volume = impact == .punch ? 0.92 : 1.0
+            player.prepareToPlay()
+            impactPlayers[impact] = player
         }
     }
 
@@ -1660,11 +1742,25 @@ private final class ArcadeAudio {
             ?? Bundle.main.url(forResource: fileName, withExtension: "aiff")
     }
 
+    private static func impactURL(for fileName: String) -> URL? {
+        Bundle.main.url(forResource: fileName, withExtension: "aiff", subdirectory: "Impact")
+            ?? Bundle.main.url(forResource: fileName, withExtension: "aiff")
+    }
+
     func play(cue: ArcadeCue) {
         let now = Date()
-        guard now.timeIntervalSince(lastPlayedAt) > 0.45 else { return }
-        guard let player = players[cue.fileName] else { return }
-        lastPlayedAt = now
+        guard now.timeIntervalSince(lastVoiceAt) > 0.45 else { return }
+        guard let player = voicePlayers[cue.fileName] else { return }
+        lastVoiceAt = now
+        player.currentTime = 0
+        player.play()
+    }
+
+    func play(impact: ArcadeImpact) {
+        let now = Date()
+        guard now.timeIntervalSince(lastImpactAt) > 0.045 else { return }
+        guard let player = impactPlayers[impact] else { return }
+        lastImpactAt = now
         player.currentTime = 0
         player.play()
     }
@@ -1672,58 +1768,35 @@ private final class ArcadeAudio {
     func startMusic() {
         music.start()
     }
+
+    func stopMusic() {
+        music.stop()
+    }
 }
 
 private final class ArcadeMusic {
-    private let engine = AVAudioEngine()
-    private var source: AVAudioSourceNode?
-    private var sampleIndex = 0.0
-    private let sampleRate = 22_050.0
-    private let tempo = 176.0
-    private let melody = [196.0, 246.94, 293.66, 329.63, 392.0, 329.63, 293.66, 246.94]
-    private let bass = [98.0, 98.0, 123.47, 146.83, 98.0, 164.81, 146.83, 123.47]
+    private var player: AVAudioPlayer?
 
     func start() {
-        guard !engine.isRunning else { return }
-        let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)
-        guard let format else { return }
-
-        if source == nil {
-            let node = AVAudioSourceNode { [weak self] _, _, frameCount, audioBufferList -> OSStatus in
-                guard let self else { return noErr }
-                let buffers = UnsafeMutableAudioBufferListPointer(audioBufferList)
-
-                for frame in 0..<Int(frameCount) {
-                    let beat = self.sampleIndex / self.sampleRate * self.tempo / 60.0
-                    let step = Int(beat * 2.0) % self.melody.count
-                    let envelope = 1.0 - min(0.82, (beat * 2.0).truncatingRemainder(dividingBy: 1.0) * 1.1)
-                    let leadPhase = self.sampleIndex * self.melody[step] / self.sampleRate
-                    let bassPhase = self.sampleIndex * self.bass[Int(beat) % self.bass.count] / self.sampleRate
-                    let hat = Int(beat * 4.0).isMultiple(of: 2) ? 0.025 : -0.015
-                    let lead = sin(leadPhase * 2.0 * .pi) >= 0 ? 0.12 : -0.12
-                    let low = sin(bassPhase * 2.0 * .pi) * 0.10
-                    let sample = Float((lead * envelope) + low + hat)
-
-                    for buffer in buffers {
-                        guard let data = buffer.mData else { continue }
-                        data.assumingMemoryBound(to: Float.self)[frame] = sample
-                    }
-
-                    self.sampleIndex += 1
-                }
-
-                return noErr
-            }
-
-            source = node
-            engine.attach(node)
-            engine.connect(node, to: engine.mainMixerNode, format: format)
-            engine.mainMixerNode.outputVolume = 0.16
+        if player == nil {
+            let url = Bundle.main.url(forResource: "fight-theme", withExtension: "wav", subdirectory: "Music")
+                ?? Bundle.main.url(forResource: "fight-theme", withExtension: "wav")
+            guard let url, let loaded = try? AVAudioPlayer(contentsOf: url) else { return }
+            loaded.numberOfLoops = -1
+            loaded.volume = 0.24
+            loaded.prepareToPlay()
+            player = loaded
         }
 
         try? AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default)
         try? AVAudioSession.sharedInstance().setActive(true)
-        try? engine.start()
+        player?.play()
+    }
+
+    func stop() {
+        guard player?.isPlaying == true else { return }
+        player?.pause()
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 }
 

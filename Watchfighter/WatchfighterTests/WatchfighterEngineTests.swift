@@ -2,6 +2,14 @@ import XCTest
 @testable import Watchfighter
 
 final class WatchfighterEngineTests: XCTestCase {
+    func testArcadeRoundsUseClassicLengthAndDurability() {
+        let engine = WatchfighterEngine(seed: 5)
+
+        XCTAssertEqual(engine.state.roundTimer, 99)
+        XCTAssertEqual(engine.state.player.maxHealth, FighterArchetype.kael.arcadeHealth)
+        XCTAssertGreaterThan(engine.state.player.maxHealth, FighterArchetype.kael.maxHealth)
+    }
+
     func testVoiceResourcesAreBundledForArcadeCallouts() {
         for fileName in ["fight", "combo", "finish", "ko", "million", "titan"] {
             let url = Bundle.main.url(forResource: fileName, withExtension: "aiff", subdirectory: "Voice")
@@ -15,7 +23,8 @@ final class WatchfighterEngineTests: XCTestCase {
         XCTAssertEqual(FighterArchetype.cage.preferredAttack(distance: 0.20, pressure: 0.7, meter: 0), .throwAttack)
         XCTAssertEqual(FighterArchetype.nova.preferredAttack(distance: 0.32, pressure: 0.7, meter: 0), .jumpKick)
         XCTAssertEqual(FighterArchetype.titan.displayName, "TITUS")
-        XCTAssertTrue(FighterArchetype.titan.techniqueSummary.contains("8-hit"))
+        XCTAssertTrue(FighterArchetype.titan.techniqueSummary.contains("hidden weakness"))
+        XCTAssertFalse(FighterArchetype.titan.techniqueSummary.contains("8-hit"))
     }
 
     func testVersusRosterFollowsTournamentUnlockOrder() {
@@ -196,7 +205,16 @@ final class WatchfighterEngineTests: XCTestCase {
             (.stormBridge, .voss),
             (.pirateCove, .mara),
             (.dragonAlley, .lennox),
-            (.sunPier, .sunny)
+            (.sunPier, .sunny),
+            (.runwayTerminal, .nova),
+            (.blackoutBase, .specter),
+            (.launchFoundry, .cosmo),
+            (.goldRally, .brass),
+            (.icePalace, .volkov),
+            (.redCarpet, .zara),
+            (.cageNight, .cage),
+            (.obsidianThrone, .kairo),
+            (.millionRoom, .titan)
         ]
 
         for (chapter, archetype) in expected {
