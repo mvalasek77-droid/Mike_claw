@@ -1,0 +1,2117 @@
+import Foundation
+import AVFoundation
+import SwiftUI
+import WatchKit
+
+private enum StorageKey {
+    static let bestScore = "watchsmash.bestScore"
+    static let unlockedRosterIndex = "watchsmash.unlockedRosterIndex"
+    static let draculaUnlocked = "watchsmash.draculaUnlocked"
+}
+
+struct GameScreen: View {
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// True while the watch is in Always On Display (wrist down). The fight is
+    /// frozen and the canvas throttled to 1fps so a dimmed screen can't burn
+    /// battery — or let the AI keep hitting a player who isn't looking.
+    @Environment(\.isLuminanceReduced) private var isLuminanceReduced
+
+    @State private var engine = WatchsmashEngine()
+    @State private var screenMode: GameScreenMode = .mainMenu
+    @State private var activeMode: FightMode = .tournament
+    @State private var selectedRosterIndex = 0
+    @State private var selectedLearnDrill: LearnDrill = .movement
+    @State private var completedLearnDrills: Set<LearnDrill> = []
+    @State private var lastFrameDate: Date?
+    @State private var crownX: Double = 0.25
+    @State private var touchX: CGFloat = 0.25
+    @State private var touchY: CGFloat = 0.5
+    @State private var isPressing = false
+    @State private var pendingDashStrike = false
+    @State private var nextDemoSpecial: TimeInterval = 2.4
+    @State private var demoSceneClock: TimeInterval = 0   // dwell timer for auto-advancing demo cutscenes/cards
+    @State private var voiceText = ""
+    @State private var voiceTimer: TimeInterval = 0
+    @State private var lastSpokenBanner = ""
+    @State private var cutscenePanels: [CutscenePanel] = []
+    @State private var cutsceneIndex = 0
+    @State private var cutsceneToFight = false
+    @State private var pitPending = false   // a loss happened; show the Pit beat at the next round start
+    @State private var seenChapters: Set<StoryChapter> = []   // per-floor beats play once
+    @State private var arcadeAudio = ArcadeAudio()
+    @StateObject private var purchases = PurchaseManager()
+    @AppStorage(StorageKey.bestScore) private var bestScore = 0
+    @AppStorage(StorageKey.unlockedRosterIndex) private var unlockedRosterIndex = 0
+    @AppStorage(StorageKey.draculaUnlocked) private var draculaUnlocked = false
+    @FocusState private var crownFocused: Bool
+
+    // MARK: - Admin/test mode (pick any two fighters at any floor, plus instant
+    // debug toggles) so every character and matchup can be checked quickly.
+    // Hidden from players: unlocked by long-pressing the title on the main
+    // menu, or WATCHSMASH_ADMIN=1 for test rigs.
+    private let adminEnvEnabled = ProcessInfo.processInfo.environment["WATCHSMASH_ADMIN"] == "1"
+    @State private var adminUnlocked = false
+    @State private var isAdminSession = false
+    @State private var adminPlayerIndex = 0
+    @State private var adminOpponentIndex = 1
+    @State private var adminChapterIndex = 0
+    private var adminRoster: [FighterArchetype] { FighterArchetype.allCases }
+
+    // MARK: - Crash monitor / bug report
+    /// A tournament left unfinished on a previous launch, offered as CONTINUE.
+    @State private var savedRun: RunSnapshot?
+
+    @State private var showBugReportSheet = false
+    @State private var bugReportText = ""
+    @State private var bugReportSent = false
+
+    private let demoMode = ProcessInfo.processInfo.environment["WATCHSMASH_DEMO"] == "1"
+    // When set alongside demo mode, the attract reel also plays the FF cutscenes
+    // (auto-advanced) instead of skipping straight between fights — used to
+    // capture cutscene frames for the storyboard screenshots.
+    private let demoCutscenes = ProcessInfo.processInfo.environment["WATCHSMASH_DEMO_CUTSCENES"] == "1"
+    private let autoPlay = AutoPlayDriver()
+
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack {
+                TimelineView(.periodic(from: .now, by: isLuminanceReduced ? 1.0 : 1.0 / 30.0)) { timeline in
+                    WatchsmashCanvas(state: engine.state, date: timeline.date, reduceMotion: reduceMotion)
+                        .ignoresSafeArea()
+                        .onChange(of: timeline.date) { _, date in
+                            advance(to: date)
+                        }
+                }
+                .opacity(isLuminanceReduced ? 0.55 : 1)
+
+                if screenMode == .fighting || screenMode == .pause {
+                    hud
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 5)
+                        .background(.black.opacity(0.56), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                        .padding(.horizontal, 5)
+                        .padding(.top, 3)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                        .allowsHitTesting(false)
+                }
+
+                // Match-start/round and combo call-outs both live in a band just
+                // under the HUD at the top of the screen, out of the way of the
+                // actual fight action in the center/lower canvas.
+                if engine.state.bannerTimer > 0, engine.state.phase == .running, screenMode == .fighting {
+                    storyBanner
+                        .allowsHitTesting(false)
+                        .padding(.horizontal, 10)
+                        .padding(.top, 62)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                }
+
+                if engine.state.combo > 1, engine.state.phase == .running, screenMode == .fighting {
+                    comboBadge
+                        .allowsHitTesting(false)
+                        .padding(.trailing, 6)
+                        .padding(.top, 62)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                }
+
+                if voiceTimer > 0 {
+                    voiceBadge
+                        .allowsHitTesting(false)
+                        .padding(.bottom, 48)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                }
+
+                if screenMode == .fighting, activeMode == .learn, engine.state.phase == .running {
+                    learnCoachOverlay
+                        .allowsHitTesting(false)
+                        .padding(.horizontal, 8)
+                        .padding(.bottom, 7)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                }
+
+                if screenMode == .fighting, engine.state.phase == .running {
+                    fightMenuButton
+                        .padding(.leading, 8)
+                        .padding(.bottom, 8)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                }
+
+                if screenMode == .mainMenu {
+                    mainMenuOverlay
+                }
+
+                if screenMode == .versusSelect {
+                    versusSelectOverlay
+                }
+
+                if screenMode == .learnSelect {
+                    learnSelectOverlay
+                }
+
+                if screenMode == .fighterCard {
+                    fighterCardOverlay
+                }
+
+                if screenMode == .admin {
+                    adminOverlay
+                }
+
+                if screenMode == .cutscene {
+                    CutsceneOverlay(panels: cutscenePanels, index: cutsceneIndex) {
+                        advanceCutscene()
+                    }
+                }
+
+                if screenMode == .pause {
+                    pauseOverlay
+                }
+
+                if engine.state.phase == .gameOver {
+                    gameOverOverlay
+                }
+            }
+            .contentShape(Rectangle())
+            .gesture(dragGesture(size: proxy.size))
+            .simultaneousGesture(TapGesture(count: 2).onEnded {
+                pendingDashStrike = true
+                playHaptic(.directionUp)
+            })
+            .focusable(true)
+            .focused($crownFocused)
+            .digitalCrownRotation(
+                $crownX,
+                from: 0.14,
+                through: 0.56,
+                by: 0.01,
+                sensitivity: .high,
+                isContinuous: false,
+                isHapticFeedbackEnabled: true
+            )
+            .onAppear {
+                crownX = Double(engine.state.player.x)
+                touchX = engine.state.player.x
+                crownFocused = true
+                savedRun = RunStore.load()
+                arcadeAudio.startMusic()
+                // If the app went down hard last session, offer the crash
+                // report as a starting point for a bug report.
+                if let crash = CrashMonitor.pendingCrashReport() {
+                    bugReportText = crash
+                    showBugReportSheet = true
+                    CrashMonitor.clearPendingCrashReports()
+                }
+                if demoMode {
+                    startTournament(skipCard: true)
+                }
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                if newPhase != .active {
+                    lastFrameDate = nil
+                    isPressing = false
+                    checkpointRun()
+                    arcadeAudio.stopMusic()
+                } else {
+                    crownFocused = true
+                    arcadeAudio.startMusic()
+                }
+            }
+            .onDisappear {
+                arcadeAudio.stopMusic()
+            }
+            .task {
+                await purchases.prepare()
+            }
+            .onChange(of: purchases.ownsFullRoster) { _, ownsFullRoster in
+                if ownsFullRoster {
+                    unlockedRosterIndex = FighterArchetype.versusRoster.count - 1
+                }
+            }
+        }
+    }
+
+    private var hud: some View {
+        VStack(spacing: 4) {
+            HStack(alignment: .top, spacing: 5) {
+                fighterPanel(engine.state.player, side: .player)
+
+                VStack(spacing: 2) {
+                    Text("\(Int(ceil(engine.state.roundTimer)))")
+                        .font(.system(size: 15, weight: .black, design: .rounded))
+                        .foregroundStyle(Color.watchsmashGold)
+                        .monospacedDigit()
+                        .frame(width: 29)
+
+                    Text("R\(engine.state.round)")
+                        .font(.system(size: 8, weight: .heavy, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.72))
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Round \(engine.state.round), \(Int(ceil(engine.state.roundTimer))) seconds")
+
+                fighterPanel(engine.state.opponent, side: .opponent)
+            }
+
+            HStack(spacing: 6) {
+                meter(value: engine.state.player.meter, color: .watchsmashMint, width: 42)
+                winPips(playerWins: engine.state.playerWins, opponentWins: engine.state.opponentWins)
+                meter(value: engine.state.opponent.meter, color: .watchsmashRed, width: 42)
+            }
+        }
+        .shadow(color: .black.opacity(0.85), radius: 4, y: 2)
+    }
+
+    private var fightMenuButton: some View {
+        Button {
+            screenMode = .pause
+            lastFrameDate = nil
+            playHaptic(.click)
+        } label: {
+            Image(systemName: "line.3.horizontal")
+                .font(.system(size: 13, weight: .black))
+                .foregroundStyle(.white.opacity(0.92))
+                .frame(width: 31, height: 31)
+                .background(.black.opacity(0.62), in: Circle())
+                .overlay(
+                    Circle()
+                        .stroke(Color.watchsmashGold.opacity(0.46), lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+        .contentShape(Circle())
+        .accessibilityLabel("Fight Menu")
+    }
+
+    private var mainMenuOverlay: some View {
+        // A ScrollView keeps every button reachable now that TEST + REPORT BUG
+        // join the original three — the smallest watch sizes would otherwise
+        // clip the bottom of the stack.
+        ScrollView {
+            VStack(spacing: 8) {
+                Text("WATCH SMASH")
+                    .font(.system(size: 17, weight: .black, design: .rounded))
+                    .foregroundStyle(Color.watchsmashGold)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+                    // Hidden admin unlock: hold the title to reveal (or hide)
+                    // the TEST and REPORT BUG entries.
+                    .onLongPressGesture(minimumDuration: 1.2) {
+                        adminUnlocked.toggle()
+                        playHaptic(adminUnlocked ? .success : .failure)
+                    }
+
+                Text("BEST \(bestScore)")
+                    .font(.system(size: 10, weight: .black, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.78))
+                    .monospacedDigit()
+                    .accessibilityLabel("Best score: \(bestScore)")
+
+                if let savedRun {
+                    Button {
+                        continueTournament()
+                    } label: {
+                        Label("CONTINUE", systemImage: "arrow.uturn.forward")
+                            .font(.system(size: 12, weight: .black, design: .rounded))
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Color.watchsmashMint)
+                    .accessibilityLabel("Continue run on \(savedRun.chapter.title)")
+
+                    Text("FLOOR \(savedRun.playerWins + 1)/\(StoryChapter.allCases.count)")
+                        .font(.system(size: 7, weight: .black, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.62))
+                        .monospacedDigit()
+                }
+
+                // With a run in progress CONTINUE is the primary action, so the
+                // fresh-run button steps down to a secondary style.
+                if savedRun == nil {
+                    Button {
+                        startTournament(skipCard: false)
+                    } label: {
+                        Label("TOURNEY", systemImage: "trophy.fill")
+                            .font(.system(size: 12, weight: .black, design: .rounded))
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Color.watchsmashRed)
+                } else {
+                    Button {
+                        startTournament(skipCard: false)
+                    } label: {
+                        Label("NEW RUN", systemImage: "trophy.fill")
+                            .font(.system(size: 10, weight: .heavy, design: .rounded))
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(Color.watchsmashRed)
+                }
+
+                Button {
+                    openVersusSelect()
+                } label: {
+                    Label("VS", systemImage: "person.2.fill")
+                        .font(.system(size: 10, weight: .heavy, design: .rounded))
+                }
+                .buttonStyle(.bordered)
+
+                Button {
+                    openLearnSelect()
+                } label: {
+                    Label("LEARN", systemImage: "scope")
+                        .font(.system(size: 10, weight: .heavy, design: .rounded))
+                }
+                .buttonStyle(.bordered)
+
+                if adminUnlocked || adminEnvEnabled {
+                    Button {
+                        openAdmin()
+                    } label: {
+                        Label("TEST", systemImage: "wrench.and.screwdriver.fill")
+                            .font(.system(size: 9, weight: .heavy, design: .rounded))
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.gray)
+
+                    Button {
+                        showBugReportSheet = true
+                    } label: {
+                        Label("REPORT BUG", systemImage: "ladybug.fill")
+                            .font(.system(size: 8, weight: .heavy, design: .rounded))
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.gray)
+                }
+            }
+            .padding(12)
+            .background(.black.opacity(0.70), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Color.watchsmashGold.opacity(0.55), lineWidth: 1)
+            )
+            .padding(.horizontal, 16)
+        }
+        .sheet(isPresented: $showBugReportSheet) {
+            bugReportSheet
+        }
+    }
+
+    /// The ladder roster, plus Dracula appended once a full tournament clear
+    /// earns him — kept separate from the static `versusRoster` so his slot
+    /// never affects the numeric ladder-unlock index.
+    private var vsRoster: [FighterArchetype] {
+        FighterArchetype.versusRoster + (draculaUnlocked ? [.dracula] : [])
+    }
+
+    private var versusSelectOverlay: some View {
+        let roster = vsRoster
+        let index = selectedRosterIndex.clamped(to: 0...(roster.count - 1))
+        let rival = roster[index]
+        // Dracula's appended slot only ever appears once unlocked, so it's
+        // never gated by the ladder-progress index.
+        let locked = index < FighterArchetype.versusRoster.count && index > normalizedUnlockedRosterIndex
+
+        return VStack(spacing: 7) {
+            Text("VS MODE")
+                .font(.system(size: 16, weight: .black, design: .rounded))
+                .foregroundStyle(Color.watchsmashGold)
+
+            Text("OPEN \(normalizedUnlockedRosterIndex + 1)/\(roster.count)")
+                .font(.system(size: 8, weight: .black, design: .rounded))
+                .foregroundStyle(.white.opacity(0.72))
+                .monospacedDigit()
+
+            HStack(spacing: 7) {
+                Button {
+                    shiftRosterSelection(-1)
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 13, weight: .black))
+                        .frame(width: 25, height: 30)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityLabel("Previous fighter")
+
+                VStack(spacing: 3) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .fill(styleColor(for: rival).opacity(locked ? 0.10 : 0.30))
+
+                        VStack(spacing: 2) {
+                            Image(systemName: locked ? "lock.fill" : "bolt.fill")
+                                .font(.system(size: 12, weight: .black))
+                                .foregroundStyle(locked ? .white.opacity(0.68) : styleColor(for: rival))
+
+                            Text(rival.displayName)
+                                .font(.system(size: 13, weight: .black, design: .rounded))
+                                .foregroundStyle(locked ? .white.opacity(0.58) : .white)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.62)
+
+                            Text(rival.combatStyle.label)
+                                .font(.system(size: 6, weight: .black, design: .rounded))
+                                .foregroundStyle(styleColor(for: rival))
+                                .lineLimit(1)
+                        }
+                    }
+                    .frame(width: 78, height: 66)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .stroke(styleColor(for: rival).opacity(locked ? 0.35 : 0.78), lineWidth: 1)
+                    )
+
+                    Text(locked ? unlockHint(forRosterIndex: index) : rival.signatureMove)
+                        .font(.system(size: 7, weight: .black, design: .rounded))
+                        .foregroundStyle(locked ? .white.opacity(0.62) : Color.watchsmashMint)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.62)
+                }
+
+                Button {
+                    shiftRosterSelection(1)
+                } label: {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .black))
+                        .frame(width: 25, height: 30)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityLabel("Next fighter")
+            }
+
+            HStack(spacing: 8) {
+                Button {
+                    returnToMainMenu()
+                } label: {
+                    Image(systemName: "house.fill")
+                        .font(.system(size: 12, weight: .black))
+                        .frame(width: 28, height: 24)
+                }
+                .buttonStyle(.bordered)
+
+                Button {
+                    startVersus()
+                } label: {
+                    Label(locked ? "LOCKED" : "FIGHT", systemImage: locked ? "lock.fill" : "flame.fill")
+                        .font(.system(size: 10, weight: .black, design: .rounded))
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(locked ? .gray : Color.watchsmashRed)
+                .disabled(locked)
+            }
+
+            if locked, let product = purchases.fullRosterProduct {
+                Button {
+                    purchases.startPurchase()
+                } label: {
+                    Label(purchases.isPurchasing ? "WAIT…" : "UNLOCK ALL \(product.displayPrice)", systemImage: "cart.fill")
+                        .font(.system(size: 8, weight: .black, design: .rounded))
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color.watchsmashGold)
+                .disabled(purchases.isPurchasing)
+
+                Button("RESTORE") {
+                    purchases.startRestore()
+                }
+                .font(.system(size: 7, weight: .bold))
+                .buttonStyle(.plain)
+                .foregroundStyle(.white.opacity(0.72))
+            }
+
+            if let message = purchases.message {
+                Text(message)
+                    .font(.system(size: 7, weight: .black, design: .rounded))
+                    .foregroundStyle(Color.watchsmashMint)
+            }
+        }
+        .padding(10)
+        .background(.black.opacity(0.78), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Color.watchsmashMint.opacity(0.54), lineWidth: 1)
+        )
+        .padding(.horizontal, 10)
+    }
+
+    private var learnSelectOverlay: some View {
+        let drill = selectedLearnDrill
+
+        return VStack(spacing: 7) {
+            Text("LEARN")
+                .font(.system(size: 16, weight: .black, design: .rounded))
+                .foregroundStyle(Color.watchsmashGold)
+
+            HStack(spacing: 7) {
+                Button {
+                    shiftLearnDrill(-1)
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 13, weight: .black))
+                        .frame(width: 25, height: 30)
+                }
+                .buttonStyle(.bordered)
+
+                VStack(spacing: 3) {
+                    Image(systemName: drill.symbolName)
+                        .font(.system(size: 18, weight: .black))
+                        .foregroundStyle(Color.watchsmashMint)
+                        .frame(width: 50, height: 34)
+
+                    Text(drill.title)
+                        .font(.system(size: 13, weight: .black, design: .rounded))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+
+                    Text(drill.shortPrompt)
+                        .font(.system(size: 7, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.68))
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.70)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(width: 86, height: 78)
+
+                Button {
+                    shiftLearnDrill(1)
+                } label: {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .black))
+                        .frame(width: 25, height: 30)
+                }
+                .buttonStyle(.bordered)
+            }
+
+            HStack(spacing: 8) {
+                Button {
+                    returnToMainMenu()
+                } label: {
+                    Image(systemName: "house.fill")
+                        .font(.system(size: 12, weight: .black))
+                        .frame(width: 28, height: 24)
+                }
+                .buttonStyle(.bordered)
+
+                Button {
+                    startLearn()
+                } label: {
+                    Label("START", systemImage: "play.fill")
+                        .font(.system(size: 10, weight: .black, design: .rounded))
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color.watchsmashMint)
+            }
+        }
+        .padding(10)
+        .background(.black.opacity(0.78), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Color.watchsmashGold.opacity(0.52), lineWidth: 1)
+        )
+        .padding(.horizontal, 10)
+    }
+
+    private var fighterCardOverlay: some View {
+        let rival = engine.state.opponent.archetype
+
+        return VStack(spacing: 6) {
+            Text(engine.state.chapter.title)
+                .font(.system(size: 9, weight: .black, design: .rounded))
+                .foregroundStyle(Color.watchsmashGold)
+                .lineLimit(1)
+
+            HStack(spacing: 8) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .fill(styleColor(for: rival).opacity(0.24))
+                    Text(String(rival.displayName.prefix(2)))
+                        .font(.system(size: 18, weight: .black, design: .rounded))
+                        .foregroundStyle(.white)
+                }
+                .frame(width: 46, height: 62)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .stroke(styleColor(for: rival).opacity(0.75), lineWidth: 1)
+                )
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(rival.displayName)
+                        .font(.system(size: 16, weight: .black, design: .rounded))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                    Text(rival.subtitle.uppercased())
+                        .font(.system(size: 7, weight: .black, design: .rounded))
+                        .foregroundStyle(styleColor(for: rival))
+                        .lineLimit(1)
+                    Text(rival.techniqueName.uppercased())
+                        .font(.system(size: 8, weight: .black, design: .rounded))
+                        .foregroundStyle(Color.watchsmashGold)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.65)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            Text(rival.storyBlurb)
+                .font(.system(size: 8, weight: .bold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.86))
+                .lineLimit(2)
+                .minimumScaleFactor(0.75)
+
+            Text(rival.techniqueSummary)
+                .font(.system(size: 7, weight: .heavy, design: .rounded))
+                .foregroundStyle(rival.isMillionBoss ? Color.watchsmashGold : .white.opacity(0.66))
+                .lineLimit(rival.isMillionBoss ? 3 : 2)
+                .minimumScaleFactor(0.72)
+
+            HStack(spacing: 8) {
+                Button {
+                    returnToMainMenu()
+                } label: {
+                    Image(systemName: "house.fill")
+                        .font(.system(size: 12, weight: .black))
+                        .frame(width: 28, height: 24)
+                }
+                .buttonStyle(.bordered)
+
+                Button {
+                    beginFight()
+                } label: {
+                    Label("FIGHT", systemImage: "flame.fill")
+                        .font(.system(size: 11, weight: .black, design: .rounded))
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color.watchsmashRed)
+            }
+        }
+        .padding(10)
+        .background(.black.opacity(0.78), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(styleColor(for: rival).opacity(0.75), lineWidth: 1.2)
+        )
+        .padding(.horizontal, 10)
+    }
+
+    /// Pick ANY player, ANY opponent, and ANY floor (for its difficulty tier +
+    /// arena) — a quick harness for checking every character and matchup.
+    private var adminOverlay: some View {
+        let roster = adminRoster
+        let playerPick = roster[adminPlayerIndex.clamped(to: 0...(roster.count - 1))]
+        let opponentPick = roster[adminOpponentIndex.clamped(to: 0...(roster.count - 1))]
+        let chapterPick = StoryChapter.allCases[adminChapterIndex.clamped(to: 0...(StoryChapter.allCases.count - 1))]
+
+        return VStack(spacing: 6) {
+            Text("ADMIN TEST")
+                .font(.system(size: 14, weight: .black, design: .rounded))
+                .foregroundStyle(.gray)
+
+            adminPicker(title: "PLAYER", value: playerPick.displayName, tint: styleColor(for: playerPick)) {
+                shiftAdminIndex(&adminPlayerIndex, by: $0, count: roster.count)
+            }
+            adminPicker(title: "OPPONENT", value: opponentPick.displayName, tint: styleColor(for: opponentPick)) {
+                shiftAdminIndex(&adminOpponentIndex, by: $0, count: roster.count)
+            }
+            adminPicker(title: "FLOOR", value: chapterPick.title, tint: Color.watchsmashGold) {
+                shiftAdminIndex(&adminChapterIndex, by: $0, count: StoryChapter.allCases.count)
+            }
+
+            HStack(spacing: 8) {
+                Button {
+                    returnToMainMenu()
+                } label: {
+                    Image(systemName: "house.fill")
+                        .font(.system(size: 12, weight: .black))
+                        .frame(width: 28, height: 24)
+                }
+                .buttonStyle(.bordered)
+
+                Button {
+                    startAdminFight()
+                } label: {
+                    Label("FIGHT", systemImage: "flame.fill")
+                        .font(.system(size: 11, weight: .black, design: .rounded))
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.gray)
+            }
+        }
+        .padding(10)
+        .background(.black.opacity(0.80), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(.gray.opacity(0.6), lineWidth: 1)
+        )
+        .padding(.horizontal, 10)
+    }
+
+    private func adminPicker(title: String, value: String, tint: Color, shift: @escaping (Int) -> Void) -> some View {
+        HStack(spacing: 4) {
+            Button { shift(-1) } label: {
+                Image(systemName: "chevron.left").font(.system(size: 10, weight: .black))
+            }
+            .buttonStyle(.bordered)
+
+            VStack(spacing: 0) {
+                Text(title)
+                    .font(.system(size: 6, weight: .black, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.6))
+                Text(value)
+                    .font(.system(size: 11, weight: .black, design: .rounded))
+                    .foregroundStyle(tint)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+            }
+            .frame(width: 76)
+
+            Button { shift(1) } label: {
+                Image(systemName: "chevron.right").font(.system(size: 10, weight: .black))
+            }
+            .buttonStyle(.bordered)
+        }
+    }
+
+    private var pauseOverlay: some View {
+        VStack(spacing: 8) {
+            Text("FIGHT MENU")
+                .font(.system(size: 15, weight: .black, design: .rounded))
+                .foregroundStyle(Color.watchsmashGold)
+
+            HStack(spacing: 8) {
+                Button {
+                    beginFight()
+                } label: {
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 13, weight: .black))
+                        .frame(width: 30, height: 28)
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityLabel("Resume")
+
+                Button {
+                    restartCurrentMode()
+                } label: {
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.system(size: 13, weight: .black))
+                        .frame(width: 30, height: 28)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityLabel("Restart")
+
+                Button {
+                    returnToMainMenu()
+                } label: {
+                    Image(systemName: "house.fill")
+                        .font(.system(size: 13, weight: .black))
+                        .frame(width: 30, height: 28)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityLabel("Main Menu")
+            }
+
+            if isAdminSession {
+                // Instant debug toggles so a finisher/special/KO flow can be
+                // checked for a character without grinding out a real fight.
+                HStack(spacing: 6) {
+                    Button {
+                        engine.debugSetOpponent(x: engine.state.opponent.x, health: 0)
+                        beginFight()
+                    } label: {
+                        Text("KO OPPONENT").font(.system(size: 8, weight: .black, design: .rounded))
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.gray)
+
+                    Button {
+                        engine.debugChargeSpecial()
+                        beginFight()
+                    } label: {
+                        Text("FULL METER").font(.system(size: 8, weight: .black, design: .rounded))
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.gray)
+                }
+            }
+        }
+        .padding(12)
+        .background(.black.opacity(0.76), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Color.watchsmashMint.opacity(0.52), lineWidth: 1)
+        )
+    }
+
+    /// Write-up + share sheet for a bug report. Pre-filled with the last
+    /// crash log when the crash monitor caught one on the previous launch.
+    private var bugReportSheet: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("BUG REPORT")
+                    .font(.system(size: 13, weight: .black, design: .rounded))
+                    .foregroundStyle(Color.watchsmashGold)
+
+                Text("Describe what happened. Include what you were doing (mode, floor, character) if you can.")
+                    .font(.system(size: 8, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.72))
+                    .fixedSize(horizontal: false, vertical: true)
+
+                // watchOS has no TextEditor; a multi-line TextField opens the
+                // system dictation/scribble input instead.
+                TextField("What happened?", text: $bugReportText, axis: .vertical)
+                    .lineLimit(3...6)
+                    .font(.system(size: 9, design: .monospaced))
+                    .padding(4)
+                    .background(RoundedRectangle(cornerRadius: 6).fill(.black.opacity(0.4)))
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(.white.opacity(0.2), lineWidth: 1))
+
+                ShareLink(item: composedBugReport) {
+                    Label("SHARE REPORT", systemImage: "square.and.arrow.up")
+                        .font(.system(size: 10, weight: .black, design: .rounded))
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color.watchsmashRed)
+                .disabled(bugReportText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                Button {
+                    showBugReportSheet = false
+                    bugReportText = ""
+                } label: {
+                    Text("CLOSE")
+                        .font(.system(size: 9, weight: .black, design: .rounded))
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+            }
+            .padding(10)
+        }
+    }
+
+    private var composedBugReport: String {
+        """
+        Watch Smash bug report
+        App state: mode=\(activeMode), screen=\(screenMode), floor=\(engine.state.chapter.title), \
+        player=\(engine.state.player.archetype.displayName), opponent=\(engine.state.opponent.archetype.displayName)
+
+        \(bugReportText)
+        """
+    }
+
+    private func fighterPanel(_ fighter: DuelFighter, side: FighterSide) -> some View {
+        VStack(alignment: side == .player ? .leading : .trailing, spacing: 2) {
+            HStack(spacing: 3) {
+                if side == .opponent {
+                    Text(fighter.archetype.displayName)
+                }
+
+                Text(side == .player ? fighter.archetype.displayName : "")
+                    .opacity(side == .player ? 1 : 0)
+            }
+            .font(.system(size: 9, weight: .black, design: .rounded))
+            .foregroundStyle(.white)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+
+            healthBar(
+                value: CGFloat(fighter.health) / CGFloat(max(1, fighter.maxHealth)),
+                color: side == .player ? .watchsmashGold : .watchsmashRed,
+                width: 55,
+                trailing: side == .opponent
+            )
+
+            guardBar(
+                value: fighter.guardMeter,
+                width: 55,
+                trailing: side == .opponent
+            )
+
+            Text(fighter.archetype.subtitle.uppercased())
+                .font(.system(size: 6, weight: .heavy, design: .rounded))
+                .foregroundStyle(.white.opacity(0.56))
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+        }
+        .frame(maxWidth: .infinity, alignment: side == .player ? .leading : .trailing)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(fighter.archetype.displayName), \(Int((CGFloat(fighter.health) / CGFloat(max(1, fighter.maxHealth)) * 100).rounded())) percent health")
+    }
+
+    private func winPips(playerWins: Int, opponentWins: Int) -> some View {
+        HStack(spacing: 3) {
+            Text("\(playerWins)/\(StoryChapter.allCases.count)")
+                .font(.system(size: 8, weight: .black, design: .rounded))
+                .foregroundStyle(Color.watchsmashGold)
+                .monospacedDigit()
+
+            Text("VS")
+                .font(.system(size: 6, weight: .black, design: .rounded))
+                .foregroundStyle(.white.opacity(0.62))
+
+            ForEach(0..<2, id: \.self) { index in
+                Circle()
+                    .fill(index < opponentWins ? Color.watchsmashRed : .white.opacity(0.20))
+                    .frame(width: 5, height: 5)
+            }
+        }
+        .frame(width: 55)
+    }
+
+    private var storyBanner: some View {
+        VStack(spacing: 2) {
+            Text(engine.state.bannerText)
+                .font(.system(size: 15, weight: .black, design: .rounded))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.66)
+
+            Text(engine.state.bannerDetail)
+                .font(.system(size: 8, weight: .bold, design: .rounded))
+                .foregroundStyle(Color.watchsmashGold)
+                .lineLimit(1)
+                .minimumScaleFactor(0.62)
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 5)
+        .background(.black.opacity(0.66), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .stroke(Color.watchsmashGold.opacity(0.45), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.82), radius: 8, y: 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(engine.state.bannerText). \(engine.state.bannerDetail)")
+    }
+
+    private var comboBadge: some View {
+        VStack(spacing: 0) {
+            Text("\(engine.state.combo)")
+                .font(.system(size: 18, weight: .black, design: .rounded))
+                .foregroundStyle(Color.watchsmashMint)
+                .monospacedDigit()
+
+            Text("COMBO")
+                .font(.system(size: 7, weight: .black, design: .rounded))
+                .foregroundStyle(.white.opacity(0.9))
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
+        .background(.black.opacity(0.62), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .stroke(Color.watchsmashMint.opacity(0.5), lineWidth: 1)
+        )
+        .accessibilityLabel("\(engine.state.combo) hit combo")
+    }
+
+    private var voiceBadge: some View {
+        Text(voiceText)
+            .font(.system(size: 16, weight: .black, design: .rounded))
+            .foregroundStyle(Color.watchsmashGold)
+            .lineLimit(1)
+            .minimumScaleFactor(0.58)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(.black.opacity(0.68), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .stroke(Color.watchsmashRed.opacity(0.55), lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(0.9), radius: 7, y: 3)
+    }
+
+    private var learnCoachOverlay: some View {
+        HStack(spacing: 6) {
+            Image(systemName: selectedLearnDrill.symbolName)
+                .font(.system(size: 11, weight: .black))
+                .foregroundStyle(Color.watchsmashMint)
+                .frame(width: 18, height: 18)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(selectedLearnDrill.title)
+                    .font(.system(size: 8, weight: .black, design: .rounded))
+                    .foregroundStyle(Color.watchsmashGold)
+                    .lineLimit(1)
+
+                Text(selectedLearnDrill.fightPrompt)
+                    .font(.system(size: 7, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.82))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.62)
+            }
+        }
+        .padding(.leading, 44)
+        .padding(.trailing, 7)
+        .padding(.vertical, 5)
+        .background(.black.opacity(0.64), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .stroke(Color.watchsmashMint.opacity(0.42), lineWidth: 1)
+        )
+    }
+
+    private var gameOverOverlay: some View {
+        VStack(spacing: 8) {
+            Text(engine.state.winnerText)
+                .font(.system(size: 18, weight: .black, design: .rounded))
+                .foregroundStyle(engine.state.playerWins == StoryChapter.allCases.count ? Color.watchsmashGold : .white)
+                .lineLimit(1)
+                .accessibilityAddTraits(.isHeader)
+
+            Text("\(engine.state.score)")
+                .font(.system(size: 22, weight: .black, design: .rounded))
+                .foregroundStyle(Color.watchsmashGold)
+                .monospacedDigit()
+                .accessibilityLabel("Score: \(engine.state.score)")
+
+            Text("BEST \(max(bestScore, engine.state.score))")
+                .font(.system(size: 9, weight: .black, design: .rounded))
+                .foregroundStyle(.white.opacity(0.78))
+                .monospacedDigit()
+                .lineLimit(1)
+                .accessibilityLabel("Best score: \(max(bestScore, engine.state.score))")
+
+            Text("MAX \(engine.state.maxCombo) HIT")
+                .font(.system(size: 10, weight: .black, design: .rounded))
+                .foregroundStyle(Color.watchsmashMint)
+                .lineLimit(1)
+                .accessibilityLabel("Maximum combo: \(engine.state.maxCombo) hits")
+
+            Button {
+                restartCurrentMode()
+            } label: {
+                Image(systemName: "arrow.counterclockwise")
+                    .font(.system(size: 16, weight: .heavy))
+                    .frame(width: 34, height: 34)
+            }
+            .buttonStyle(.borderedProminent)
+            .clipShape(Circle())
+            .accessibilityLabel("Retry")
+
+            Button {
+                returnToMainMenu()
+            } label: {
+                Image(systemName: "house.fill")
+                    .font(.system(size: 13, weight: .black))
+                    .frame(width: 30, height: 26)
+            }
+            .buttonStyle(.bordered)
+            .accessibilityLabel("Main Menu")
+        }
+        .padding(12)
+        .background(.black.opacity(0.62), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Color.watchsmashGold.opacity(0.44), lineWidth: 1)
+        )
+    }
+
+    private func healthBar(value: CGFloat, color: Color, width: CGFloat, trailing: Bool) -> some View {
+        ZStack(alignment: trailing ? .trailing : .leading) {
+            Capsule()
+                .fill(.white.opacity(0.15))
+            Capsule()
+                .fill(color)
+                .frame(width: max(3, width * value.clamped(to: 0...1)))
+        }
+        .frame(width: width, height: 6)
+        .accessibilityLabel("Health")
+        .accessibilityValue("\(Int((value.clamped(to: 0...1) * 100).rounded())) percent")
+    }
+
+    private func guardBar(value: CGFloat, width: CGFloat, trailing: Bool) -> some View {
+        let guardValue = value.clamped(to: 0...1)
+        let barWidth = max(20, width - 10)
+        let guardColor = guardValue < 0.24 ? Color.watchsmashRed : Color.watchsmashMint
+
+        return HStack(spacing: 2) {
+            if !trailing {
+                Image(systemName: "shield.fill")
+                    .font(.system(size: 5, weight: .black))
+                    .foregroundStyle(guardColor.opacity(0.92))
+            }
+
+            ZStack(alignment: trailing ? .trailing : .leading) {
+                Capsule()
+                    .fill(.white.opacity(0.12))
+                Capsule()
+                    .fill(guardColor.opacity(0.86))
+                    .frame(width: max(2, barWidth * guardValue))
+            }
+            .frame(width: barWidth, height: 3)
+
+            if trailing {
+                Image(systemName: "shield.fill")
+                    .font(.system(size: 5, weight: .black))
+                    .foregroundStyle(guardColor.opacity(0.92))
+            }
+        }
+        .frame(width: width, alignment: trailing ? .trailing : .leading)
+        .accessibilityLabel("Guard")
+        .accessibilityValue("\(Int((guardValue * 100).rounded())) percent")
+    }
+
+    private func meter(value: CGFloat, color: Color, width: CGFloat) -> some View {
+        ZStack(alignment: .leading) {
+            Capsule()
+                .fill(.white.opacity(0.14))
+            Capsule()
+                .fill(color)
+                .frame(width: max(3, width * value.clamped(to: 0...1)))
+        }
+        .frame(width: width, height: 4)
+        .accessibilityLabel("Meter")
+        .accessibilityValue("\(Int((value.clamped(to: 0...1) * 100).rounded())) percent")
+    }
+
+    private func dragGesture(size: CGSize) -> some Gesture {
+        DragGesture(minimumDistance: 0, coordinateSpace: .local)
+            .onChanged { value in
+                let usableWidth = max(size.width, 1)
+                let usableHeight = max(size.height, 1)
+                let nextX = (value.location.x / usableWidth).clamped(to: 0.14...0.56)
+                touchX = nextX
+                touchY = (value.location.y / usableHeight).clamped(to: 0...1)
+                crownX = Double(nextX)
+                isPressing = true
+            }
+            .onEnded { _ in
+                isPressing = false
+                touchY = 0.5
+            }
+    }
+
+    private func advance(to date: Date) {
+        guard screenMode == .fighting else {
+            let previousDate = lastFrameDate ?? date
+            let delta = max(0, date.timeIntervalSince(previousDate))
+            lastFrameDate = date
+            voiceTimer = max(0, voiceTimer - delta)
+            // Attract mode has no taps, so auto-advance through cutscenes and the
+            // fighter card on a dwell timer (this also keeps the intro from
+            // stalling the demo).
+            if demoMode {
+                demoSceneClock += delta
+                if screenMode == .cutscene, demoSceneClock >= 2.2 {
+                    demoSceneClock = 0
+                    advanceCutscene()
+                } else if screenMode == .fighterCard, demoSceneClock >= 1.6 {
+                    demoSceneClock = 0
+                    beginFight()
+                }
+            }
+            return
+        }
+
+        guard scenePhase == .active else {
+            lastFrameDate = date
+            return
+        }
+
+        // Wrist down: hold the fight exactly where it is. Re-baselining the
+        // frame date means the round resumes with a normal delta, not a jump.
+        guard !isLuminanceReduced else {
+            lastFrameDate = date
+            return
+        }
+
+        let previousDate = lastFrameDate ?? date
+        lastFrameDate = date
+
+        let delta = date.timeIntervalSince(previousDate)
+        guard delta > 0 else { return }
+
+        if demoMode, engine.state.phase == .gameOver {
+            activeMode = .tournament
+            engine.reset(seed: 0xD1F1_71E)
+            crownX = Double(engine.state.player.x)
+            touchX = engine.state.player.x
+            nextDemoSpecial = 2.4
+        }
+
+        let beforePlayerHealth = engine.state.player.health
+        let beforeOpponentHealth = engine.state.opponent.health
+        let beforeScore = engine.state.score
+        let beforeCombo = engine.state.combo
+        let beforeBanner = engine.state.bannerText
+        let beforePhase = engine.state.phase
+        let beforeRound = engine.state.round
+        let beforeChapter = engine.state.chapter
+        let beforePlayerWins = engine.state.playerWins
+        let beforeOpponentWins = engine.state.opponentWins
+        let beforeStrikeIDs = Set(engine.state.strikes.map(\.id))
+
+        let targetX = isPressing ? touchX : CGFloat(crownX)
+        let chargedDash = pendingDashStrike && engine.state.player.meter >= 1
+        let didDashStrike = pendingDashStrike
+
+        let closeThreat = abs(engine.state.opponent.x - engine.state.player.x) < 0.31
+        let wantsJumpKick = isPressing && touchY < 0.34
+        let wantsCrouch = isPressing && touchY > 0.70
+        let wantsThrow = isPressing && closeThreat && touchY >= 0.42 && touchY <= 0.60
+        // In attract/demo mode the AutoPlayDriver plays for us; otherwise build
+        // the input from the live controls (crown + touch).
+        let tickInput: GameInput
+        if demoMode, !isPressing {
+            tickInput = autoPlay.input(for: engine.state)
+        } else {
+            tickInput = GameInput(
+                targetX: targetX,
+                attacking: isPressing && !wantsJumpKick && !wantsCrouch && !wantsThrow,
+                special: chargedDash,
+                dashStrike: pendingDashStrike && !chargedDash,
+                jump: wantsJumpKick,
+                crouching: wantsCrouch,
+                throwing: wantsThrow,
+                blocking: !isPressing && !demoMode && closeThreat
+            )
+        }
+        engine.tick(delta: delta, input: tickInput)
+        pendingDashStrike = false
+        voiceTimer = max(0, voiceTimer - delta)
+
+        for strike in engine.state.strikes where !beforeStrikeIDs.contains(strike.id) {
+            if let impact = impactCue(for: strike) {
+                arcadeAudio.play(impact: impact)
+            }
+        }
+
+        if engine.state.score > bestScore {
+            bestScore = engine.state.score
+        }
+
+        if activeMode == .tournament, engine.state.playerWins > beforePlayerWins {
+            unlockTournamentRoster(playerWins: engine.state.playerWins)
+        }
+
+        if activeMode == .learn {
+            advanceLearnDrillIfNeeded(
+                beforePlayerHealth: beforePlayerHealth,
+                beforeOpponentHealth: beforeOpponentHealth,
+                beforeCombo: beforeCombo,
+                didDashStrike: didDashStrike
+            )
+        }
+
+        // A loss registers now (round-resolve frame); the round actually restarts
+        // ~2.25s later after the pause, so remember it until then.
+        if activeMode == .tournament, engine.state.opponentWins > beforeOpponentWins {
+            pitPending = true
+        }
+
+        if activeMode == .tournament, (!demoMode || demoCutscenes), engine.state.phase == .running, (engine.state.round != beforeRound || engine.state.chapter != beforeChapter) {
+            lastFrameDate = nil
+            // Floor boundary — the natural checkpoint for a resumable run.
+            checkpointRun()
+            // FF story beats bridge into the next fight (good arcade cadence:
+            // only on a loss, the midpoint, and the final boss — not every fight).
+            if pitPending {
+                pitPending = false
+                playCutscene(FFScript.pit, toFight: false)              // lost a floor -> the Pit, climb back
+            } else if engine.state.chapter == StoryChapter.allCases.last {
+                playCutscene(FFScript.beforeBoss, toFight: false)        // final boss, every time
+            } else if !seenChapters.contains(engine.state.chapter),
+                      let beat = FFScript.chapter(engine.state.chapter) {
+                seenChapters.insert(engine.state.chapter)               // floor beat, once
+                playCutscene(beat, toFight: false)
+            } else {
+                demoSceneClock = 0
+                screenMode = .fighterCard
+                announce("NEXT FIGHT")
+            }
+            return
+        }
+
+        if engine.state.bannerText != beforeBanner || engine.state.bannerTimer > 0, engine.state.bannerText != lastSpokenBanner {
+            announce(engine.state.bannerText)
+        } else if engine.state.combo > beforeCombo, engine.state.combo == 3 || engine.state.combo == 5 || engine.state.combo == 8 {
+            announce("COMBO")
+        } else if beforePhase == .running, engine.state.phase == .gameOver {
+            let playerWon = engine.state.winnerText == "VICTORY" || engine.state.winnerText.contains("WIN") || engine.state.winnerText == "TRAINED"
+            announce(playerWon ? "KNOCKOUT" : "DEFEAT")
+            // The run is over either way — nothing left to resume.
+            if activeMode == .tournament {
+                savedRun = nil
+                RunStore.clear()
+            }
+            // A full tournament clear unlocks Dracula as a secret VS-only pick.
+            if activeMode == .tournament, engine.state.winnerText == "VICTORY", !draculaUnlocked {
+                draculaUnlocked = true
+            }
+        }
+
+        if engine.state.player.health < beforePlayerHealth {
+            playHaptic(engine.state.phase == .gameOver ? .failure : .retry)
+        } else if engine.state.opponent.health < beforeOpponentHealth || engine.state.score > beforeScore {
+            playHaptic(.click)
+        }
+    }
+
+    private func playHaptic(_ haptic: WKHapticType) {
+        WKInterfaceDevice.current().play(haptic)
+    }
+
+    private func impactCue(for strike: FighterStrike) -> ArcadeImpact? {
+        switch strike.kind {
+        case .blocked:
+            return .block
+        case .special, .projectile, .finisher, .headPop, .bodyBurst, .armDrop:
+            return .special
+        case .throwImpact:
+            return .kick
+        case .hit:
+            let action = strike.side == .player ? engine.state.player.action : engine.state.opponent.action
+            return action == .kick || action == .jumpKick ? .kick : .punch
+        case .blood, .round, .vampireBite:
+            return nil
+        }
+    }
+
+    private func announce(_ text: String) {
+        let normalized = text.uppercased()
+        voiceText = normalized
+        voiceTimer = 0.9
+        lastSpokenBanner = normalized
+        arcadeAudio.play(cue: ArcadeCue(text: normalized))
+    }
+
+    private var normalizedUnlockedRosterIndex: Int {
+        let maxIndex = max(0, FighterArchetype.versusRoster.count - 1)
+        return unlockedRosterIndex.clamped(to: 0...maxIndex)
+    }
+
+    private func openVersusSelect() {
+        activeMode = .versus
+        selectedRosterIndex = selectedRosterIndex.clamped(to: 0...(vsRoster.count - 1))
+        lastFrameDate = nil
+        screenMode = .versusSelect
+        playHaptic(.click)
+    }
+
+    private func openLearnSelect() {
+        activeMode = .learn
+        lastFrameDate = nil
+        screenMode = .learnSelect
+        playHaptic(.click)
+    }
+
+    private func openAdmin() {
+        lastFrameDate = nil
+        screenMode = .admin
+        playHaptic(.click)
+    }
+
+    private func shiftAdminIndex(_ index: inout Int, by offset: Int, count: Int) {
+        guard count > 0 else { return }
+        index = (index + offset + count) % count
+        playHaptic(.click)
+    }
+
+    private func startAdminFight() {
+        let roster = adminRoster
+        let player = roster[adminPlayerIndex.clamped(to: 0...(roster.count - 1))]
+        let opponent = roster[adminOpponentIndex.clamped(to: 0...(roster.count - 1))]
+        let chapter = StoryChapter.allCases[adminChapterIndex.clamped(to: 0...(StoryChapter.allCases.count - 1))]
+
+        activeMode = .versus
+        isAdminSession = true
+        engine.resetVersus(player: player, opponent: opponent, chapter: chapter)
+        resetInputTracking()
+        screenMode = .fighting
+        arcadeAudio.startMusic()
+        announce("FIGHT")
+        playHaptic(.start)
+    }
+
+    private func playCutscene(_ panels: [CutscenePanel], toFight: Bool) {
+        cutscenePanels = panels
+        cutsceneIndex = 0
+        cutsceneToFight = toFight
+        lastFrameDate = nil
+        demoSceneClock = 0
+        screenMode = .cutscene
+    }
+
+    private func advanceCutscene() {
+        if cutsceneIndex + 1 < cutscenePanels.count {
+            cutsceneIndex += 1
+            playHaptic(.click)
+        } else if cutsceneToFight {
+            beginFight()
+        } else {
+            demoSceneClock = 0
+            screenMode = .fighterCard
+            announce("READY")
+            playHaptic(.start)
+        }
+    }
+
+    private func startTournament(skipCard: Bool) {
+        activeMode = .tournament
+        isAdminSession = false
+        engine.reset()
+        resetInputTracking()
+        // A fresh run replaces any half-finished one.
+        savedRun = nil
+        RunStore.clear()
+        arcadeAudio.startMusic()
+        playHaptic(.start)
+        playCutscene(FFScript.intro, toFight: skipCard)   // FF intro, then the first fight
+    }
+
+    /// Pick a stored run back up at the top of the floor it stopped on.
+    private func continueTournament() {
+        guard let savedRun else { return }
+        activeMode = .tournament
+        isAdminSession = false
+        engine.resumeTournament(
+            chapter: savedRun.chapter,
+            round: savedRun.round,
+            playerWins: savedRun.playerWins,
+            score: savedRun.score,
+            maxCombo: savedRun.maxCombo,
+            pitActive: savedRun.pitActive
+        )
+        resetInputTracking()
+        screenMode = .fighterCard
+        demoSceneClock = 0
+        arcadeAudio.startMusic()
+        playHaptic(.start)
+    }
+
+    /// Checkpoint the run. Called at floor boundaries and on backgrounding.
+    private func checkpointRun() {
+        guard activeMode == .tournament, !isAdminSession, !demoMode,
+              engine.state.phase == .running else { return }
+        let snapshot = RunSnapshot(state: engine.state)
+        savedRun = snapshot
+        RunStore.save(snapshot)
+    }
+
+    private func startVersus() {
+        let roster = vsRoster
+        let index = selectedRosterIndex.clamped(to: 0...(roster.count - 1))
+        // Dracula's appended slot is only ever present once unlocked, so it
+        // bypasses the numeric ladder-progress gate entirely.
+        let isLadderSlot = index < FighterArchetype.versusRoster.count
+        guard !isLadderSlot || index <= normalizedUnlockedRosterIndex else {
+            playHaptic(.failure)
+            return
+        }
+
+        selectedRosterIndex = index
+        activeMode = .versus
+        isAdminSession = false
+        engine.resetVersus(opponent: roster[index], chapter: StoryChapter.chapter(for: index + 1))
+        resetInputTracking()
+        screenMode = .fighting
+        arcadeAudio.startMusic()
+        announce("FIGHT")
+        playHaptic(.start)
+    }
+
+    private func startLearn() {
+        activeMode = .learn
+        isAdminSession = false
+        engine.resetLearn()
+        resetInputTracking()
+        completedLearnDrills = Set(LearnDrill.allCases.filter { $0.rawValue < selectedLearnDrill.rawValue })
+        screenMode = .fighting
+        arcadeAudio.startMusic()
+        announce(selectedLearnDrill.callout)
+        playHaptic(.start)
+    }
+
+    private func restartCurrentMode() {
+        if isAdminSession {
+            startAdminFight()
+            return
+        }
+        switch activeMode {
+        case .tournament:
+            startTournament(skipCard: false)
+        case .versus:
+            startVersus()
+        case .learn:
+            startLearn()
+        }
+    }
+
+    private func beginFight() {
+        lastFrameDate = nil
+        isPressing = false
+        crownFocused = true
+        screenMode = .fighting
+        announce("FIGHT")
+        playHaptic(.start)
+    }
+
+    private func returnToMainMenu() {
+        // Bailing out mid-floor still keeps the run resumable.
+        checkpointRun()
+        activeMode = .tournament
+        isAdminSession = false
+        engine.reset()
+        resetInputTracking()
+        screenMode = .mainMenu
+        playHaptic(.stop)
+    }
+
+    private func resetInputTracking() {
+        crownX = Double(engine.state.player.x)
+        touchX = engine.state.player.x
+        touchY = 0.5
+        isPressing = false
+        pendingDashStrike = false
+        lastFrameDate = nil
+        nextDemoSpecial = 2.4
+        lastSpokenBanner = ""
+        pitPending = false
+        seenChapters.removeAll()
+    }
+
+    private func shiftRosterSelection(_ offset: Int) {
+        let roster = vsRoster
+        selectedRosterIndex = (selectedRosterIndex + offset + roster.count) % roster.count
+        playHaptic(.click)
+    }
+
+    private func shiftLearnDrill(_ offset: Int) {
+        let drills = LearnDrill.allCases
+        guard let currentIndex = drills.firstIndex(of: selectedLearnDrill) else { return }
+        selectedLearnDrill = drills[(currentIndex + offset + drills.count) % drills.count]
+        playHaptic(.click)
+    }
+
+    private func unlockTournamentRoster(playerWins: Int) {
+        let earnedIndex = min(FighterArchetype.versusRoster.count - 1, max(0, playerWins))
+        if earnedIndex > unlockedRosterIndex {
+            unlockedRosterIndex = earnedIndex
+        }
+    }
+
+    private func unlockHint(forRosterIndex index: Int) -> String {
+        guard index > 0 else { return "READY" }
+        return "BEAT \(StoryChapter.chapter(for: index).arenaTag)"
+    }
+
+    private func advanceLearnDrillIfNeeded(beforePlayerHealth: Int, beforeOpponentHealth: Int, beforeCombo: Int, didDashStrike: Bool) {
+        guard !completedLearnDrills.contains(selectedLearnDrill) else { return }
+        guard selectedLearnDrill.isComplete(
+            state: engine.state,
+            beforePlayerHealth: beforePlayerHealth,
+            beforeOpponentHealth: beforeOpponentHealth,
+            beforeCombo: beforeCombo,
+            didDashStrike: didDashStrike
+        ) else {
+            return
+        }
+
+        completedLearnDrills.insert(selectedLearnDrill)
+        if let nextDrill = selectedLearnDrill.next {
+            selectedLearnDrill = nextDrill
+            announce(nextDrill.callout)
+            playHaptic(.directionUp)
+        } else {
+            announce("TRAINED")
+            playHaptic(.success)
+        }
+    }
+
+    private func styleColor(for archetype: FighterArchetype) -> Color {
+        switch archetype.combatStyle {
+        case .balanced:
+            return .watchsmashGold
+        case .rushdown:
+            return .watchsmashRed
+        case .grappler:
+            return Color(red: 0.70, green: 0.92, blue: 1.0)
+        case .zoner:
+            return .watchsmashMint
+        case .acrobat:
+            return Color(red: 1.0, green: 0.42, blue: 0.82)
+        case .bruiser:
+            return Color(red: 1.0, green: 0.58, blue: 0.24)
+        case .titan:
+            return Color(red: 1.0, green: 0.18, blue: 0.20)
+        }
+    }
+}
+
+private enum GameScreenMode {
+    case mainMenu
+    case versusSelect
+    case learnSelect
+    case fighterCard
+    case fighting
+    case pause
+    case cutscene
+    case admin
+}
+
+private enum FightMode {
+    case tournament
+    case versus
+    case learn
+}
+
+private enum LearnDrill: Int, CaseIterable, Hashable {
+    case movement
+    case strike
+    case defense
+    case dash
+    case special
+
+    var title: String {
+        switch self {
+        case .movement:
+            return "FOOTWORK"
+        case .strike:
+            return "STRIKE"
+        case .defense:
+            return "GUARD"
+        case .dash:
+            return "DASH"
+        case .special:
+            return "METER"
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .movement:
+            return "arrow.left.and.right"
+        case .strike:
+            return "flame.fill"
+        case .defense:
+            return "shield.fill"
+        case .dash:
+            return "bolt.fill"
+        case .special:
+            return "scope"
+        }
+    }
+
+    var shortPrompt: String {
+        switch self {
+        case .movement:
+            return "Crown or drag to hold range."
+        case .strike:
+            return "Press center to chain hits."
+        case .defense:
+            return "Release near danger or drag low."
+        case .dash:
+            return "Double tap to burst forward."
+        case .special:
+            return "Full meter turns dash into power."
+        }
+    }
+
+    var fightPrompt: String {
+        switch self {
+        case .movement:
+            return "Move off the starting line"
+        case .strike:
+            return "Land a clean hit"
+        case .defense:
+            return "Block or crouch under pressure"
+        case .dash:
+            return "Double tap for dash strike"
+        case .special:
+            return "Spend full meter"
+        }
+    }
+
+    var callout: String {
+        switch self {
+        case .movement:
+            return "FOOTWORK"
+        case .strike:
+            return "STRIKE"
+        case .defense:
+            return "GUARD"
+        case .dash:
+            return "DASH"
+        case .special:
+            return "METER"
+        }
+    }
+
+    var next: LearnDrill? {
+        LearnDrill(rawValue: rawValue + 1)
+    }
+
+    func isComplete(state: WatchsmashState, beforePlayerHealth: Int, beforeOpponentHealth: Int, beforeCombo: Int, didDashStrike: Bool) -> Bool {
+        switch self {
+        case .movement:
+            return abs(state.player.x - 0.25) > 0.045
+        case .strike:
+            return state.opponent.health < beforeOpponentHealth || state.combo > beforeCombo
+        case .defense:
+            return state.player.action == .blocking || state.player.action == .crouch || (state.player.health < beforePlayerHealth && state.player.guardMeter < 0.92)
+        case .dash:
+            return didDashStrike || (state.player.action == .kick && state.player.x > 0.34)
+        case .special:
+            return state.player.action == .special || state.player.action == .projectile
+        }
+    }
+}
+
+private extension CombatStyle {
+    var label: String {
+        switch self {
+        case .balanced:
+            return "BAL"
+        case .rushdown:
+            return "RUSH"
+        case .grappler:
+            return "GRAB"
+        case .zoner:
+            return "ZONE"
+        case .acrobat:
+            return "AIR"
+        case .bruiser:
+            return "POWER"
+        case .titan:
+            return "BOSS"
+        }
+    }
+}
+
+private enum ArcadeCue {
+    case fight
+    case combo
+    case finish
+    case ko
+    case million
+    case titan
+
+    init(text: String) {
+        if text.contains("MILLION") {
+            self = .million
+        } else if text.contains("TITAN") {
+            self = .titan
+        } else if text.contains("COMBO") {
+            self = .combo
+        } else if text.contains("FINISH") {
+            self = .finish
+        } else if text.contains("KNOCKOUT") || text.contains("VICTORY") {
+            self = .ko
+        } else {
+            self = .fight
+        }
+    }
+
+    var fileName: String {
+        switch self {
+        case .fight:
+            return "fight"
+        case .combo:
+            return "combo"
+        case .finish:
+            return "finish"
+        case .ko:
+            return "ko"
+        case .million:
+            return "million"
+        case .titan:
+            return "titan"
+        }
+    }
+}
+
+private enum ArcadeImpact: String {
+    case punch
+    case kick
+    case block = "guard"
+    case special = "special-impact"
+}
+
+private final class ArcadeAudio {
+    private var voicePlayers: [String: AVAudioPlayer] = [:]
+    private var impactPlayers: [ArcadeImpact: AVAudioPlayer] = [:]
+    private var lastVoiceAt = Date.distantPast
+    private var lastImpactAt = Date.distantPast
+    private let music = ArcadeMusic()
+
+    init() {
+        for fileName in ["fight", "combo", "finish", "ko", "million", "titan"] {
+            guard let url = Self.voiceURL(for: fileName),
+                  let player = try? AVAudioPlayer(contentsOf: url) else {
+                continue
+            }
+            player.volume = 0.72
+            player.prepareToPlay()
+            voicePlayers[fileName] = player
+        }
+
+        for impact in [ArcadeImpact.punch, .kick, .block, .special] {
+            guard let url = Self.impactURL(for: impact.rawValue),
+                  let player = try? AVAudioPlayer(contentsOf: url) else {
+                continue
+            }
+            player.volume = impact == .punch ? 0.92 : 1.0
+            player.prepareToPlay()
+            impactPlayers[impact] = player
+        }
+    }
+
+    private static func voiceURL(for fileName: String) -> URL? {
+        Bundle.main.url(forResource: fileName, withExtension: "aiff", subdirectory: "Voice")
+            ?? Bundle.main.url(forResource: fileName, withExtension: "aiff")
+    }
+
+    private static func impactURL(for fileName: String) -> URL? {
+        Bundle.main.url(forResource: fileName, withExtension: "aiff", subdirectory: "Impact")
+            ?? Bundle.main.url(forResource: fileName, withExtension: "aiff")
+    }
+
+    func play(cue: ArcadeCue) {
+        let now = Date()
+        guard now.timeIntervalSince(lastVoiceAt) > 0.45 else { return }
+        guard let player = voicePlayers[cue.fileName] else { return }
+        lastVoiceAt = now
+        player.currentTime = 0
+        player.play()
+    }
+
+    func play(impact: ArcadeImpact) {
+        let now = Date()
+        guard now.timeIntervalSince(lastImpactAt) > 0.045 else { return }
+        guard let player = impactPlayers[impact] else { return }
+        lastImpactAt = now
+        player.currentTime = 0
+        player.play()
+    }
+
+    func startMusic() {
+        music.start()
+    }
+
+    func stopMusic() {
+        music.stop()
+    }
+}
+
+private final class ArcadeMusic {
+    private var player: AVAudioPlayer?
+    private var sessionConfigured = false
+
+    init() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleInterruption),
+            name: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance()
+        )
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    func start() {
+        if player == nil {
+            let url = Bundle.main.url(forResource: "fight-theme", withExtension: "wav", subdirectory: "Music")
+                ?? Bundle.main.url(forResource: "fight-theme", withExtension: "wav")
+            guard let url, let loaded = try? AVAudioPlayer(contentsOf: url) else { return }
+            loaded.numberOfLoops = -1
+            loaded.volume = 0.24
+            loaded.prepareToPlay()
+            player = loaded
+        }
+
+        if !sessionConfigured {
+            try? AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default)
+            sessionConfigured = true
+        }
+        try? AVAudioSession.sharedInstance().setActive(true)
+        player?.play()
+    }
+
+    func stop() {
+        guard player?.isPlaying == true else { return }
+        player?.pause()
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+
+    @objc private func handleInterruption(_ notification: Notification) {
+        guard let info = notification.userInfo,
+              let typeValue = info[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
+        if type == .ended {
+            let options = (info[AVAudioSessionInterruptionOptionKey] as? UInt)
+                .flatMap(AVAudioSession.InterruptionOptions.init(rawValue:)) ?? []
+            if options.contains(.shouldResume) {
+                start()
+            }
+        }
+    }
+}
+
+// MARK: - FF-style story cutscenes (original content)
+
+/// One narrative text box. `speaker == nil` means the narrator.
+struct CutscenePanel: Equatable, Sendable {
+    let speaker: String?
+    let text: String
+    /// An optional "redacted" line rendered behind a heavy blur — used for the
+    /// boxer's secret defeat sequence so the player can see something is hidden
+    /// without it being legible.
+    var blurredHint: String? = nil
+}
+
+/// Original story copy that bridges into the fights (no real people / no IP).
+enum FFScript {
+    static let intro: [CutscenePanel] = [
+        CutscenePanel(speaker: nil,
+                      text: "The hundred-year gate of THE ASCENDANT grinds open. Champions go up the tower. None come back down."),
+        CutscenePanel(speaker: nil,
+                      text: "The town below stopped mourning long ago. Now it sells tickets and waits for the next fool to climb."),
+        CutscenePanel(speaker: "NYRA",
+                      text: "Another climber? Cute. The first floor is mine — and I don't do slow."),
+        CutscenePanel(speaker: nil,
+                      text: "Fifteen floors. Fifteen fighters who already gave everything to the tower. You tighten your wraps and step in."),
+    ]
+
+    /// Midpoint act-break (fires around the blackout-base floor).
+    static let midpoint: [CutscenePanel] = [
+        CutscenePanel(speaker: nil,
+                      text: "Halfway up. The fighters here didn't choose the tower — the tower chose them, and never let go."),
+        CutscenePanel(speaker: nil,
+                      text: "You've started to understand: winning isn't the prize up here. Escaping is. Keep climbing."),
+    ]
+
+    /// Fired when you LOSE a floor but the run isn't over — the Pit narrative
+    /// beat on the existing second-chance before you fight your way back up.
+    static let pit: [CutscenePanel] = [
+        CutscenePanel(speaker: nil,
+                      text: "The floor drops out. You fall past the tower, past the town, into heat and smoke."),
+        CutscenePanel(speaker: "THE PIT",
+                      text: "Another one the tower couldn't keep. Crawl back up if you can — but you don't get to fall twice."),
+        CutscenePanel(speaker: nil,
+                      text: "You drag yourself back onto the floor you lost. One life left. Make it burn."),
+    ]
+
+    /// Act-break before the final boss arena.
+    static let beforeBoss: [CutscenePanel] = [
+        CutscenePanel(speaker: nil,
+                      text: "The last door is a square of canvas and two gloves. The air hums like a struck bell that never rang."),
+        CutscenePanel(speaker: "TITUS",
+                      text: "(He says nothing. He raises his fists. No bell has rung for him in a thousand years.)"),
+        CutscenePanel(speaker: nil,
+                      text: "TITUS CANNOT BE BEATEN BY DAMAGE. He falls to one secret sequence of controls — and only that.",
+                      blurredHint: "HOLD GUARD \u{2022} CROWN BACK \u{2022} CROWN FORWARD \u{2022} SPECIAL on an 8+ COMBO \u{2192} THE MILLION SHOT"),
+    ]
+
+    /// A short beat the FIRST time you reach a floor (plays once, not on refights).
+    /// Boss (millionRoom) uses `beforeBoss`; floor 1 is covered by `intro`.
+    static func chapter(_ chapter: StoryChapter) -> [CutscenePanel]? {
+        let line: String?
+        switch chapter {
+        case .cinderGate, .millionRoom: line = nil
+        case .neonRooftop:    line = "Floor two. Neon bleeds across wet rooftops, and something fast is already grinning at you."
+        case .stormBridge:    line = "Wind screams across the bridge. The tower likes its champions off-balance."
+        case .pirateCove:     line = "Salt, rum, and a captain who laughs at the gate. The tide takes the high ground back, he says."
+        case .dragonAlley:    line = "A back-alley dojo of one. The dragon-fist here trains for an audience that never leaves."
+        case .sunPier:        line = "Sun, surf, and a rescue brawler who fights like the undertow — fast, and impossible to hold."
+        case .runwayTerminal: line = "Half the floor is catwalk, half is war. Strike a pose; the judges hit back."
+        case .blackoutBase:   line = "Halfway up. The lights die. The fighters here didn't choose the tower — it chose them."
+        case .launchFoundry:  line = "Sparks and steel. Whatever the tower is building up here, it needs champions for fuel."
+        case .goldRally:      line = "All chrome and bravado. The loudest fighter yet — and somehow still standing."
+        case .icePalace:      line = "The air bites. The ice regent doesn't rush; the cold does the work."
+        case .redCarpet:      line = "Flashbulbs and finishers. Up here, losing is a very public thing."
+        case .cageNight:      line = "No ropes, no exit. Just the cage, the crowd, and a crusher who never blinks."
+        case .obsidianThrone: line = "The throne room. The host is a former climber who won — and never got to leave."
+        }
+        guard let line else { return nil }
+        return [CutscenePanel(speaker: nil, text: line)]
+    }
+}
+
+/// Self-contained cutscene overlay — speaker, text box, and an advance button.
+struct CutsceneOverlay: View {
+    let panels: [CutscenePanel]
+    let index: Int
+    let onAdvance: () -> Void
+
+    var body: some View {
+        let panel = panels.isEmpty ? CutscenePanel(speaker: nil, text: "")
+                                   : panels[min(index, panels.count - 1)]
+        return ZStack {
+            LinearGradient(colors: [.black, Color(red: 0.12, green: 0.03, blue: 0.16)],
+                           startPoint: .top, endPoint: .bottom)
+                .ignoresSafeArea()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 6) {
+                    // FF-style speaker row: a portrait bust + nameplate for a
+                    // character; just a title for the narrator.
+                    HStack(spacing: 6) {
+                        if let speaker = panel.speaker {
+                            let tint = Self.speakerColor(speaker)
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(LinearGradient(colors: [tint, tint.opacity(0.4)],
+                                                     startPoint: .top, endPoint: .bottom))
+                                .frame(width: 34, height: 34)
+                                .overlay(RoundedRectangle(cornerRadius: 6).stroke(.white.opacity(0.5), lineWidth: 1))
+                                .overlay(Text(String(speaker.prefix(1)))
+                                    .font(.system(size: 20, weight: .black, design: .rounded))
+                                    .foregroundStyle(.white))
+                            Text(speaker)
+                                .font(.system(size: 12, weight: .heavy))
+                                .foregroundStyle(tint)
+                        } else {
+                            Text("THE ASCENDANT")
+                                .font(.system(size: 11, weight: .heavy))
+                                .foregroundStyle(Color(red: 1, green: 0.32, blue: 0.55))
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    Text(panel.text)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.white)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(8)
+                        .background(RoundedRectangle(cornerRadius: 8).fill(.black.opacity(0.55)))
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(.white.opacity(0.22), lineWidth: 1))
+                    if let hint = panel.blurredHint {
+                        // The secret defeat sequence — shown but deliberately
+                        // blurred out so the player knows it exists, not what it is.
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("THE SECRET — REDACTED")
+                                .font(.system(size: 8, weight: .heavy))
+                                .foregroundStyle(Color(red: 1, green: 0.32, blue: 0.55))
+                            Text(hint)
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(.white)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .blur(radius: 5.5)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(8)
+                        .background(RoundedRectangle(cornerRadius: 8).fill(.black.opacity(0.72)))
+                        .overlay(RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color(red: 1, green: 0.32, blue: 0.55).opacity(0.5), lineWidth: 1))
+                    }
+                    Button(action: onAdvance) {
+                        Text(index + 1 < panels.count ? "NEXT \u{25B6}" : "FIGHT!")
+                            .font(.system(size: 12, weight: .bold))
+                            .frame(maxWidth: .infinity)
+                    }
+                    .tint(Color(red: 0.9, green: 0.1, blue: 0.4))
+                    .accessibilityLabel(index + 1 < panels.count ? "Next" : "Start fight")
+                    Text("\(index + 1) / \(max(1, panels.count))")
+                        .font(.system(size: 8))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
+                }
+                .padding(8)
+            }
+        }
+    }
+
+    /// A nameplate/portrait tint per speaker (warm gold for the unknown).
+    static func speakerColor(_ speaker: String) -> Color {
+        switch speaker.uppercased() {
+        case "NYRA":     return Color(red: 0.85, green: 0.20, blue: 0.45)
+        case "TITUS":    return Color(red: 0.85, green: 0.85, blue: 0.92)
+        case "THE PIT":  return Color(red: 0.95, green: 0.45, blue: 0.12)
+        default:         return Color(red: 0.95, green: 0.78, blue: 0.30)
+        }
+    }
+}
