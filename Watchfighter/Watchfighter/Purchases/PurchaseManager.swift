@@ -10,6 +10,32 @@ final class PurchaseManager: ObservableObject {
     @Published private(set) var message: String?
 
     private var updatesTask: Task<Void, Never>?
+    /// Owns the in-flight purchase/restore so a view teardown mid-flow can't
+    /// orphan it and a double tap can't start a second one.
+    private var storeTask: Task<Void, Never>?
+
+    deinit {
+        updatesTask?.cancel()
+        storeTask?.cancel()
+    }
+
+    /// Fire-and-forget entry points for SwiftUI buttons. The work is owned here,
+    /// not by the view, so it survives a redraw and is cancelled on teardown.
+    func startPurchase() {
+        guard storeTask == nil else { return }
+        storeTask = Task { [weak self] in
+            await self?.purchaseFullRoster()
+            self?.storeTask = nil
+        }
+    }
+
+    func startRestore() {
+        guard storeTask == nil else { return }
+        storeTask = Task { [weak self] in
+            await self?.restore()
+            self?.storeTask = nil
+        }
+    }
 
     func prepare() async {
         do {

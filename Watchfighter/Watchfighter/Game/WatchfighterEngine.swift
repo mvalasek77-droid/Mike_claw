@@ -104,6 +104,38 @@ struct WatchfighterEngine {
         opponentComboPlan.removeAll()
     }
 
+    /// Restore a tournament run at the TOP of the floor it was interrupted on.
+    /// Mid-round combat state is deliberately not restored — resuming at the
+    /// start of the floor is both simpler to reason about and fairer than
+    /// dropping the player back into a half-finished exchange.
+    mutating func resumeTournament(
+        chapter: StoryChapter,
+        round: Int,
+        playerWins: Int,
+        score: Int,
+        maxCombo: Int,
+        pitActive: Bool,
+        seed: UInt64 = UInt64(Date().timeIntervalSinceReferenceDate)
+    ) {
+        reset(seed: seed)
+        ruleSet = .tournament
+        state.chapter = chapter
+        state.round = max(1, round)
+        state.playerWins = playerWins.clamped(to: 0...StoryChapter.allCases.count)
+        state.score = max(0, score)
+        state.maxCombo = max(0, maxCombo)
+        state.pitActive = pitActive
+        state.roundTimer = ruleSet.roundTimer
+        state.player = DuelFighter(archetype: .kael, x: 0.25, facing: 1)
+        state.opponent = DuelFighter(
+            archetype: pitActive ? .abaddon : opponent(for: chapter),
+            x: 0.75,
+            facing: -1
+        )
+        let title = pitActive ? "THE PIT" : chapter.title
+        showBanner(title, pitActive ? "climb back out" : chapter.subtitle, duration: 2.0)
+    }
+
     mutating func resetVersus(player: FighterArchetype = .kael, opponent: FighterArchetype, chapter: StoryChapter, seed: UInt64 = UInt64(Date().timeIntervalSinceReferenceDate)) {
         reset(seed: seed)
         ruleSet = .versus

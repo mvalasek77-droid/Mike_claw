@@ -56,6 +56,9 @@ schemes:
         WatchfighterTests: [test]
     run:
       config: Debug
+      # Lets the paywall be exercised end-to-end in the simulator without a
+      # sandbox Apple ID — Xcode serves the product from this local config.
+      storeKitConfiguration: Watchfighter.storekit
     test:
       config: Debug
       targets:

@@ -12,6 +12,10 @@ private enum StorageKey {
 struct GameScreen: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// True while the watch is in Always On Display (wrist down). The fight is
+    /// frozen and the canvas throttled to 1fps so a dimmed screen can't burn
+    /// battery — or let the AI keep hitting a player who isn't looking.
+    @Environment(\.isLuminanceReduced) private var isLuminanceReduced
 
     @State private var engine = WatchfighterEngine()
     @State private var screenMode: GameScreenMode = .mainMenu
@@ -55,6 +59,9 @@ struct GameScreen: View {
     private var adminRoster: [FighterArchetype] { FighterArchetype.allCases }
 
     // MARK: - Crash monitor / bug report
+    /// A tournament left unfinished on a previous launch, offered as CONTINUE.
+    @State private var savedRun: RunSnapshot?
+
     @State private var showBugReportSheet = false
     @State private var bugReportText = ""
     @State private var bugReportSent = false
@@ -69,13 +76,14 @@ struct GameScreen: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack {
-                TimelineView(.periodic(from: .now, by: 1.0 / 30.0)) { timeline in
+                TimelineView(.periodic(from: .now, by: isLuminanceReduced ? 1.0 : 1.0 / 30.0)) { timeline in
                     WatchfighterCanvas(state: engine.state, date: timeline.date, reduceMotion: reduceMotion)
                         .ignoresSafeArea()
                         .onChange(of: timeline.date) { _, date in
                             advance(to: date)
                         }
                 }
+                .opacity(isLuminanceReduced ? 0.55 : 1)
 
                 if screenMode == .fighting || screenMode == .pause {
                     hud
@@ -184,6 +192,7 @@ struct GameScreen: View {
                 crownX = Double(engine.state.player.x)
                 touchX = engine.state.player.x
                 crownFocused = true
+                savedRun = RunStore.load()
                 arcadeAudio.startMusic()
                 // If the app went down hard last session, offer the crash
                 // report as a starting point for a bug report.
@@ -200,6 +209,7 @@ struct GameScreen: View {
                 if newPhase != .active {
                     lastFrameDate = nil
                     isPressing = false
+                    checkpointRun()
                     arcadeAudio.stopMusic()
                 } else {
                     crownFocused = true
@@ -296,14 +306,44 @@ struct GameScreen: View {
                     .monospacedDigit()
                     .accessibilityLabel("Best score: \(bestScore)")
 
-                Button {
-                    startTournament(skipCard: false)
-                } label: {
-                    Label("TOURNEY", systemImage: "trophy.fill")
-                        .font(.system(size: 12, weight: .black, design: .rounded))
+                if let savedRun {
+                    Button {
+                        continueTournament()
+                    } label: {
+                        Label("CONTINUE", systemImage: "arrow.uturn.forward")
+                            .font(.system(size: 12, weight: .black, design: .rounded))
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Color.watchfighterMint)
+                    .accessibilityLabel("Continue run on \(savedRun.chapter.title)")
+
+                    Text("FLOOR \(savedRun.playerWins + 1)/\(StoryChapter.allCases.count)")
+                        .font(.system(size: 7, weight: .black, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.62))
+                        .monospacedDigit()
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(Color.watchfighterRed)
+
+                // With a run in progress CONTINUE is the primary action, so the
+                // fresh-run button steps down to a secondary style.
+                if savedRun == nil {
+                    Button {
+                        startTournament(skipCard: false)
+                    } label: {
+                        Label("TOURNEY", systemImage: "trophy.fill")
+                            .font(.system(size: 12, weight: .black, design: .rounded))
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Color.watchfighterRed)
+                } else {
+                    Button {
+                        startTournament(skipCard: false)
+                    } label: {
+                        Label("NEW RUN", systemImage: "trophy.fill")
+                            .font(.system(size: 10, weight: .heavy, design: .rounded))
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(Color.watchfighterRed)
+                }
 
                 Button {
                     openVersusSelect()
@@ -459,7 +499,7 @@ struct GameScreen: View {
 
             if locked, let product = purchases.fullRosterProduct {
                 Button {
-                    Task { await purchases.purchaseFullRoster() }
+                    purchases.startPurchase()
                 } label: {
                     Label(purchases.isPurchasing ? "WAIT…" : "UNLOCK ALL \(product.displayPrice)", systemImage: "cart.fill")
                         .font(.system(size: 8, weight: .black, design: .rounded))
@@ -469,7 +509,7 @@ struct GameScreen: View {
                 .disabled(purchases.isPurchasing)
 
                 Button("RESTORE") {
-                    Task { await purchases.restore() }
+                    purchases.startRestore()
                 }
                 .font(.system(size: 7, weight: .bold))
                 .buttonStyle(.plain)
@@ -1163,6 +1203,13 @@ struct GameScreen: View {
             return
         }
 
+        // Wrist down: hold the fight exactly where it is. Re-baselining the
+        // frame date means the round resumes with a normal delta, not a jump.
+        guard !isLuminanceReduced else {
+            lastFrameDate = date
+            return
+        }
+
         let previousDate = lastFrameDate ?? date
         lastFrameDate = date
 
@@ -1249,6 +1296,8 @@ struct GameScreen: View {
 
         if activeMode == .tournament, (!demoMode || demoCutscenes), engine.state.phase == .running, (engine.state.round != beforeRound || engine.state.chapter != beforeChapter) {
             lastFrameDate = nil
+            // Floor boundary — the natural checkpoint for a resumable run.
+            checkpointRun()
             // FF story beats bridge into the next fight (good arcade cadence:
             // only on a loss, the midpoint, and the final boss — not every fight).
             if pitPending {
@@ -1275,6 +1324,11 @@ struct GameScreen: View {
         } else if beforePhase == .running, engine.state.phase == .gameOver {
             let playerWon = engine.state.winnerText == "VICTORY" || engine.state.winnerText.contains("WIN") || engine.state.winnerText == "TRAINED"
             announce(playerWon ? "KNOCKOUT" : "DEFEAT")
+            // The run is over either way — nothing left to resume.
+            if activeMode == .tournament {
+                savedRun = nil
+                RunStore.clear()
+            }
             // A full tournament clear unlocks Dracula as a secret VS-only pick.
             if activeMode == .tournament, engine.state.winnerText == "VICTORY", !draculaUnlocked {
                 draculaUnlocked = true
@@ -1392,9 +1446,41 @@ struct GameScreen: View {
         isAdminSession = false
         engine.reset()
         resetInputTracking()
+        // A fresh run replaces any half-finished one.
+        savedRun = nil
+        RunStore.clear()
         arcadeAudio.startMusic()
         playHaptic(.start)
         playCutscene(FFScript.intro, toFight: skipCard)   // FF intro, then the first fight
+    }
+
+    /// Pick a stored run back up at the top of the floor it stopped on.
+    private func continueTournament() {
+        guard let savedRun else { return }
+        activeMode = .tournament
+        isAdminSession = false
+        engine.resumeTournament(
+            chapter: savedRun.chapter,
+            round: savedRun.round,
+            playerWins: savedRun.playerWins,
+            score: savedRun.score,
+            maxCombo: savedRun.maxCombo,
+            pitActive: savedRun.pitActive
+        )
+        resetInputTracking()
+        screenMode = .fighterCard
+        demoSceneClock = 0
+        arcadeAudio.startMusic()
+        playHaptic(.start)
+    }
+
+    /// Checkpoint the run. Called at floor boundaries and on backgrounding.
+    private func checkpointRun() {
+        guard activeMode == .tournament, !isAdminSession, !demoMode,
+              engine.state.phase == .running else { return }
+        let snapshot = RunSnapshot(state: engine.state)
+        savedRun = snapshot
+        RunStore.save(snapshot)
     }
 
     private func startVersus() {
@@ -1456,6 +1542,8 @@ struct GameScreen: View {
     }
 
     private func returnToMainMenu() {
+        // Bailing out mid-floor still keeps the run resumable.
+        checkpointRun()
         activeMode = .tournament
         isAdminSession = false
         engine.reset()
