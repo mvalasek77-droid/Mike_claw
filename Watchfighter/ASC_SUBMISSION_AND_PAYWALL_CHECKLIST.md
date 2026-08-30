@@ -1,193 +1,153 @@
-# Watch Fighter — App Store Connect Submission + Paywall Checklist
+# Watch Fighter — App Store Connect Submission Checklist
 
-Grounded in the actual state of this repo as of `b43b2d3`. Items already done
-are marked ✅; everything else is ordered by what actually blocks a release.
+Grounded in the actual state of this repo as of `30258a0`. ✅ = verified in the
+codebase. Everything unchecked is ordered by what actually blocks a release.
 
----
-
-## Part 1 — App Store Connect submission
-
-### Already in place
-- ✅ App name/subtitle/keywords/description drafted — `STORE_LISTING.md`
-- ✅ `PrivacyInfo.xcprivacy` manifest present (`Resources/PrivacyInfo.xcprivacy`)
-- ✅ App icon set (`AppIcon.appiconset`, "Watch Fighter")
-- ✅ Bundle ID configured: `com.valasek.watchfighter`
-- ✅ CI green: builds, 52 unit tests, copy audit all pass on every push
-
-### 1. Apple Developer Program account
-- [ ] Enroll ($99/yr) if not already — required to submit anything.
-- [ ] Confirm the team ID used in `project.yml` (`UDM4W27W9V`) matches your
-      enrolled account/team.
-
-### 2. App Store Connect app record
-- [ ] Create the app record (My Apps → +) with bundle ID `com.valasek.watchfighter`.
-- [ ] Category: Games → Action (or Sports if you want the arcade angle).
-- [ ] SKU (internal, not user-facing — e.g. `watchfighter001`).
-- [ ] Set `CFBundleShortVersionString` = `1.0`, build number = `1` (bump build
-      number on every subsequent TestFlight/App Store upload).
-
-### 3. Signing & archive build
-- [ ] In Xcode, sign in with your Apple ID under Signing & Capabilities.
-- [ ] Switch signing to your real distribution certificate (currently the
-      project is set up for simulator/dev builds only — no archive workflow
-      exists in CI yet).
-- [ ] Archive (Product → Archive) targeting a real watchOS device, not the
-      simulator app the CI artifact currently produces.
-- [ ] Upload the archive via Xcode Organizer or `xcrun altool`/`notarytool`
-      equivalent (Transporter app also works).
-- [ ] **Play a full tournament run on a real Apple Watch** — win path, lose
-      path (Pit → Hell → Abaddon), Dracula unlock, admin long-press gesture,
-      crash-report sheet. Nothing below matters until this is clean on-device.
-
-### 4. Store listing metadata
-- [ ] Paste `STORE_LISTING.md` content into App Store Connect (name, subtitle,
-      promo text, description, keywords).
-- [ ] Support URL — currently a placeholder in `STORE_LISTING.md`; needs a
-      real page or repo link before submission.
-- [ ] Marketing URL (optional).
-- [ ] Copyright line (e.g. "© 2026 [Your name/entity]").
-
-### 5. Screenshots
-- [ ] Capture on **every required Apple Watch size** (currently only simulator
-      screenshots exist from the CI demo job — good enough for a first pass,
-      but check Apple's current required-size list in ASC before finalizing).
-- [ ] Cover the 5 shots listed in `STORE_LISTING.md`: mid-combo, VS
-      character-select, a story cutscene, the boss/Million Room, main menu.
-- [ ] Consider one Hell-fight (Abaddon) and one Dracula/vampire-transform
-      screenshot too — they're new hooks worth selling.
-
-### 6. Age rating
-- [ ] File the age-rating questionnaire — this app has stylized blood, severed
-      limbs/heads, and a horror character (Dracula/vampire transformation).
-      Answer "Realistic Violence" / "Blood and Gore" honestly in the
-      questionnaire, not just "Cartoon Violence" — the gore was made more
-      graphic per your last request, so under-declaring risks a review bounce
-      or a post-release rating correction.
-- [ ] Expect a 12+ or 17+ rating depending on how ASC's questionnaire scores
-      "Blood and Gore" + "Horror/Fear Themes" (Dracula). Don't guess — the
-      questionnaire outcome is deterministic from your answers.
-
-### 7. Privacy nutrition label
-- [ ] Confirm the app truly collects nothing (no analytics/crash SDK — the
-      crash monitor writes locally only, per your ask). If so, declare "Data
-      Not Collected" in ASC to match `PrivacyInfo.xcprivacy`.
-- [ ] If you add analytics or a remote crash-reporting backend later, this
-      section and the manifest both need updating together — they must match
-      or review will flag the mismatch.
-
-### 8. Export compliance
-- [ ] Answer the encryption question in ASC. If the app only uses standard
-      HTTPS/OS-provided crypto (no custom encryption), you qualify for the
-      standard exemption — mark accordingly (a doc reference for this already
-      exists per an earlier commit; confirm it's still accurate).
-
-### 9. App Review notes
-- [ ] No login/demo account needed (no backend) — state that explicitly in
-      the review notes so the reviewer doesn't wait on credentials.
-- [ ] Mention the hidden admin gesture (long-press title) is a **debug-only**
-      entry point, not user-facing content, so the reviewer doesn't flag TEST
-      mode as unfinished/placeholder UI if they stumble onto it.
-
-### 10. Submit
-- [ ] TestFlight internal build first — sanity-check on your own watch via
-      TestFlight before hitting "Submit for Review."
-- [ ] Submit. Typical review turnaround is 24–48h; a fighting game with gore
-      may take a first-pass manual review — budget a few extra days for v1.0.
+**Nothing below can be done from CI.** Every remaining item needs either a Mac
+with Xcode or the App Store Connect web UI. CI produces a *simulator-only*
+unsigned build and cannot sign, archive, or upload.
 
 ---
 
-## Part 2 — Paywall
+## What's already done in code
 
-**Nothing here exists yet** — right now Watch Fighter is entirely free with no
-StoreKit code, no IAP products, and no paywall UI. This section is a build
-checklist, not a "verify it's done" list.
-
-### 0. Decide the model first (blocks everything else)
-Pick one before writing any code — this determines both the ASC product setup
-and the StoreKit implementation:
-
-| Model | Fits this game because... | Complexity |
-|---|---|---|
-| **One-time unlock** ("Full Roster" / "Unlock Watch Fighter") | Simple arcade game, no live-service content — matches player expectation for a $2–5 fighter. Recommended default. | Low |
-| **Non-consumable per-character** | Sell Dracula/secret characters individually — but they're currently *earned* (win the tournament), which conflicts with also selling them. Would need a design change (buy OR earn). | Medium |
-| **Consumable** (extra continues, meter refills) | Feels bad in a skill-based fighter; typically hurts reviews for this genre. Not recommended. | Low |
-| **Subscription** | No ongoing live content to justify recurring billing for a fixed-roster arcade game. Not recommended unless you're planning regular content drops (new floors/characters). | High |
-
-- [ ] Decide, and decide what's free vs. paid (e.g. free: floors 1–5 + Learn
-      mode; paid: floors 6–15 + Dracula + Hell). A demo/trial slice is
-      standard for arcade-style paid unlocks and helps ASC review + conversion.
-
-### 1. App Store Connect: create the IAP product(s)
-- [ ] App Store Connect → Features → In-App Purchases → create product(s)
-      matching the model chosen above (Non-Consumable is the likely type).
-- [ ] Product ID convention: `com.valasek.watchfighter.fullunlock` (or similar
-      — must be unique and can't be reused later even if deleted).
-- [ ] Set price tier, display name, description.
-- [ ] Upload the required IAP review screenshot (ASC requires one showing the
-      purchase in context).
-- [ ] Fill in the IAP's own review notes.
-
-### 2. StoreKit 2 implementation (in the Watchfighter target)
-- [ ] Add StoreKit capability in `project.yml` / entitlements.
-- [ ] `Product.products(for:)` to fetch the product(s) at launch or on paywall
-      presentation.
-- [ ] `product.purchase()` → handle `.success(.verified)`, `.success(.unverified)`,
-      `.userCancelled`, `.pending` (Ask to Buy / parental approval) states
-      distinctly — don't silently swallow `.pending`.
-- [ ] Listen to `Transaction.updates` for out-of-band purchase completion
-      (required — purchases can complete outside your active session, e.g.
-      Ask to Buy approval).
-- [ ] Call `transaction.finish()` only after unlocking content, never before.
-- [ ] Persist entitlement state locally (e.g. in the same store as
-      `bestScore`), re-derived from `Transaction.currentEntitlements` on
-      launch — don't rely solely on a local flag that could desync.
-- [ ] Gate the specific content per the model chosen in step 0 (e.g. floor
-      6+ selection, Dracula in the roster, Hell fight) behind the entitlement
-      check.
-
-### 3. Paywall UI/UX (Apple App Review Guideline 3.1 compliance)
-- [ ] Show price and product name clearly before purchase — no surprise
-      charges.
-- [ ] **Restore Purchases** button, visible and working — required by Apple,
-      not optional. Test on a fresh install with the same Apple ID.
-- [ ] Never block the app from launching or force a purchase before any free
-      content is playable — Apple rejects paywalls that gate the entire app
-      with no preview.
-- [ ] Don't use dark patterns (pre-checked boxes, deceptive "continue"
-      buttons that trigger purchase) — automatic rejection risk.
-- [ ] watchOS-specific: keep the paywall legible at watch screen sizes — a
-      simple "Unlock Watch Fighter — $X.XX" card with Buy/Restore is safer
-      than a dense feature-comparison table.
-- [ ] If subscription (not recommended above): must show terms/EULA link,
-      auto-renewal disclosure, and cancellation instructions per guideline
-      3.1.2 — significantly more review scrutiny than a one-time purchase.
-
-### 4. Testing
-- [ ] Create a StoreKit Configuration file (`.storekit`) in Xcode for local
-      testing without hitting the real App Store sandbox — fastest iteration
-      loop.
-- [ ] Test against the real Sandbox with a Sandbox Tester Apple ID (ASC →
-      Users and Access → Sandbox Testers) before submission — local
-      `.storekit` config can hide real-environment edge cases.
-- [ ] Test: purchase → kill app → relaunch → entitlement persists.
-- [ ] Test: fresh install + Restore Purchases → entitlement returns.
-- [ ] Test: purchase cancelled mid-flow → app state doesn't get stuck.
-- [ ] Test: Ask to Buy (`.pending`) → approve later → `Transaction.updates`
-      picks it up without requiring the user to reopen the paywall.
-
-### 5. Submit
-- [ ] IAP products get reviewed **alongside** the first app version that
-      references them — submit the app build and the IAP product together,
-      not the IAP alone first.
-- [ ] Mention the paywall/unlock model explicitly in the app's review notes
-      so the reviewer knows what's free vs. paid and can test both paths.
+| Item | Where |
+|---|---|
+| ✅ Bundle ID `com.valasek.watchfighter` | `project.yml` |
+| ✅ Version 1.0, build 1, apple-generic versioning | `project.yml` |
+| ✅ Export-compliance key (`ITSAppUsesNonExemptEncryption: NO`) | `project.yml` |
+| ✅ Privacy manifest — no tracking, no collection, UserDefaults reason CA92.1 | `Resources/PrivacyInfo.xcprivacy` |
+| ✅ App icon set, display name "Watch Fighter" | `Assets.xcassets/AppIcon.appiconset` |
+| ✅ Store copy drafted | `STORE_LISTING.md` |
+| ✅ StoreKit 2 paywall, fully implemented | `Purchases/PurchaseManager.swift` |
+| ✅ IAP product ID `com.valasek.watchfighter.fullroster` | `PurchaseManager.fullRosterProductID` |
+| ✅ Local StoreKit config wired to the Run scheme | `Watchfighter.storekit`, `project.yml` |
+| ✅ Restore Purchases button | `GameScreen.versusSelectOverlay` |
+| ✅ `Transaction.updates` listener (Ask to Buy) | `PurchaseManager.listenForUpdates()` |
+| ✅ VoiceOver labels, Reduce Motion, Always On Display | `GameScreen`, `WatchfighterCanvas` |
+| ✅ CI green: build + 62 unit tests + copy audit | `.github/workflows/watchfighter.yml` |
 
 ---
 
-## Suggested order of operations
-1. Finish Part 1 (submission mechanics) up through the on-device play-test —
-   that's required regardless of monetization.
-2. Decide the paywall model (Part 2, step 0) — this is a product decision,
-   not an engineering one, and everything else depends on it.
-3. Build StoreKit + paywall UI, test in sandbox.
-4. Submit app + IAP together.
+## 1. Apple Developer Program
+- [ ] Enrolled ($99/yr) — required before anything else.
+- [ ] Team ID in `project.yml` (`UDM4W27W9V`) matches the enrolled team.
+
+## 2. Create the App Store Connect record
+- [ ] My Apps → **+** → New App, bundle ID `com.valasek.watchfighter`.
+- [ ] Platform: **watchOS**. Category: Games → Action.
+- [ ] SKU (internal, never shown to users) — e.g. `watchfighter001`.
+
+## 3. Create the IAP product — do this BEFORE the first upload
+The code already references this exact product ID. It must exist in ASC or the
+paywall silently shows nothing (`fullRosterProduct` stays `nil`).
+
+- [ ] Features → In-App Purchases → **+** → **Non-Consumable**.
+- [ ] Product ID **exactly** `com.valasek.watchfighter.fullroster` — a typo here
+      is unrecoverable; IDs can never be reused once created.
+- [ ] Reference name: `Full Roster`. Display name + description (see
+      `Watchfighter.storekit` for the copy already written).
+- [ ] Price tier — the local config is set to **$2.99**; match it or update the
+      `.storekit` file so local testing mirrors production.
+- [ ] Upload the required IAP review screenshot (the VS screen showing
+      "UNLOCK ALL $2.99" and "RESTORE").
+- [ ] IAP review notes — see the wording in §9 below.
+
+## 4. Signing & archive
+- [ ] Generate the project: `cd Watchfighter && xcodegen generate`
+- [ ] Open `Watchfighter.xcodeproj`, Signing & Capabilities → your team,
+      automatic signing, **Release** config.
+- [ ] Product → Archive (destination: **Any watchOS Device**, not a simulator).
+- [ ] Organizer → Distribute App → App Store Connect → Upload.
+- [ ] Bump `CURRENT_PROJECT_VERSION` in `project.yml` for **every** subsequent
+      upload — ASC rejects duplicate build numbers.
+
+## 5. On-device play-test (nothing below matters until this is clean)
+Run from Xcode on a real watch, not the simulator.
+
+Core paths:
+- [ ] Full tournament win → Dracula unlocks in VS.
+- [ ] Lose a floor → Pit → beat Abaddon → climb resumes.
+- [ ] Lose in the Pit → run actually ends.
+- [ ] Titus/Million Room: normal attacks can't kill him; the secret combo can.
+
+Never tested on hardware (new, and only unit-tested underneath):
+- [ ] **Resume**: start a run, reach floor 3+, background the app, relaunch →
+      CONTINUE appears and lands on the right floor. Then NEW RUN → the saved
+      run is discarded.
+- [ ] **Always On Display**: wrist down mid-fight → the fight freezes and does
+      not keep taking damage; wrist up → resumes without a time jump.
+- [ ] **Paywall**: buy with a Sandbox tester → roster unlocks → force-quit →
+      relaunch → still unlocked. Then delete + reinstall → Restore returns it.
+- [ ] **VoiceOver on**: HUD, menus, and game-over screen all read sensibly.
+- [ ] **Reduce Motion on**: blood spray, gore, and the red screen flash are
+      suppressed; the game is still playable.
+- [ ] Audio: a phone call or Siri interrupts → music resumes afterward.
+
+## 6. Store listing
+- [ ] Paste name / subtitle / promo / description / keywords from
+      `STORE_LISTING.md`.
+- [ ] **Support URL** — still a placeholder in `STORE_LISTING.md`. Apple
+      requires a real, reachable page. A public GitHub repo or a one-page site
+      is enough.
+- [ ] Copyright line (e.g. "© 2026 <your name or entity>").
+
+## 7. Screenshots
+- [ ] Capture on each Apple Watch size ASC currently requires (check the list
+      in ASC — it changes between releases).
+- [ ] The CI artifact `watchfighter-demo-screenshots` gives usable simulator
+      frames as a starting point.
+- [ ] Suggested five: mid-combo with HUD, VS select (showing the paywall in
+      context — doubles as the IAP screenshot), a story cutscene, the Million
+      Room boss, and the Hell/Abaddon fight.
+
+## 8. Age rating — answer honestly
+This app has stylized blood, severed limbs and heads, a screen-wide blood
+splash, and a vampire transformation.
+
+- [ ] Declare **Blood and Gore** and **Horror/Fear Themes** in the
+      questionnaire — not merely "Cartoon Violence." Under-declaring risks a
+      rejection or a forced post-release rating change.
+- [ ] Expect 12+ or 17+. The outcome is deterministic from your answers, so
+      don't try to steer it.
+
+## 9. Privacy label, export compliance, review notes
+- [ ] Privacy nutrition label: **Data Not Collected** — matches the manifest.
+      There is no analytics SDK and the crash monitor writes locally only. If
+      you ever add a remote crash/analytics backend, this label AND
+      `PrivacyInfo.xcprivacy` must change together.
+- [ ] Export compliance: the `ITSAppUsesNonExemptEncryption: NO` key is already
+      in the build, so ASC should not prompt. If it does, answer "No."
+- [ ] **Review notes** — paste something like:
+
+  > No account or login is required; the app has no backend.
+  >
+  > The entire 15-floor tournament, both training modes, and every fighter are
+  > free and unlockable by playing. The single in-app purchase ("Full Roster",
+  > $2.99, non-consumable) only unlocks the VS-mode roster immediately instead
+  > of earning it through tournament progress. Nothing is permanently paywalled.
+  > To test: main menu → VS → press right past the unlocked fighters to reach a
+  > locked one; the UNLOCK ALL and RESTORE buttons appear there.
+  >
+  > Long-pressing the title on the main menu for ~1.2s toggles a hidden
+  > developer TEST menu. It is a debug tool, not unfinished user-facing
+  > content.
+
+## 10. Submit
+- [ ] TestFlight internal build first; play it on your own watch through
+      TestFlight, not just via Xcode.
+- [ ] Submit the app build **and** the IAP together — a new IAP is reviewed
+      alongside the first version that references it, never on its own.
+- [ ] Budget extra time for v1.0: a gore-heavy fighting game usually draws a
+      manual first-pass review.
+
+---
+
+## Known gaps (deliberate, not oversights)
+- **No archive/upload workflow in CI.** Signing credentials aren't available to
+  the runner. Archiving is a local Xcode step.
+- **All UI strings are hardcoded English.** Not an App Store blocker for an
+  English-only release; localization is deferred post-1.0.
+- **Paywall verified by compilation and unit tests only.** No purchase has
+  actually been made against the `.storekit` config or the sandbox yet — this
+  is the single highest-risk untested path, which is why it's in §5.
