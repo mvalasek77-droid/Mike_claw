@@ -414,46 +414,6 @@ async function handleAppleAuth(request: Request, env: Env, ctx?: ExecutionContex
   });
 }
 
-/** Email the founder after a new account is created. This deliberately does
- *  no work unless both settings are present, and callers attach it to
- *  ctx.waitUntil so email can never delay or fail the auth response. */
-async function sendSignupAlert(env: Env, user: Pick<UserRow, "id" | "name" | "email">): Promise<void> {
-  if (!env.ADMIN_EMAIL || !env.RESEND_API_KEY) return;
-
-  const rows = await env.DB.batch([
-    env.DB.prepare("SELECT role FROM profiles WHERE user_id = ?").bind(user.id),
-    env.DB.prepare("SELECT COUNT(*) AS n FROM users"),
-    env.DB.prepare("SELECT COUNT(*) AS n FROM profiles WHERE role = 'woman'"),
-    env.DB.prepare("SELECT COUNT(*) AS n FROM profiles WHERE role = 'man'"),
-  ]);
-  const role = (rows[0].results?.[0] as { role?: string } | undefined)?.role;
-  const count = (i: number): number => Number((rows[i].results?.[0] as any)?.n ?? 0);
-  const total = count(1);
-  const lots = count(2);
-  const bidders = count(3);
-  const noProfile = Math.max(0, total - lots - bidders);
-  const name = user.name?.trim() || user.email?.trim() || "A new user";
-  const roleText = role === "woman" ? "Lot" : role === "man" ? "Bidder" : "No profile yet";
-  const text = `${name} just signed up via Sign in with Apple.\n\n` +
-    `Profile: ${roleText}.\n` +
-    `Totals now: ${total} users — ${lots} lots, ${bidders} bidders (${noProfile} signed up but no profile yet).`;
-
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${env.RESEND_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: "Auction Baby <onboarding@resend.dev>",
-      to: [env.ADMIN_EMAIL],
-      subject: `New Auction Baby signup: ${name}`,
-      text,
-    }),
-  });
-  if (!response.ok) throw new Error(`Resend signup alert failed (${response.status})`);
-}
-
 /** Apple only gives us the full name on the FIRST sign-in ever; the client
  *  passes it through as `name`. Prefer whatever the client supplied; fall
  *  back to nothing (never guess from the email). */
@@ -2379,19 +2339,7 @@ export default {
     const m = request.method;
 
     if (pathname === "/health" && m === "GET") return handleHealth(env);
-    if (pathname === "/auth/apple" && m === "POST") {
-      const response = await handleAppleAuth(request, env, ctx);
-      if (response.ok) {
-        const payload = await response.clone().json() as {
-          isNew?: boolean;
-          user?: Pick<UserRow, "id" | "name" | "email">;
-        };
-        if (payload.isNew && payload.user) {
-          ctx.waitUntil(sendSignupAlert(env, payload.user).catch(() => undefined));
-        }
-      }
-      return response;
-    }
+    if (pathname === "/auth/apple" && m === "POST") return handleAppleAuth(request, env, ctx);
     if (pathname === "/auth/admin-login" && m === "POST") return handleAdminLogin(request, env);
     if (pathname === "/auth/dev-login" && m === "POST") return handleDevLogin(request, env, ctx);
     if (pathname === "/me" && m === "GET") return handleMe(request, env);
