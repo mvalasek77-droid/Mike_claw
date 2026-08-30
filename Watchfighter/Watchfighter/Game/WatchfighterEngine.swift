@@ -719,7 +719,8 @@ struct WatchfighterEngine {
 
         let playerWon: Bool
         if state.player.health == state.opponent.health {
-            playerWon = state.score >= 0
+            // Tie favors the player — arcade tradition.
+            playerWon = true
         } else {
             playerWon = state.player.health > state.opponent.health
         }

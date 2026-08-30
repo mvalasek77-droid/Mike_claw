@@ -3,8 +3,15 @@ import AVFoundation
 import SwiftUI
 import WatchKit
 
+private enum StorageKey {
+    static let bestScore = "watchfighter.bestScore"
+    static let unlockedRosterIndex = "watchfighter.unlockedRosterIndex"
+    static let draculaUnlocked = "watchfighter.draculaUnlocked"
+}
+
 struct GameScreen: View {
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var engine = WatchfighterEngine()
     @State private var screenMode: GameScreenMode = .mainMenu
@@ -30,10 +37,9 @@ struct GameScreen: View {
     @State private var seenChapters: Set<StoryChapter> = []   // per-floor beats play once
     @State private var arcadeAudio = ArcadeAudio()
     @StateObject private var purchases = PurchaseManager()
-    @AppStorage("watchfighter.bestScore") private var bestScore = 0
-    @AppStorage("watchfighter.unlockedRosterIndex") private var unlockedRosterIndex = 0
-    // Dracula is a secret VS-only pick, earned once, after a full tournament clear.
-    @AppStorage("watchfighter.draculaUnlocked") private var draculaUnlocked = false
+    @AppStorage(StorageKey.bestScore) private var bestScore = 0
+    @AppStorage(StorageKey.unlockedRosterIndex) private var unlockedRosterIndex = 0
+    @AppStorage(StorageKey.draculaUnlocked) private var draculaUnlocked = false
     @FocusState private var crownFocused: Bool
 
     // MARK: - Admin/test mode (pick any two fighters at any floor, plus instant
@@ -59,14 +65,16 @@ struct GameScreen: View {
     // capture cutscene frames for the storyboard screenshots.
     private let demoCutscenes = ProcessInfo.processInfo.environment["WATCHFIGHTER_DEMO_CUTSCENES"] == "1"
     private let autoPlay = AutoPlayDriver()
-    private let frameTimer = Timer.publish(every: 1.0 / 30.0, on: .main, in: .common).autoconnect()
 
     var body: some View {
         GeometryReader { proxy in
             ZStack {
                 TimelineView(.periodic(from: .now, by: 1.0 / 30.0)) { timeline in
-                    WatchfighterCanvas(state: engine.state, date: timeline.date)
+                    WatchfighterCanvas(state: engine.state, date: timeline.date, reduceMotion: reduceMotion)
                         .ignoresSafeArea()
+                        .onChange(of: timeline.date) { _, date in
+                            advance(to: date)
+                        }
                 }
 
                 if screenMode == .fighting || screenMode == .pause {
@@ -201,9 +209,6 @@ struct GameScreen: View {
             .onDisappear {
                 arcadeAudio.stopMusic()
             }
-            .onReceive(frameTimer) { date in
-                advance(to: date)
-            }
             .task {
                 await purchases.prepare()
             }
@@ -231,6 +236,8 @@ struct GameScreen: View {
                         .font(.system(size: 8, weight: .heavy, design: .rounded))
                         .foregroundStyle(.white.opacity(0.72))
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Round \(engine.state.round), \(Int(ceil(engine.state.roundTimer))) seconds")
 
                 fighterPanel(engine.state.opponent, side: .opponent)
             }
@@ -287,6 +294,7 @@ struct GameScreen: View {
                     .font(.system(size: 10, weight: .black, design: .rounded))
                     .foregroundStyle(.white.opacity(0.78))
                     .monospacedDigit()
+                    .accessibilityLabel("Best score: \(bestScore)")
 
                 Button {
                     startTournament(skipCard: false)
@@ -380,6 +388,7 @@ struct GameScreen: View {
                         .frame(width: 25, height: 30)
                 }
                 .buttonStyle(.bordered)
+                .accessibilityLabel("Previous fighter")
 
                 VStack(spacing: 3) {
                     ZStack {
@@ -424,6 +433,7 @@ struct GameScreen: View {
                         .frame(width: 25, height: 30)
                 }
                 .buttonStyle(.bordered)
+                .accessibilityLabel("Next fighter")
             }
 
             HStack(spacing: 8) {
@@ -733,6 +743,7 @@ struct GameScreen: View {
                         .frame(width: 30, height: 28)
                 }
                 .buttonStyle(.borderedProminent)
+                .accessibilityLabel("Resume")
 
                 Button {
                     restartCurrentMode()
@@ -742,6 +753,7 @@ struct GameScreen: View {
                         .frame(width: 30, height: 28)
                 }
                 .buttonStyle(.bordered)
+                .accessibilityLabel("Restart")
 
                 Button {
                     returnToMainMenu()
@@ -751,6 +763,7 @@ struct GameScreen: View {
                         .frame(width: 30, height: 28)
                 }
                 .buttonStyle(.bordered)
+                .accessibilityLabel("Main Menu")
             }
 
             if isAdminSession {
@@ -875,6 +888,8 @@ struct GameScreen: View {
                 .minimumScaleFactor(0.6)
         }
         .frame(maxWidth: .infinity, alignment: side == .player ? .leading : .trailing)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(fighter.archetype.displayName), \(Int((CGFloat(fighter.health) / CGFloat(max(1, fighter.maxHealth)) * 100).rounded())) percent health")
     }
 
     private func winPips(playerWins: Int, opponentWins: Int) -> some View {
@@ -919,6 +934,8 @@ struct GameScreen: View {
                 .stroke(Color.watchfighterGold.opacity(0.45), lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.82), radius: 8, y: 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(engine.state.bannerText). \(engine.state.bannerDetail)")
     }
 
     private var comboBadge: some View {
@@ -939,6 +956,7 @@ struct GameScreen: View {
             RoundedRectangle(cornerRadius: 7, style: .continuous)
                 .stroke(Color.watchfighterMint.opacity(0.5), lineWidth: 1)
         )
+        .accessibilityLabel("\(engine.state.combo) hit combo")
     }
 
     private var voiceBadge: some View {
@@ -993,22 +1011,26 @@ struct GameScreen: View {
                 .font(.system(size: 18, weight: .black, design: .rounded))
                 .foregroundStyle(engine.state.playerWins == StoryChapter.allCases.count ? Color.watchfighterGold : .white)
                 .lineLimit(1)
+                .accessibilityAddTraits(.isHeader)
 
             Text("\(engine.state.score)")
                 .font(.system(size: 22, weight: .black, design: .rounded))
                 .foregroundStyle(Color.watchfighterGold)
                 .monospacedDigit()
+                .accessibilityLabel("Score: \(engine.state.score)")
 
             Text("BEST \(max(bestScore, engine.state.score))")
                 .font(.system(size: 9, weight: .black, design: .rounded))
                 .foregroundStyle(.white.opacity(0.78))
                 .monospacedDigit()
                 .lineLimit(1)
+                .accessibilityLabel("Best score: \(max(bestScore, engine.state.score))")
 
             Text("MAX \(engine.state.maxCombo) HIT")
                 .font(.system(size: 10, weight: .black, design: .rounded))
                 .foregroundStyle(Color.watchfighterMint)
                 .lineLimit(1)
+                .accessibilityLabel("Maximum combo: \(engine.state.maxCombo) hits")
 
             Button {
                 restartCurrentMode()
@@ -1048,6 +1070,8 @@ struct GameScreen: View {
                 .frame(width: max(3, width * value.clamped(to: 0...1)))
         }
         .frame(width: width, height: 6)
+        .accessibilityLabel("Health")
+        .accessibilityValue("\(Int((value.clamped(to: 0...1) * 100).rounded())) percent")
     }
 
     private func guardBar(value: CGFloat, width: CGFloat, trailing: Bool) -> some View {
@@ -1091,6 +1115,8 @@ struct GameScreen: View {
                 .frame(width: max(3, width * value.clamped(to: 0...1)))
         }
         .frame(width: width, height: 4)
+        .accessibilityLabel("Meter")
+        .accessibilityValue("\(Int((value.clamped(to: 0...1) * 100).rounded())) percent")
     }
 
     private func dragGesture(size: CGSize) -> some Gesture {
@@ -1776,6 +1802,20 @@ private final class ArcadeAudio {
 
 private final class ArcadeMusic {
     private var player: AVAudioPlayer?
+    private var sessionConfigured = false
+
+    init() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleInterruption),
+            name: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance()
+        )
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
 
     func start() {
         if player == nil {
@@ -1788,7 +1828,10 @@ private final class ArcadeMusic {
             player = loaded
         }
 
-        try? AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default)
+        if !sessionConfigured {
+            try? AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default)
+            sessionConfigured = true
+        }
         try? AVAudioSession.sharedInstance().setActive(true)
         player?.play()
     }
@@ -1797,6 +1840,19 @@ private final class ArcadeMusic {
         guard player?.isPlaying == true else { return }
         player?.pause()
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+
+    @objc private func handleInterruption(_ notification: Notification) {
+        guard let info = notification.userInfo,
+              let typeValue = info[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
+        if type == .ended {
+            let options = (info[AVAudioSessionInterruptionOptionKey] as? UInt)
+                .flatMap(AVAudioSession.InterruptionOptions.init(rawValue:)) ?? []
+            if options.contains(.shouldResume) {
+                start()
+            }
+        }
     }
 }
 
@@ -1809,7 +1865,7 @@ private extension Comparable {
 // MARK: - FF-style story cutscenes (original content)
 
 /// One narrative text box. `speaker == nil` means the narrator.
-struct CutscenePanel: Equatable {
+struct CutscenePanel: Equatable, Sendable {
     let speaker: String?
     let text: String
     /// An optional "redacted" line rendered behind a heavy blur — used for the
@@ -1956,6 +2012,7 @@ struct CutsceneOverlay: View {
                             .frame(maxWidth: .infinity)
                     }
                     .tint(Color(red: 0.9, green: 0.1, blue: 0.4))
+                    .accessibilityLabel(index + 1 < panels.count ? "Next" : "Start fight")
                     Text("\(index + 1) / \(max(1, panels.count))")
                         .font(.system(size: 8))
                         .foregroundStyle(.secondary)

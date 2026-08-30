@@ -3,6 +3,7 @@ import SwiftUI
 struct WatchfighterCanvas: View {
     var state: WatchfighterState
     var date: Date
+    var reduceMotion: Bool = false
 
     var body: some View {
         Canvas { context, size in
@@ -272,6 +273,7 @@ struct WatchfighterCanvas: View {
             }
 
             if strike.kind == .blood {
+                if reduceMotion { continue }
                 let spray = max(2, radius * 0.30)
                 for index in 0..<9 {
                     let offset = CGFloat(index - 4) * spray * 0.50
@@ -287,7 +289,9 @@ struct WatchfighterCanvas: View {
             }
 
             if strike.kind == .headPop || strike.kind == .bodyBurst || strike.kind == .armDrop {
-                drawFinisherEffect(in: &context, center: center, radius: radius, progress: progress, kind: strike.kind, size: size)
+                if !reduceMotion {
+                    drawFinisherEffect(in: &context, center: center, radius: radius, progress: progress, kind: strike.kind, size: size)
+                }
                 continue
             }
 
@@ -364,7 +368,7 @@ struct WatchfighterCanvas: View {
         } else {
             finisherFlash = 0
         }
-        let flash = max(bloodyStrikeIntensity, finisherFlash)
+        let flash = reduceMotion ? 0 : max(bloodyStrikeIntensity, finisherFlash)
         if flash > 0.001 {
             context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Color.watchfighterRed.opacity(flash)))
         }
@@ -877,7 +881,9 @@ struct WatchfighterCanvas: View {
         }
         spriteContext.rotate(by: lean)
         spriteContext.scaleBy(x: xScale, y: yScale)
-        spriteContext.draw(Image(sprite.imageName), in: CGRect(x: -rect.width / 2, y: -rect.height / 2, width: rect.width, height: rect.height))
+        if let name = sprite.imageName {
+            spriteContext.draw(Image(name), in: CGRect(x: -rect.width / 2, y: -rect.height / 2, width: rect.width, height: rect.height))
+        }
     }
 
     private func drawActionMotion(in context: inout GraphicsContext, anchor: CGPoint, fighter: DuelFighter, size: CGSize) {
@@ -1231,27 +1237,27 @@ struct WatchfighterCanvas: View {
     /// Bat wings for Dracula and anyone he's bitten — flap with a light sine
     /// wobble so the "aerial vampire" pair reads as airborne, not just tinted.
     private func drawBatWings(in context: inout GraphicsContext, anchor: CGPoint, unit: CGFloat, time: CGFloat, facing: CGFloat) {
-        let flap = (sin(time * 6) + 1) * 0.5   // 0...1
+        let flap = (sin(time * 6) + 1) * 0.5
         let span = unit * (1.55 + flap * 0.35)
         let root = CGPoint(x: anchor.x, y: anchor.y - unit * 1.35)
         for side: CGFloat in [-1, 1] {
+            let leadScale: CGFloat = (side == facing) ? 1.0 : 0.85
             var wing = Path()
             wing.move(to: root)
             wing.addCurve(
-                to: CGPoint(x: root.x + side * span, y: root.y + unit * 0.15),
-                control1: CGPoint(x: root.x + side * span * 0.35, y: root.y - unit * 0.55),
-                control2: CGPoint(x: root.x + side * span * 0.85, y: root.y - unit * 0.25)
+                to: CGPoint(x: root.x + side * span * leadScale, y: root.y + unit * 0.15),
+                control1: CGPoint(x: root.x + side * span * 0.35 * leadScale, y: root.y - unit * 0.55),
+                control2: CGPoint(x: root.x + side * span * 0.85 * leadScale, y: root.y - unit * 0.25)
             )
             wing.addCurve(
-                to: CGPoint(x: root.x + side * span * 0.45, y: root.y + unit * 0.55),
-                control1: CGPoint(x: root.x + side * span * 0.70, y: root.y + unit * 0.40),
-                control2: CGPoint(x: root.x + side * span * 0.55, y: root.y + unit * 0.50)
+                to: CGPoint(x: root.x + side * span * 0.45 * leadScale, y: root.y + unit * 0.55),
+                control1: CGPoint(x: root.x + side * span * 0.70 * leadScale, y: root.y + unit * 0.40),
+                control2: CGPoint(x: root.x + side * span * 0.55 * leadScale, y: root.y + unit * 0.50)
             )
             wing.closeSubpath()
             context.fill(wing, with: .color(Color(red: 0.05, green: 0.01, blue: 0.02).opacity(0.88)))
             context.stroke(wing, with: .color(Color(red: 0.62, green: 0.05, blue: 0.30).opacity(0.75)), lineWidth: max(0.8, unit * 0.045))
         }
-        _ = facing
     }
 
     private func styleAccent(for archetype: FighterArchetype) -> Color {
@@ -1286,7 +1292,7 @@ private struct ArenaPalette {
 }
 
 private struct DigitizedSprite {
-    var imageName: String
+    var imageName: String?
     var aspectRatio: CGFloat
     var heightFactor: CGFloat
     var footOffset: CGFloat

@@ -1,17 +1,17 @@
 import CoreGraphics
 import Foundation
 
-enum FighterPhase: Equatable {
+enum FighterPhase: Equatable, Sendable {
     case running
     case gameOver
 }
 
-enum FighterSide: Equatable {
+enum FighterSide: Equatable, Sendable {
     case player
     case opponent
 }
 
-enum FighterAction: Equatable {
+enum FighterAction: Equatable, Sendable {
     case idle
     case walk
     case crouch
@@ -27,7 +27,7 @@ enum FighterAction: Equatable {
     case defeated
 }
 
-enum StrikeKind: Equatable {
+enum StrikeKind: Equatable, Sendable {
     case hit
     case blocked
     case special
@@ -42,7 +42,7 @@ enum StrikeKind: Equatable {
     case vampireBite
 }
 
-enum CombatStyle: Equatable {
+enum CombatStyle: Equatable, Sendable {
     case balanced
     case rushdown
     case grappler
@@ -170,7 +170,7 @@ enum CombatStyle: Equatable {
     }
 }
 
-enum StoryChapter: Int, CaseIterable, Equatable {
+enum StoryChapter: Int, CaseIterable, Equatable, Sendable {
     case cinderGate = 1
     case neonRooftop
     case stormBridge
@@ -297,7 +297,7 @@ enum StoryChapter: Int, CaseIterable, Equatable {
     }
 }
 
-enum FighterArchetype: CaseIterable, Equatable {
+enum FighterArchetype: CaseIterable, Equatable, Sendable {
     case kael
     case nyra
     case rook
@@ -321,24 +321,18 @@ enum FighterArchetype: CaseIterable, Equatable {
     /// Not part of `versusRoster`/the ladder; the engine spawns him directly.
     case abaddon
 
+    var isInVersusRoster: Bool {
+        switch self {
+        case .kael, .dracula, .abaddon:
+            return false
+        case .nyra, .rook, .voss, .mara, .lennox, .sunny, .nova,
+             .specter, .cosmo, .brass, .volkov, .zara, .cage, .kairo, .titan:
+            return true
+        }
+    }
+
     static var versusRoster: [FighterArchetype] {
-        [
-            .nyra,
-            .rook,
-            .voss,
-            .mara,
-            .lennox,
-            .sunny,
-            .nova,
-            .specter,
-            .cosmo,
-            .brass,
-            .volkov,
-            .zara,
-            .cage,
-            .kairo,
-            .titan
-        ]
+        allCases.filter(\.isInVersusRoster)
     }
 
     var displayName: String {
@@ -423,7 +417,7 @@ enum FighterArchetype: CaseIterable, Equatable {
         }
     }
 
-    var imageName: String {
+    var imageName: String? {
         switch self {
         case .kael:
             return "DigitizedHero"
@@ -458,12 +452,12 @@ enum FighterArchetype: CaseIterable, Equatable {
         case .titan:
             return "DigitizedTitan"
         case .dracula, .abaddon:
-            return ""
+            return nil
         }
     }
 
     var usesBitmapSprite: Bool {
-        !imageName.isEmpty
+        imageName != nil
     }
 
     var aspectRatio: CGFloat {
@@ -641,7 +635,7 @@ enum FighterArchetype: CaseIterable, Equatable {
             return 1.32
         case .abaddon:
             return 0.94
-        default:
+        case .kael, .rook:
             return 1.0
         }
     }
@@ -890,7 +884,7 @@ enum FighterArchetype: CaseIterable, Equatable {
             // Brimstone at range, pitchfork (kick/throw) once he closes in.
             if distance < 0.62, pressure > 0.50 { return .projectile }
             return distance < 0.30 ? .throwAttack : (distance < 0.40 ? .kick : nil)
-        default:
+        case .kael:
             return distance < 0.30 ? .jab : nil
         }
     }
@@ -906,7 +900,7 @@ enum FighterArchetype: CaseIterable, Equatable {
     }
 }
 
-struct GameInput: Equatable {
+struct GameInput: Equatable, Sendable {
     var targetX: CGFloat
     var attacking: Bool
     var special: Bool
@@ -937,7 +931,7 @@ struct GameInput: Equatable {
     }
 }
 
-struct DuelFighter: Equatable {
+struct DuelFighter: Equatable, Sendable {
     var archetype: FighterArchetype
     var x: CGFloat
     var y: CGFloat = 0.78
@@ -972,7 +966,7 @@ struct DuelFighter: Equatable {
     }
 }
 
-struct FighterStrike: Identifiable, Equatable {
+struct FighterStrike: Identifiable, Equatable, Sendable {
     let id: Int
     var side: FighterSide
     var x: CGFloat
@@ -982,7 +976,7 @@ struct FighterStrike: Identifiable, Equatable {
     var kind: StrikeKind
 }
 
-struct WatchfighterState: Equatable {
+struct WatchfighterState: Equatable, Sendable {
     var phase: FighterPhase = .running
     var score = 0
     var round = 1
