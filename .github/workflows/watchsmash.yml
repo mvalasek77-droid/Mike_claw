@@ -1,0 +1,181 @@
+name: Watchsmash CI
+
+# Branch pushes are covered by the pull_request trigger (every claude/**
+# branch works through a PR), so push is main-only — otherwise each push to a
+# PR branch spawned two identical runs.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Watchsmash/**"
+      - ".github/workflows/watchsmash.yml"
+  pull_request:
+    paths:
+      - "Watchsmash/**"
+      - ".github/workflows/watchsmash.yml"
+  workflow_dispatch:
+
+# Rapid pushes cancel the superseded in-flight run instead of queueing behind it.
+concurrency:
+  group: watchsmash-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  copy-audit:
+    name: Copy audit (grammar/spelling)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run copy auditor
+        working-directory: Watchsmash
+        run: python3 tools/copy_audit.py
+
+  watchos-tests:
+    name: watchOS unit tests
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: Watchsmash
+        run: xcodegen generate
+
+      - name: Pick an available watchOS simulator
+        id: sim
+        run: |
+          set -euo pipefail
+          # Grab the UDID of the first available Apple Watch simulator.
+          UDID=$(xcrun simctl list devices available \
+            | grep "Apple Watch" \
+            | grep -oE '[0-9A-Fa-f]{8}-[0-9A-Fa-f-]{27}' \
+            | head -1)
+          if [ -z "${UDID}" ]; then
+            echo "No watchOS simulator available; listing for debugging:"
+            xcrun simctl list devices
+            exit 1
+          fi
+          echo "Using watch simulator UDID: ${UDID}"
+          echo "udid=${UDID}" >> "${GITHUB_OUTPUT}"
+
+      - name: Run tests
+        working-directory: Watchsmash
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project Watchsmash.xcodeproj \
+            -scheme Watchsmash \
+            -destination "platform=watchOS Simulator,id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            DEVELOPMENT_TEAM="" \
+          | tee xcodebuild.log
+
+      - name: Extract storyboard from the test log
+        if: always()
+        working-directory: Watchsmash
+        run: |
+          mkdir -p storyboard
+          awk '/STORYBOARD START/{f=1;next} /STORYBOARD END/{f=0} f' xcodebuild.log > storyboard/storyboard.md || true
+          echo "----- storyboard.md -----"
+          cat storyboard/storyboard.md || true
+
+      - name: Upload test log + storyboard
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: watchsmash-storyboard
+          path: |
+            Watchsmash/storyboard/storyboard.md
+            Watchsmash/xcodebuild.log
+
+  demo-screenshots:
+    name: Demo screenshots (best-effort)
+    runs-on: macos-15
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: Watchsmash
+        run: xcodegen generate
+
+      - name: Build app for the simulator
+        working-directory: Watchsmash
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project Watchsmash.xcodeproj \
+            -scheme Watchsmash \
+            -sdk watchsimulator \
+            -configuration Debug \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO DEVELOPMENT_TEAM="" \
+          | tee build.log
+
+      - name: Zip the built app
+        working-directory: Watchsmash
+        run: |
+          set -euo pipefail
+          APP=$(find build/Build/Products -name 'Watchsmash.app' -type d | head -1)
+          ditto -c -k --keepParent "${APP}" Watchsmash-simulator.zip
+
+      - name: Upload simulator app build
+        uses: actions/upload-artifact@v4
+        with:
+          name: watchsmash-simulator-app
+          path: Watchsmash/Watchsmash-simulator.zip
+
+      - name: Boot a watch simulator
+        id: sim
+        run: |
+          set -euo pipefail
+          UDID=$(xcrun simctl list devices available \
+            | grep "Apple Watch" \
+            | grep -oE '[0-9A-Fa-f]{8}-[0-9A-Fa-f-]{27}' \
+            | head -1)
+          echo "Booting ${UDID}"
+          echo "udid=${UDID}" >> "${GITHUB_OUTPUT}"
+          xcrun simctl bootstatus "${UDID}" -b
+
+      - name: Install and launch in attract/demo mode
+        working-directory: Watchsmash
+        run: |
+          set -euo pipefail
+          APP=$(find build/Build/Products -name 'Watchsmash.app' -type d | head -1)
+          echo "Installing ${APP}"
+          xcrun simctl install "${{ steps.sim.outputs.udid }}" "${APP}"
+          SIMCTL_CHILD_WATCHSMASH_DEMO=1 \
+          SIMCTL_CHILD_WATCHSMASH_DEMO_CUTSCENES=1 \
+            xcrun simctl launch "${{ steps.sim.outputs.udid }}" com.alphaeliteholdings.watchfighter
+
+      - name: Capture screenshots of the self-playing game
+        run: |
+          set -euo pipefail
+          mkdir -p screenshots
+          # Capture across ~70s so the reel passes through the intro cutscene,
+          # the first fights, and a between-floor story beat.
+          for i in $(seq -w 1 20); do
+            sleep 3.5
+            xcrun simctl io "${{ steps.sim.outputs.udid }}" screenshot "screenshots/frame-${i}.png" || true
+          done
+          ls -la screenshots
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: watchsmash-demo-screenshots
+          path: screenshots/

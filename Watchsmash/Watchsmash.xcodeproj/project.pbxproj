@@ -1,0 +1,491 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0293AB2BBC83A6717615E93F /* finish.aiff in Resources */ = {isa = PBXBuildFile; fileRef = E61D70098C8CF9111299F861 /* finish.aiff */; };
+		0527B076DD0C326946F41833 /* titan.aiff in Resources */ = {isa = PBXBuildFile; fileRef = 78FBE9BD6947615721DAA6E6 /* titan.aiff */; };
+		267A758DA4A395958F693759 /* ko.aiff in Resources */ = {isa = PBXBuildFile; fileRef = 408E0FBC86FFDAC20170CBB6 /* ko.aiff */; };
+		542AA00DA1C4918741A5966B /* fight.aiff in Resources */ = {isa = PBXBuildFile; fileRef = 70C76F1029A3DCD4FF3A179A /* fight.aiff */; };
+		5D0C0B3D327375F8E7B82AE5 /* WatchsmashApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4B4BCEA3DD1D10FB2337FA3 /* WatchsmashApp.swift */; };
+		73B15B7E212196FBBEC0F307 /* WatchsmashCanvas.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0A0FBE11CFC6EE6B0C7C438 /* WatchsmashCanvas.swift */; };
+		802F4C76709526A1BF742503 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F9270812C53D256844FC95A2 /* PrivacyInfo.xcprivacy */; };
+		8947DF4728D1DFB9BA651899 /* GameModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E38456E989C77F8BB7432002 /* GameModels.swift */; };
+		93F4DFB52320344BD66291A0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D6DD99E63697D3E878C4FB94 /* Assets.xcassets */; };
+		A3DF0A860E592F13FBA8231C /* WatchsmashEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0438C4BD99040DFA0D82D6A3 /* WatchsmashEngine.swift */; };
+		B64C101DB740C3230C2675E4 /* GameScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85D23549AF431EC3C26A8F57 /* GameScreen.swift */; };
+		D4B758BFB4993410242D9577 /* million.aiff in Resources */ = {isa = PBXBuildFile; fileRef = E121CFE68079B07270C30F3B /* million.aiff */; };
+		E721A111B61AEC713376D429 /* WatchsmashTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AC15B132392E61BAB9F5A4C /* WatchsmashTheme.swift */; };
+		F95DA83F3769B700C8CF1B2F /* WatchsmashEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76F6D21CBE8A7383B6B55724 /* WatchsmashEngineTests.swift */; };
+		FA7A9F5F506ACC635041FD7E /* combo.aiff in Resources */ = {isa = PBXBuildFile; fileRef = 61D75D7216D9CC6FCA19B7C9 /* combo.aiff */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		1708CF02EDAF8E2B31CAE8CC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 31379262B43BC64DBE6F9969 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 0260D764CC7063960B26D34C;
+			remoteInfo = Watchsmash;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		0438C4BD99040DFA0D82D6A3 /* WatchsmashEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchsmashEngine.swift; sourceTree = "<group>"; };
+		1AC15B132392E61BAB9F5A4C /* WatchsmashTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchsmashTheme.swift; sourceTree = "<group>"; };
+		408E0FBC86FFDAC20170CBB6 /* ko.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = ko.aiff; sourceTree = "<group>"; };
+		61D75D7216D9CC6FCA19B7C9 /* combo.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = combo.aiff; sourceTree = "<group>"; };
+		70C76F1029A3DCD4FF3A179A /* fight.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = fight.aiff; sourceTree = "<group>"; };
+		76F6D21CBE8A7383B6B55724 /* WatchsmashEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchsmashEngineTests.swift; sourceTree = "<group>"; };
+		78FBE9BD6947615721DAA6E6 /* titan.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = titan.aiff; sourceTree = "<group>"; };
+		80F0793607A0DCB730BF7296 /* Watchsmash.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Watchsmash.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		85D23549AF431EC3C26A8F57 /* GameScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameScreen.swift; sourceTree = "<group>"; };
+		A4B4BCEA3DD1D10FB2337FA3 /* WatchsmashApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchsmashApp.swift; sourceTree = "<group>"; };
+		B0A0FBE11CFC6EE6B0C7C438 /* WatchsmashCanvas.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchsmashCanvas.swift; sourceTree = "<group>"; };
+		D6DD99E63697D3E878C4FB94 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		E121CFE68079B07270C30F3B /* million.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = million.aiff; sourceTree = "<group>"; };
+		E38456E989C77F8BB7432002 /* GameModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameModels.swift; sourceTree = "<group>"; };
+		E61D70098C8CF9111299F861 /* finish.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = finish.aiff; sourceTree = "<group>"; };
+		F5107B97C43C28296B53879E /* WatchsmashTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WatchsmashTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F9270812C53D256844FC95A2 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		44123FD683EFAEDC8CBD801F /* WatchsmashTests */ = {
+			isa = PBXGroup;
+			children = (
+				76F6D21CBE8A7383B6B55724 /* WatchsmashEngineTests.swift */,
+			);
+			path = WatchsmashTests;
+			sourceTree = "<group>";
+		};
+		451F643BEABDC6F33362A1E4 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				80F0793607A0DCB730BF7296 /* Watchsmash.app */,
+				F5107B97C43C28296B53879E /* WatchsmashTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		8626BA9B5D5A4C4CF335429A /* Watchsmash */ = {
+			isa = PBXGroup;
+			children = (
+				EA2399151578221E84C1F799 /* Game */,
+				E197E8B11EE16324236621B7 /* Resources */,
+				D926A3FDFF2C73CBDE0C890B /* Theme */,
+				A4B4BCEA3DD1D10FB2337FA3 /* WatchsmashApp.swift */,
+			);
+			path = Watchsmash;
+			sourceTree = "<group>";
+		};
+		90B334320036862FEF8B1FD4 /* Voice */ = {
+			isa = PBXGroup;
+			children = (
+				61D75D7216D9CC6FCA19B7C9 /* combo.aiff */,
+				70C76F1029A3DCD4FF3A179A /* fight.aiff */,
+				E61D70098C8CF9111299F861 /* finish.aiff */,
+				408E0FBC86FFDAC20170CBB6 /* ko.aiff */,
+				E121CFE68079B07270C30F3B /* million.aiff */,
+				78FBE9BD6947615721DAA6E6 /* titan.aiff */,
+			);
+			path = Voice;
+			sourceTree = "<group>";
+		};
+		D926A3FDFF2C73CBDE0C890B /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				1AC15B132392E61BAB9F5A4C /* WatchsmashTheme.swift */,
+			);
+			path = Theme;
+			sourceTree = "<group>";
+		};
+		E197E8B11EE16324236621B7 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				90B334320036862FEF8B1FD4 /* Voice */,
+				D6DD99E63697D3E878C4FB94 /* Assets.xcassets */,
+				F9270812C53D256844FC95A2 /* PrivacyInfo.xcprivacy */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		EA2399151578221E84C1F799 /* Game */ = {
+			isa = PBXGroup;
+			children = (
+				E38456E989C77F8BB7432002 /* GameModels.swift */,
+				85D23549AF431EC3C26A8F57 /* GameScreen.swift */,
+				B0A0FBE11CFC6EE6B0C7C438 /* WatchsmashCanvas.swift */,
+				0438C4BD99040DFA0D82D6A3 /* WatchsmashEngine.swift */,
+			);
+			path = Game;
+			sourceTree = "<group>";
+		};
+		F30F79DF7FB17A2F3AE6FCDB = {
+			isa = PBXGroup;
+			children = (
+				8626BA9B5D5A4C4CF335429A /* Watchsmash */,
+				44123FD683EFAEDC8CBD801F /* WatchsmashTests */,
+				451F643BEABDC6F33362A1E4 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		0260D764CC7063960B26D34C /* Watchsmash */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6AF5E0CC2B373E588E72FEDF /* Build configuration list for PBXNativeTarget "Watchsmash" */;
+			buildPhases = (
+				A8DE40F0E3F893E89CDE87A1 /* Sources */,
+				7877AA207282E5A3BE096AD4 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Watchsmash;
+			packageProductDependencies = (
+			);
+			productName = Watchsmash;
+			productReference = 80F0793607A0DCB730BF7296 /* Watchsmash.app */;
+			productType = "com.apple.product-type.application";
+		};
+		0F68FB7ED691793C8587A562 /* WatchsmashTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CA587DD2A3F26094963E30DC /* Build configuration list for PBXNativeTarget "WatchsmashTests" */;
+			buildPhases = (
+				29D6BCC8E4A5802E63E78FE2 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				BA5EDC5070E0D9CB6B7413E4 /* PBXTargetDependency */,
+			);
+			name = WatchsmashTests;
+			packageProductDependencies = (
+			);
+			productName = WatchsmashTests;
+			productReference = F5107B97C43C28296B53879E /* WatchsmashTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		31379262B43BC64DBE6F9969 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					0260D764CC7063960B26D34C = {
+						DevelopmentTeam = UDM4W27W9V;
+					};
+				};
+			};
+			buildConfigurationList = FE2EA4D0B16E4EE4FE47F8CE /* Build configuration list for PBXProject "Watchsmash" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = F30F79DF7FB17A2F3AE6FCDB;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 451F643BEABDC6F33362A1E4 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				0260D764CC7063960B26D34C /* Watchsmash */,
+				0F68FB7ED691793C8587A562 /* WatchsmashTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		7877AA207282E5A3BE096AD4 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				93F4DFB52320344BD66291A0 /* Assets.xcassets in Resources */,
+				802F4C76709526A1BF742503 /* PrivacyInfo.xcprivacy in Resources */,
+				FA7A9F5F506ACC635041FD7E /* combo.aiff in Resources */,
+				542AA00DA1C4918741A5966B /* fight.aiff in Resources */,
+				0293AB2BBC83A6717615E93F /* finish.aiff in Resources */,
+				267A758DA4A395958F693759 /* ko.aiff in Resources */,
+				D4B758BFB4993410242D9577 /* million.aiff in Resources */,
+				0527B076DD0C326946F41833 /* titan.aiff in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		29D6BCC8E4A5802E63E78FE2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F95DA83F3769B700C8CF1B2F /* WatchsmashEngineTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A8DE40F0E3F893E89CDE87A1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8947DF4728D1DFB9BA651899 /* GameModels.swift in Sources */,
+				B64C101DB740C3230C2675E4 /* GameScreen.swift in Sources */,
+				5D0C0B3D327375F8E7B82AE5 /* WatchsmashApp.swift in Sources */,
+				73B15B7E212196FBBEC0F307 /* WatchsmashCanvas.swift in Sources */,
+				A3DF0A860E592F13FBA8231C /* WatchsmashEngine.swift in Sources */,
+				E721A111B61AEC713376D429 /* WatchsmashTheme.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		BA5EDC5070E0D9CB6B7413E4 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 0260D764CC7063960B26D34C /* Watchsmash */;
+			targetProxy = 1708CF02EDAF8E2B31CAE8CC /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		0913135376EC759E21F3590F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		294623593ECA9ADE485F4F3B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.alphaeliteholdings.watchfighter.tests;
+				PRODUCT_MODULE_NAME = WatchsmashTests;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Watchsmash.app/Watchsmash";
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		346AC6E14B3BAC0387913B90 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+		3ABDBCF3CD938219F713DF33 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.alphaeliteholdings.watchfighter.tests;
+				PRODUCT_MODULE_NAME = WatchsmashTests;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Watchsmash.app/Watchsmash";
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+		C8C06D1E80FDE798C9B645AB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				DEVELOPMENT_TEAM = UDM4W27W9V;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Watchsmash;
+				INFOPLIST_KEY_WKApplication = YES;
+				INFOPLIST_KEY_WKWatchOnly = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.alphaeliteholdings.watchfighter;
+				PRODUCT_MODULE_NAME = Watchsmash;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+		D21AEECF40DECD786F6CF637 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				DEVELOPMENT_TEAM = UDM4W27W9V;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Watchsmash;
+				INFOPLIST_KEY_WKApplication = YES;
+				INFOPLIST_KEY_WKWatchOnly = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.alphaeliteholdings.watchfighter;
+				PRODUCT_MODULE_NAME = Watchsmash;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		6AF5E0CC2B373E588E72FEDF /* Build configuration list for PBXNativeTarget "Watchsmash" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D21AEECF40DECD786F6CF637 /* Debug */,
+				C8C06D1E80FDE798C9B645AB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		CA587DD2A3F26094963E30DC /* Build configuration list for PBXNativeTarget "WatchsmashTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				294623593ECA9ADE485F4F3B /* Debug */,
+				3ABDBCF3CD938219F713DF33 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		FE2EA4D0B16E4EE4FE47F8CE /* Build configuration list for PBXProject "Watchsmash" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0913135376EC759E21F3590F /* Debug */,
+				346AC6E14B3BAC0387913B90 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 31379262B43BC64DBE6F9969 /* Project object */;
+}
