@@ -2,7 +2,7 @@ import StoreKit
 
 @MainActor
 final class PurchaseManager: ObservableObject {
-    static let fullRosterProductID = "com.valasek.watchsmash.fullroster"
+    static let fullRosterProductID = "com.alphaeliteholdings.watchfighter.fullroster"
 
     @Published private(set) var fullRosterProduct: Product?
     @Published private(set) var ownsFullRoster = false

@@ -48,5 +48,5 @@ external runtime dependencies.
 For visual smoke checks without touch input, launch with:
 
 ```sh
-SIMCTL_CHILD_WATCHSMASH_DEMO=1 xcrun simctl launch --terminate-running-process <watch-udid> com.valasek.watchsmash
+SIMCTL_CHILD_WATCHSMASH_DEMO=1 xcrun simctl launch --terminate-running-process <watch-udid> com.alphaeliteholdings.watchfighter
 ```

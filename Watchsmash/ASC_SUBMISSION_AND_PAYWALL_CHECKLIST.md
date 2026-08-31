@@ -1,7 +1,8 @@
 # Watch Smash — App Store Connect Submission Checklist
 
-Grounded in the actual state of this repo as of `31bfd1a`. ✅ = verified in the
-codebase. Everything unchecked is ordered by what actually blocks a release.
+Grounded in the actual state of this repo and ASC as of build 4. ✅ = verified
+in the codebase or ASC. Everything unchecked is ordered by what actually blocks
+a release.
 
 **Nothing below can be done from CI.** Every remaining item needs either a Mac
 with Xcode or the App Store Connect web UI. CI produces a *simulator-only*
@@ -13,54 +14,60 @@ unsigned build and cannot sign, archive, or upload.
 
 | Item | Where |
 |---|---|
-| ✅ Bundle ID `com.valasek.watchsmash` | `project.yml` |
-| ✅ Version 1.0, build 1, apple-generic versioning | `project.yml` |
+| ✅ Bundle ID `com.alphaeliteholdings.watchfighter` | `project.yml` |
+| ✅ Version 1.0, build 4, apple-generic versioning | `project.yml` |
 | ✅ Export-compliance key (`ITSAppUsesNonExemptEncryption: NO`) | `project.yml` |
 | ✅ Privacy manifest — no tracking, no collection, UserDefaults reason CA92.1 | `Resources/PrivacyInfo.xcprivacy` |
 | ✅ App icon set, display name "Watch Smash" | `Assets.xcassets/AppIcon.appiconset` |
 | ✅ Store copy drafted | `STORE_LISTING.md` |
 | ✅ StoreKit 2 paywall, fully implemented | `Purchases/PurchaseManager.swift` |
-| ✅ IAP product ID `com.valasek.watchsmash.fullroster` | `PurchaseManager.fullRosterProductID` |
+| ✅ IAP product ID `com.alphaeliteholdings.watchfighter.fullroster` | `PurchaseManager.fullRosterProductID` |
 | ✅ Local StoreKit config wired to the Run scheme | `Watchsmash.storekit`, `project.yml` |
 | ✅ Restore Purchases button | `GameScreen.versusSelectOverlay` |
 | ✅ `Transaction.updates` listener (Ask to Buy) | `PurchaseManager.listenForUpdates()` |
 | ✅ VoiceOver labels, Reduce Motion, Always On Display | `GameScreen`, `WatchsmashCanvas` |
 | ✅ CI green: build + 62 unit tests + copy audit | `.github/workflows/watchsmash.yml` |
 
+## What's already done in ASC
+
+| Item | Status |
+|---|---|
+| ✅ Developer enrollment (Alpha Elite Holdings) | Active |
+| ✅ App record created | `com.alphaeliteholdings.watchfighter` |
+| ✅ IAP product created | `com.alphaeliteholdings.watchfighter.fullroster` (Non-Consumable) |
+| ✅ Builds 1–3 uploaded | v1.0 builds 1, 2, 3 processed |
+
 ---
 
 ## 1. Apple Developer Program
-- [ ] Enrolled ($99/yr) — required before anything else.
-- [ ] Team ID in `project.yml` (`UDM4W27W9V`) matches the enrolled team.
+- [x] Enrolled — Alpha Elite Holdings team active.
+- [x] Team ID in `project.yml` (`UDM4W27W9V`) matches the enrolled team.
 
 ## 2. Create the App Store Connect record
-- [ ] My Apps → **+** → New App, bundle ID `com.valasek.watchsmash`.
-- [ ] Platform: **watchOS**. Category: Games → Action.
-- [ ] SKU (internal, never shown to users) — e.g. `watchsmash001`.
+- [x] App record exists, bundle ID `com.alphaeliteholdings.watchfighter`.
+- [x] Platform: **watchOS**. Category: Games → Action.
+- [x] SKU assigned.
 
-## 3. Create the IAP product — do this BEFORE the first upload
-The code already references this exact product ID. It must exist in ASC or the
-paywall silently shows nothing (`fullRosterProduct` stays `nil`).
+## 3. IAP product
+The code references `com.alphaeliteholdings.watchfighter.fullroster` — this
+product already exists in ASC.
 
-- [ ] Features → In-App Purchases → **+** → **Non-Consumable**.
-- [ ] Product ID **exactly** `com.valasek.watchsmash.fullroster` — a typo here
-      is unrecoverable; IDs can never be reused once created.
-- [ ] Reference name: `Full Roster`. Display name + description (see
-      `Watchsmash.storekit` for the copy already written).
-- [ ] Price tier — the local config is set to **$2.99**; match it or update the
-      `.storekit` file so local testing mirrors production.
-- [ ] Upload the required IAP review screenshot (the VS screen showing
-      "UNLOCK ALL $2.99" and "RESTORE").
+- [x] Non-Consumable IAP created with product ID
+      `com.alphaeliteholdings.watchfighter.fullroster`.
+- [x] Reference name: `Full Roster`. Display name + description set.
+- [x] Price tier set to **$2.99**.
+- [ ] **Upload the required IAP review screenshot** (the VS screen showing
+      "UNLOCK ALL $2.99" and "RESTORE"). ⚠️ Still missing in ASC.
 - [ ] IAP review notes — see the wording in §9 below.
 
-## 4. Signing & archive
+## 4. Signing & archive — build 4
 - [ ] Generate the project: `cd Watchsmash && xcodegen generate`
 - [ ] Open `Watchsmash.xcodeproj`, Signing & Capabilities → your team,
       automatic signing, **Release** config.
 - [ ] Product → Archive (destination: **Any watchOS Device**, not a simulator).
 - [ ] Organizer → Distribute App → App Store Connect → Upload.
 - [ ] Bump `CURRENT_PROJECT_VERSION` in `project.yml` for **every** subsequent
-      upload — ASC rejects duplicate build numbers.
+      upload — ASC rejects duplicate build numbers. Current: **4**.
 
 ## 5. On-device play-test (nothing below matters until this is clean)
 Run from Xcode on a real watch, not the simulator.
@@ -84,13 +91,17 @@ Never tested on hardware (new, and only unit-tested underneath):
       suppressed; the game is still playable.
 - [ ] Audio: a phone call or Siri interrupts → music resumes afterward.
 
+**IAP screenshot capture**: the UNLOCK ALL / RESTORE overlay only renders when
+StoreKit returns a real product (`purchases.fullRosterProduct != nil` gate). Run
+via the Xcode scheme (which injects `Watchsmash.storekit`) to see it — `simctl`
+launches without the StoreKit config and the overlay won't appear.
+
 ## 6. Store listing
 - [ ] Paste name / subtitle / promo / description / keywords from
       `STORE_LISTING.md`.
-- [ ] **Support URL** — still a placeholder in `STORE_LISTING.md`. Apple
-      requires a real, reachable page. A public GitHub repo or a one-page site
-      is enough.
-- [ ] Copyright line (e.g. "© 2026 <your name or entity>").
+- [ ] **Support URL** — candidate: your GitHub Pages site at
+      `mvalasek77-droid.github.io`. Apple requires a real, reachable page.
+- [ ] Copyright line (e.g. "© 2026 Alpha Elite Holdings").
 
 ## 7. Screenshots
 - [ ] Capture on each Apple Watch size ASC currently requires (check the list
@@ -135,7 +146,8 @@ splash, and a vampire transformation.
 
 ## 10. Submit
 - [ ] TestFlight internal build first; play it on your own watch through
-      TestFlight, not just via Xcode.
+      TestFlight, not just via Xcode. Add `mv19770601@gmail.com` as an internal
+      tester.
 - [ ] Submit the app build **and** the IAP together — a new IAP is reviewed
       alongside the first version that references it, never on its own.
 - [ ] Budget extra time for v1.0: a gore-heavy fighting game usually draws a
@@ -151,3 +163,8 @@ splash, and a vampire transformation.
 - **Paywall verified by compilation and unit tests only.** No purchase has
   actually been made against the `.storekit` config or the sandbox yet — this
   is the single highest-risk untested path, which is why it's in §5.
+- **Display name vs bundle ID**: the app displays as "Watch Smash" but the
+  bundle ID is `com.alphaeliteholdings.watchfighter` (the ASC-registered
+  identifier from the original name). Bundle IDs cannot be changed after
+  creation; the display name in ASC and the `CFBundleDisplayName` control what
+  users see.

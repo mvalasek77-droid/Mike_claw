@@ -331,7 +331,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.valasek.watchsmash.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.alphaeliteholdings.watchfighter.tests;
 				PRODUCT_MODULE_NAME = WatchsmashTests;
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -407,7 +407,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.valasek.watchsmash.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.alphaeliteholdings.watchfighter.tests;
 				PRODUCT_MODULE_NAME = WatchsmashTests;
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -427,7 +427,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Watchsmash;
 				INFOPLIST_KEY_WKApplication = YES;
 				INFOPLIST_KEY_WKWatchOnly = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.valasek.watchsmash;
+				PRODUCT_BUNDLE_IDENTIFIER = com.alphaeliteholdings.watchfighter;
 				PRODUCT_MODULE_NAME = Watchsmash;
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -446,7 +446,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Watchsmash;
 				INFOPLIST_KEY_WKApplication = YES;
 				INFOPLIST_KEY_WKWatchOnly = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.valasek.watchsmash;
+				PRODUCT_BUNDLE_IDENTIFIER = com.alphaeliteholdings.watchfighter;
 				PRODUCT_MODULE_NAME = Watchsmash;
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;

@@ -159,7 +159,7 @@ jobs:
           xcrun simctl install "${{ steps.sim.outputs.udid }}" "${APP}"
           SIMCTL_CHILD_WATCHSMASH_DEMO=1 \
           SIMCTL_CHILD_WATCHSMASH_DEMO_CUTSCENES=1 \
-            xcrun simctl launch "${{ steps.sim.outputs.udid }}" com.valasek.watchsmash
+            xcrun simctl launch "${{ steps.sim.outputs.udid }}" com.alphaeliteholdings.watchfighter
 
       - name: Capture screenshots of the self-playing game
         run: |
