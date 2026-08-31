@@ -1,6 +1,6 @@
 # Watch Smash — App Store Connect Submission Checklist
 
-Grounded in the actual state of this repo as of `30258a0`. ✅ = verified in the
+Grounded in the actual state of this repo as of `31bfd1a`. ✅ = verified in the
 codebase. Everything unchecked is ordered by what actually blocks a release.
 
 **Nothing below can be done from CI.** Every remaining item needs either a Mac
