@@ -30,6 +30,8 @@ TICKERS = {
     "WTI":  {"symbol": "CL=F"},
     "RGTI": {"symbol": "RGTI"},
     "QBTX": {"symbol": "QBTX"},
+    "SPCH": {"symbol": "SPCH"},   # SpaceX proxy (migrated from SPCX watchlist)
+    "SKHY": {"symbol": "SKHY"},   # Space/hype ETF watchlist
 }
 
 ET = timezone('US/Eastern')
