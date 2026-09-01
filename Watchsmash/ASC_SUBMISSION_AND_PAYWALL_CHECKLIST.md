@@ -38,6 +38,7 @@ unsigned build and cannot sign, archive, or upload.
 | ✅ IAP product created | `com.alphaeliteholdings.watchfighter.fullroster` (Non-Consumable) |
 | ✅ Builds 1–3 uploaded | v1.0 builds 1, 2, 3 processed |
 | ✅ Build 4 uploaded and processed | `VALID`, App Store eligible, no export-compliance issue |
+| ✅ Build 5 uploaded and processed | `VALID`, App Store eligible; two-fighter face-off icon; available to internal `Mike` group |
 
 ---
 
@@ -62,15 +63,15 @@ product already exists in ASC.
       "UNLOCK ALL $2.99" and "RESTORE"). ⚠️ Still missing in ASC.
 - [ ] IAP review notes — see the wording in §9 below.
 
-## 4. Signing & archive — build 4
+## 4. Signing & archive — build 5
 - [x] Generate the project: `cd Watchsmash && xcodegen generate`
 - [x] Signing & Capabilities → Alpha Elite Holdings team,
       automatic signing, **Release** config.
 - [x] Product → Archive (destination: **Any watchOS Device**, not a simulator).
-- [x] Distribute App → App Store Connect → Upload. Build 4 uploaded on
-      2026-08-31 and processed as `VALID` / `APP_STORE_ELIGIBLE`.
+- [x] Distribute App → App Store Connect → Upload. Build 5 uploaded on
+      2026-09-01 and processed as `VALID` / `APP_STORE_ELIGIBLE`.
 - [ ] Bump `CURRENT_PROJECT_VERSION` in `project.yml` for **every** subsequent
-      upload — ASC rejects duplicate build numbers. Current: **4**.
+      upload — ASC rejects duplicate build numbers. Current: **5**.
 
 ## 5. On-device play-test (nothing below matters until this is clean)
 Run from Xcode on a real watch, not the simulator.
