@@ -10,14 +10,28 @@
          <BuildActionEntry
             buildForTesting = "YES"
             buildForRunning = "YES"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "2738D6C9DE62ECDCB710B4D1"
+               BuildableName = "Watchsmash.app"
+               BlueprintName = "Watchsmash"
+               ReferencedContainer = "container:Watchsmash.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
             buildForProfiling = "YES"
             buildForArchiving = "YES"
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "0260D764CC7063960B26D34C"
-               BuildableName = "Watchsmash.app"
-               BlueprintName = "Watchsmash"
+               BlueprintIdentifier = "6C9F38C06843C967B22CA15D"
+               BuildableName = "WatchsmashContainer.app"
+               BlueprintName = "WatchsmashContainer"
                ReferencedContainer = "container:Watchsmash.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -29,7 +43,7 @@
             buildForAnalyzing = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "0F68FB7ED691793C8587A562"
+               BlueprintIdentifier = "E81557DA1FDE8EE51DDB0E24"
                BuildableName = "WatchsmashTests.xctest"
                BlueprintName = "WatchsmashTests"
                ReferencedContainer = "container:Watchsmash.xcodeproj">
@@ -46,7 +60,7 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "0260D764CC7063960B26D34C"
+            BlueprintIdentifier = "2738D6C9DE62ECDCB710B4D1"
             BuildableName = "Watchsmash.app"
             BlueprintName = "Watchsmash"
             ReferencedContainer = "container:Watchsmash.xcodeproj">
@@ -58,7 +72,7 @@
             parallelizable = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "0F68FB7ED691793C8587A562"
+               BlueprintIdentifier = "E81557DA1FDE8EE51DDB0E24"
                BuildableName = "WatchsmashTests.xctest"
                BlueprintName = "WatchsmashTests"
                ReferencedContainer = "container:Watchsmash.xcodeproj">
@@ -82,7 +96,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "0260D764CC7063960B26D34C"
+            BlueprintIdentifier = "2738D6C9DE62ECDCB710B4D1"
             BuildableName = "Watchsmash.app"
             BlueprintName = "Watchsmash"
             ReferencedContainer = "container:Watchsmash.xcodeproj">
@@ -90,6 +104,9 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
       </CommandLineArguments>
+      <StoreKitConfigurationFileReference
+         identifier = "../../Watchsmash.storekit">
+      </StoreKitConfigurationFileReference>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
@@ -101,7 +118,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "0260D764CC7063960B26D34C"
+            BlueprintIdentifier = "2738D6C9DE62ECDCB710B4D1"
             BuildableName = "Watchsmash.app"
             BlueprintName = "Watchsmash"
             ReferencedContainer = "container:Watchsmash.xcodeproj">

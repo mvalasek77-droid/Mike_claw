@@ -6,13 +6,39 @@ options:
     watchOS: "10.0"
   createIntermediateGroups: true
   groupSortPosition: top
+  # XcodeGen 2.x incorrectly adds an empty Sources phase to the watch-only
+  # iOS stub. Xcode 26 then tries to link a second stub executable. The phase
+  # identifier is deterministic for this project; remove only its list entry.
+  postGenCommand: >-
+    sed -i '' '/^[[:space:]]*DFBCA440E1B33991824E59B4 \/\* Sources \*\/,$/d' Watchsmash.xcodeproj/project.pbxproj
 
 settings:
   base:
     SWIFT_VERSION: "5.0"
 
 targets:
+  WatchsmashContainer:
+    # Apple distributes a watch-only app inside a minimal iOS stub. The ASC
+    # bundle ID belongs to this container; the actual watch app is embedded.
+    type: application.watchapp2-container
+    platform: iOS
+    deploymentTarget: "17.0"
+    dependencies:
+      - target: Watchsmash
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.alphaeliteholdings.watchfighter
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "4"
+        VERSIONING_SYSTEM: apple-generic
+        DEVELOPMENT_TEAM: "UDM4W27W9V"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Watch Smash
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+
   Watchsmash:
+    # Modern SwiftUI watch apps use the standard application product type;
+    # the watchapp2 type is the legacy extension-based packaging model.
     type: application
     platform: watchOS
     deploymentTarget: "10.0"
@@ -20,12 +46,13 @@ targets:
       - path: Watchsmash
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.alphaeliteholdings.watchfighter
+        PRODUCT_BUNDLE_IDENTIFIER: com.alphaeliteholdings.watchfighter.watchkitapp
         PRODUCT_MODULE_NAME: Watchsmash
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "4"
         VERSIONING_SYSTEM: apple-generic
         DEVELOPMENT_TEAM: "UDM4W27W9V"
+        SKIP_INSTALL: YES
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Watch Smash
         INFOPLIST_KEY_WKApplication: YES
@@ -52,7 +79,8 @@ schemes:
   Watchsmash:
     build:
       targets:
-        Watchsmash: all
+        WatchsmashContainer: all
+        Watchsmash: [run, test]
         WatchsmashTests: [test]
     run:
       config: Debug
