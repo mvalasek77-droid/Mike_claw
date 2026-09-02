@@ -1,6 +1,19 @@
 # BoxCall
 
-Social prediction app for opening-weekend box office. Users trade play-money **Call / Put contracts** on upcoming movies, and their calls become **posts in a public feed** where the community likes, comments, and follows the sharpest analysts.
+Social prediction app for opening-weekend box office.
+
+## The first 10 seconds
+
+Open the app and you're standing under a marquee:
+
+- **A scrolling LED ticker** across the top streams live at-the-money CALL and PUT marks for every film now showing, framed by two rows of flickering theater bulbs.
+- **Opening Night hero** — the next film to open gets a full-bleed card with its poster, director, implied opening, and a ticking `DAYS : HRS : MIN : SEC` countdown.
+- **Weekend Recap** — the Monday after your positions settle, a velvet-red card summarizes wins, losses, net, and your biggest swing. If you came out ahead, confetti.
+- **Real films.** Ten actual announced titles with real studios, release dates, directors, cast, and synopses: *Avatar: Fire and Ash*, *Wicked: For Good*, *Zootopia 2*, *Avengers: Doomsday*, *The Super Mario Galaxy Movie*, *Project Hail Mary*, *Masters of the Universe*, *Toy Story 5*, *Ice Age: Boiling Point*, *Dune: Part Three*.
+- **Trailers in-app.** Every movie page plays the official trailer inline via a YouTube search-embed — no API key required.
+- **Real posters in 30 seconds.** Profile → *Turn on real posters* walks you through pasting a free TMDB key; the catalog re-fetches and every one-sheet blooms in. Key stays on-device.
+- **Haptics everywhere.** Medium tap on buy, rigid tap on close, a rising-into-thump Core Haptics celebration on big wins, error on losses, double-thump on badges.
+- **Streak fire.** A pulsing flame badge next to your handle when you've won consecutive weeks. Users trade play-money **Call / Put contracts** on upcoming movies, and their calls become **posts in a public feed** where the community likes, comments, and follows the sharpest analysts.
 
 No real money changes hands. Winning is measured in **status**: XP, tier progression, badges, followers, and season titles.
 

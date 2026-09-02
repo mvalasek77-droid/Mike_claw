@@ -6,28 +6,41 @@ struct MovieListView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    CoinBalanceRow(coins: portfolio.user.reelCoins)
-                    LowBalanceBanner()
-                        .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
-                        .listRowBackground(Color.clear)
-                }
-                Section {
-                    ForEach(market.movies) { movie in
-                        NavigationLink(value: movie) {
-                            MovieRow(movie: movie)
-                        }
+            VStack(spacing: 0) {
+                MarqueeTicker()
+                List {
+                    Section {
+                        WeekendRecap()
+                            .listRowInsets(EdgeInsets())
+                            .listRowBackground(Color.clear)
+                        OpeningNightHero()
+                            .listRowInsets(EdgeInsets())
+                            .listRowBackground(Color.clear)
                     }
-                } header: {
-                    catalogHeader
-                } footer: {
-                    catalogFooter
+                    Section {
+                        CoinBalanceRow(coins: portfolio.user.reelCoins)
+                        LowBalanceBanner()
+                            .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+                            .listRowBackground(Color.clear)
+                    }
+                    Section {
+                        ForEach(market.movies) { movie in
+                            NavigationLink(value: movie) {
+                                MovieRow(movie: movie)
+                            }
+                        }
+                    } header: {
+                        catalogHeader
+                    } footer: {
+                        catalogFooter
+                    }
                 }
+                .listStyle(.insetGrouped)
+                .scrollContentBackground(.hidden)
+                .background(Theme.stageBlack)
             }
-            .listStyle(.insetGrouped)
             .refreshable { await market.refreshCatalog() }
-            .navigationTitle("BoxCall")
+            .navigationTitle("Now Showing")
             .navigationDestination(for: Movie.self) { movie in
                 MovieDetailView(movie: movie)
             }
@@ -67,7 +80,7 @@ struct MovieListView: View {
                 .font(.caption2)
                 .foregroundStyle(.red)
         } else if Config.tmdbAPIKey.isEmpty {
-            Text("Showing built-in demo slate. Add a TMDB_API_KEY in Info.plist to pull live upcoming releases. Pull down to refresh.")
+            Text("Real slate, emoji posters. Turn on real posters from Profile → Learn the game in about 30 seconds.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         } else {

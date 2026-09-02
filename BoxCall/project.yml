@@ -25,6 +25,8 @@ targets:
       - sdk: WidgetKit.framework
       - sdk: ActivityKit.framework
       - sdk: WatchConnectivity.framework
+      - sdk: WebKit.framework
+      - sdk: CoreHaptics.framework
       - target: BoxCallWidget
       - target: BoxCallWatch
     settings:

@@ -44,61 +44,101 @@ final class MockMovieProvider: MovieDataProvider {
                   releaseDate: date("2025-12-19"), posterEmoji: "🔥",
                   tagline: "The war for Pandora burns on.",
                   consensusOpeningMillions: 145, impliedVolPct: 25,
-                  genre: "Sci-Fi", addedAt: addedAt),
+                  genre: "Sci-Fi", addedAt: addedAt,
+                  director: "James Cameron",
+                  cast: ["Sam Worthington", "Zoe Saldaña", "Sigourney Weaver", "Stephen Lang", "Oona Chaplin"],
+                  synopsis: "Jake Sully and Neytiri face a new threat: the Ash People, a fire-wielding Na'vi clan led by the ruthless Varang, as the war for Pandora escalates and the Sully family fractures under grief.",
+                  trailerQuery: "Avatar Fire and Ash official trailer"),
             .init(id: "m_zootopia2", title: "Zootopia 2",
                   studio: "Walt Disney Animation",
                   releaseDate: date("2025-11-26"), posterEmoji: "🐰",
                   tagline: "Judy and Nick are back on the case.",
                   consensusOpeningMillions: 60, impliedVolPct: 22,
-                  genre: "Animation", addedAt: addedAt),
+                  genre: "Animation", addedAt: addedAt,
+                  director: "Jared Bush, Byron Howard",
+                  cast: ["Ginnifer Goodwin", "Jason Bateman", "Ke Huy Quan", "Fortune Feimster"],
+                  synopsis: "Judy Hopps and Nick Wilde go undercover to track down a mysterious new arrival — a venomous pit viper named Gary De'Snake — whose appearance sends Zootopia into an uproar.",
+                  trailerQuery: "Zootopia 2 official trailer"),
             .init(id: "m_wicked2", title: "Wicked: For Good",
                   studio: "Universal",
                   releaseDate: date("2025-11-21"), posterEmoji: "💚",
                   tagline: "The story ends where the story began.",
                   consensusOpeningMillions: 95, impliedVolPct: 24,
-                  genre: "Musical", addedAt: addedAt),
+                  genre: "Musical", addedAt: addedAt,
+                  director: "Jon M. Chu",
+                  cast: ["Cynthia Erivo", "Ariana Grande", "Jonathan Bailey", "Michelle Yeoh", "Jeff Goldblum"],
+                  synopsis: "Now branded the Wicked Witch of the West, Elphaba lives in exile while Glinda becomes the public face of Oz. Then a girl from Kansas arrives, and the friendship that defined them is put to its final test.",
+                  trailerQuery: "Wicked For Good official trailer"),
             .init(id: "m_avengers_doomsday", title: "Avengers: Doomsday",
                   studio: "Marvel Studios",
                   releaseDate: date("2026-05-01"), posterEmoji: "⚡️",
                   tagline: "Doom always wins.",
                   consensusOpeningMillions: 180, impliedVolPct: 20,
-                  genre: "Superhero", addedAt: addedAt),
+                  genre: "Superhero", addedAt: addedAt,
+                  director: "Anthony & Joe Russo",
+                  cast: ["Robert Downey Jr.", "Chris Hemsworth", "Anthony Mackie", "Pedro Pascal", "Patrick Stewart", "Ian McKellen"],
+                  synopsis: "Robert Downey Jr. returns to the MCU as Doctor Doom. The Avengers, the Fantastic Four, and the X-Men are forced together against a villain who claims he is the only one who can save the multiverse.",
+                  trailerQuery: "Avengers Doomsday official trailer"),
             .init(id: "m_toystory5", title: "Toy Story 5",
                   studio: "Pixar",
                   releaseDate: date("2026-06-19"), posterEmoji: "🤠",
                   tagline: "The gang plays on.",
                   consensusOpeningMillions: 105, impliedVolPct: 22,
-                  genre: "Animation", addedAt: addedAt),
+                  genre: "Animation", addedAt: addedAt,
+                  director: "Andrew Stanton",
+                  cast: ["Tom Hanks", "Tim Allen", "Joan Cusack", "Tony Hale"],
+                  synopsis: "Woody, Buzz, and the gang face their most modern rival yet: Lilypad, a frog-shaped tablet that has captured Bonnie's attention. In a world of screens, what's a toy for?",
+                  trailerQuery: "Toy Story 5 official trailer"),
             .init(id: "m_iceage6", title: "Ice Age: Boiling Point",
                   studio: "20th Century / Disney",
                   releaseDate: date("2026-07-24"), posterEmoji: "🦣",
                   tagline: "Sid, Manny and Diego face a hotter world.",
                   consensusOpeningMillions: 42, impliedVolPct: 28,
-                  genre: "Animation", addedAt: addedAt),
+                  genre: "Animation", addedAt: addedAt,
+                  director: "20th Century Animation",
+                  cast: ["Ray Romano", "John Leguizamo", "Denis Leary", "Queen Latifah", "Simon Pegg"],
+                  synopsis: "The herd is back — and the Ice Age is thawing. Manny, Sid, and Diego navigate a world getting hotter by the minute in the sixth theatrical outing.",
+                  trailerQuery: "Ice Age Boiling Point official trailer"),
             .init(id: "m_masters_universe", title: "Masters of the Universe",
                   studio: "Amazon MGM",
                   releaseDate: date("2026-06-05"), posterEmoji: "⚔️",
                   tagline: "Eternia rises.",
                   consensusOpeningMillions: 34, impliedVolPct: 40,
-                  genre: "Action", addedAt: addedAt),
+                  genre: "Action", addedAt: addedAt,
+                  director: "Travis Knight",
+                  cast: ["Nicholas Galitzine", "Camila Mendes", "Jared Leto", "Alison Brie", "Idris Elba"],
+                  synopsis: "Prince Adam of Eternia, separated from his home and his Power Sword, must reclaim his destiny as He-Man to stop Skeletor from unleashing the secrets of Castle Grayskull.",
+                  trailerQuery: "Masters of the Universe 2026 official trailer"),
             .init(id: "m_super_mario_gala", title: "The Super Mario Galaxy Movie",
                   studio: "Illumination / Nintendo",
                   releaseDate: date("2026-04-03"), posterEmoji: "🍄",
                   tagline: "Mama mia, again.",
                   consensusOpeningMillions: 128, impliedVolPct: 22,
-                  genre: "Animation", addedAt: addedAt),
+                  genre: "Animation", addedAt: addedAt,
+                  director: "Aaron Horvath, Michael Jelenic",
+                  cast: ["Chris Pratt", "Anya Taylor-Joy", "Charlie Day", "Jack Black", "Keegan-Michael Key"],
+                  synopsis: "Mario, Luigi, and Peach leave the Mushroom Kingdom behind for the stars, with Bowser in pursuit and a galaxy of new worlds to save.",
+                  trailerQuery: "Super Mario Galaxy Movie official trailer"),
             .init(id: "m_project_hail_mary", title: "Project Hail Mary",
                   studio: "Amazon MGM",
                   releaseDate: date("2026-03-20"), posterEmoji: "🚀",
                   tagline: "One man. The last hope for Earth.",
                   consensusOpeningMillions: 38, impliedVolPct: 35,
-                  genre: "Sci-Fi", addedAt: addedAt),
+                  genre: "Sci-Fi", addedAt: addedAt,
+                  director: "Phil Lord, Christopher Miller",
+                  cast: ["Ryan Gosling", "Sandra Hüller"],
+                  synopsis: "Ryland Grace wakes alone on a spaceship with no memory of how he got there — and discovers he's humanity's last hope against a microbe dimming the sun. Then he meets Rocky, an alien scientist on the same mission. Based on the Andy Weir novel.",
+                  trailerQuery: "Project Hail Mary official trailer"),
             .init(id: "m_dune3", title: "Dune: Part Three",
                   studio: "Warner Bros. / Legendary",
                   releaseDate: date("2026-12-18"), posterEmoji: "🏜️",
                   tagline: "The desert dreams a new emperor.",
                   consensusOpeningMillions: 88, impliedVolPct: 26,
-                  genre: "Sci-Fi", addedAt: addedAt),
+                  genre: "Sci-Fi", addedAt: addedAt,
+                  director: "Denis Villeneuve",
+                  cast: ["Timothée Chalamet", "Zendaya", "Florence Pugh", "Austin Butler", "Rebecca Ferguson", "Robert Pattinson"],
+                  synopsis: "Adapting Dune Messiah — twelve years into Paul Atreides's reign as Emperor, a conspiracy among the Bene Gesserit, the Spacing Guild, and the Tleilaxu threatens to end the jihad he unleashed.",
+                  trailerQuery: "Dune Part Three official trailer"),
         ]
     }
 }
@@ -243,10 +283,26 @@ private struct TMDBCompany: Decodable {
 // MARK: - Config
 
 enum Config {
+    private static let overrideKey = "config.tmdbAPIKeyOverride"
+
+    /// A key the user pasted in-app (PosterUnlockSheet). Wins over
+    /// Info.plist so the setup flow works without a rebuild.
+    static var tmdbAPIKeyOverride: String? {
+        get { UserDefaults.standard.string(forKey: overrideKey) }
+        set {
+            if let v = newValue, !v.isEmpty {
+                UserDefaults.standard.set(v, forKey: overrideKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: overrideKey)
+            }
+        }
+    }
+
     /// TMDB v3 API key. In production, replace this with a call
     /// through your own backend proxy so the key isn't shipped in
     /// the app binary.
     static var tmdbAPIKey: String {
+        if let o = tmdbAPIKeyOverride, !o.isEmpty { return o }
         if let key = Bundle.main.object(forInfoDictionaryKey: "TMDB_API_KEY") as? String,
            !key.isEmpty { return key }
         return ""

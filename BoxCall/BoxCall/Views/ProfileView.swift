@@ -4,6 +4,7 @@ struct ProfileView: View {
     @EnvironmentObject var portfolio: PortfolioService
     @EnvironmentObject var social: SocialService
     @State private var showPaywall = false
+    @State private var showPosterUnlock = false
 
     var user: User { portfolio.user }
     var myReviews: [Review] {
@@ -30,6 +31,9 @@ struct ProfileView: View {
             .navigationTitle("Profile")
             .sheet(isPresented: $showPaywall) {
                 PaywallView()
+            }
+            .sheet(isPresented: $showPosterUnlock) {
+                PosterUnlockSheet()
             }
         }
     }
@@ -104,6 +108,16 @@ struct ProfileView: View {
     private var learnLinks: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Learn the game").font(.headline)
+            Button {
+                showPosterUnlock = true
+            } label: {
+                learnRow(icon: "photo.on.rectangle.angled",
+                         title: Config.tmdbAPIKey.isEmpty ? "Turn on real posters" : "Real posters: on",
+                         subtitle: Config.tmdbAPIKey.isEmpty
+                            ? "30 seconds with a free TMDB key. Every film gets its actual one-sheet."
+                            : "Live catalog from TMDB. Tap to manage the key.")
+            }
+            .buttonStyle(.plain)
             NavigationLink {
                 LearnView()
             } label: {
@@ -221,6 +235,9 @@ struct ProfileView: View {
                     Text("· \(user.followerCount) followers")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                    if user.currentStreakWeeks > 0 {
+                        StreakFlame(weeks: user.currentStreakWeeks)
+                    }
                 }
                 Text(user.bio).font(.caption).foregroundStyle(.secondary)
             }

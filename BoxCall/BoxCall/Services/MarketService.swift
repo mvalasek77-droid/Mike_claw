@@ -87,13 +87,21 @@ final class MarketService: ObservableObject {
         for r in remote {
             if let existing = byId[r.id] {
                 // Refresh metadata; keep addedAt so NEW badge doesn't retrigger.
+                // Rich facts: prefer the remote's if present, else keep what
+                // we had (the seed carries hand-curated director/cast/synopsis
+                // that TMDB's /upcoming endpoint doesn't return).
                 byId[r.id] = Movie(
                     id: existing.id, title: r.title, studio: r.studio,
                     releaseDate: r.releaseDate, posterEmoji: r.posterEmoji,
-                    posterURL: r.posterURL, tagline: r.tagline,
+                    posterURL: r.posterURL ?? existing.posterURL, tagline: r.tagline,
                     consensusOpeningMillions: existing.consensusOpeningMillions,
                     impliedVolPct: existing.impliedVolPct,
-                    genre: r.genre, addedAt: existing.addedAt)
+                    genre: r.genre, addedAt: existing.addedAt,
+                    director: r.director ?? existing.director,
+                    cast: r.cast.isEmpty ? existing.cast : r.cast,
+                    synopsis: r.synopsis ?? existing.synopsis,
+                    trailerQuery: r.trailerQuery ?? existing.trailerQuery,
+                    criticScore: r.criticScore ?? existing.criticScore)
             } else {
                 byId[r.id] = r
                 chainsById[r.id] = generateChain(for: r)

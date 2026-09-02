@@ -26,6 +26,9 @@ struct MovieDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 header
+                TrailerEmbed(query: movie.resolvedTrailerQuery)
+                filmFacts
+                TicketStubDivider()
                 consensusCard
                 if !events.isEmpty { newsTicker }
                 ticketButtons
@@ -185,6 +188,56 @@ struct MovieDetailView: View {
         .padding(.horizontal, 6).padding(.vertical, 2)
         .background(RoundedRectangle(cornerRadius: 4).fill((up ? Color.green : .red).opacity(0.2)))
         .foregroundStyle(up ? .green : .red)
+    }
+
+    @ViewBuilder
+    private var filmFacts: some View {
+        if movie.director != nil || !movie.cast.isEmpty || movie.synopsis != nil {
+            VStack(alignment: .leading, spacing: 10) {
+                if let dir = movie.director {
+                    factRow("Directed by", dir)
+                }
+                if !movie.cast.isEmpty {
+                    factRow("Starring", movie.cast.prefix(4).joined(separator: ", "))
+                }
+                if let syn = movie.synopsis {
+                    Text(syn)
+                        .font(.callout)
+                        .foregroundStyle(Theme.cream.opacity(0.9))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 2)
+                }
+                HStack(spacing: 8) {
+                    chip(movie.genre)
+                    chip(movie.studio)
+                    if let score = movie.criticScore { chip("\(score)% critics") }
+                }
+            }
+            .padding(Theme.Space.lg)
+            .glassSurface(radius: Theme.Radius.md, tint: Theme.velvetRed,
+                          stroke: Theme.marqueeGold.opacity(0.25))
+        }
+    }
+
+    private func factRow(_ label: String, _ value: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(label.uppercased())
+                .font(.system(size: 9, weight: .black, design: .monospaced))
+                .tracking(1.5)
+                .foregroundStyle(Theme.marqueeGold)
+                .frame(width: 84, alignment: .leading)
+            Text(value)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Theme.cream)
+        }
+    }
+
+    private func chip(_ text: String) -> some View {
+        Text(text)
+            .font(.caption2.weight(.semibold))
+            .padding(.horizontal, 8).padding(.vertical, 3)
+            .background(Capsule().fill(Theme.marqueeGold.opacity(0.15)))
+            .foregroundStyle(Theme.marqueeGold)
     }
 
     private var ticketButtons: some View {
