@@ -18,7 +18,9 @@ Ship-ready test matrix. Run through this before every App Store submission. Auto
 
 ## 2 · Trading loop
 
-- [ ] Slate list renders eight seeded movies within 200ms cold-launch (or the live TMDB catalog if `TMDB_API_KEY` set).
+- [ ] Now Showing renders the built-in slate within 200ms cold-launch (or the live TMDB catalog if a key is set). Every film shown must have a release date in the future — if a title that has already opened appears, the `isSettled` filter in `MockMovieProvider` / `loadMockCatalog` has regressed.
+- [ ] Opening Night hero shows the film with the soonest release date, and its countdown ticks once per second.
+- [ ] Marquee ticker scrolls continuously without a visible seam at the wrap point.
 - [ ] Pull-to-refresh on Slate triggers a spinner in the nav bar; "Updated Xs ago" text updates on completion.
 - [ ] Tap a movie → detail view. Consensus card has a pulsing green dot. News ticker shows 0–3 recent events. Chain scrolls, each row's sparkline animates every 3s.
 - [ ] Tap any chain row → **First-time tutorial** fires for Call OR Put (first time only per side). Skip once → check second row of same side does not re-trigger.

@@ -354,7 +354,9 @@ final class MarketService: ObservableObject {
     // MARK: - Mock catalog + chain generation
 
     private func loadMockCatalog() {
-        let seeds = MockMovieProvider.builtInSeed()
+        // Same filter fetchUpcoming applies: never surface a film that
+        // has already opened on cold launch.
+        let seeds = MockMovieProvider.builtInSeed().filter { !$0.isSettled }
         movies = seeds
         var built: [String: [Contract]] = [:]
         for m in seeds {

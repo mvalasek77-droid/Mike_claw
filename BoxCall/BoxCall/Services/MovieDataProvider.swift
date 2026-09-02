@@ -9,136 +9,182 @@ protocol MovieDataProvider {
     func fetchUpcoming(windowDays: Int) async throws -> [Movie]
 }
 
-// MARK: - Mock (built-in seed)
+// MARK: - Built-in slate (real films, real dates)
 
-/// Ships with a hand-curated slate of eight fictional titles so the
-/// app is usable offline, in demos, or before any API key is set.
+/// Ships with the real upcoming theatrical calendar so the app is
+/// full on first launch — offline, in demos, or before any API key
+/// is set. Titles, studios, release dates, directors, and cast come
+/// from public studio announcements. Tracking estimates are baseline
+/// placeholders that TMDB / the backend overwrite once live.
 final class MockMovieProvider: MovieDataProvider {
     func fetchUpcoming(windowDays: Int) async throws -> [Movie] {
-        MockMovieProvider.builtInSeed()
+        // Only return films that haven't opened yet — a stale seed
+        // should never resurrect a movie that already settled.
+        MockMovieProvider.builtInSeed().filter { !$0.isSettled }
     }
 
-    /// Real announced 2026–2027 slate. Titles + release dates from
-    /// public studio schedules; tracking estimates + posters are
-    /// baseline placeholders that get overwritten as soon as the
-    /// TMDB / backend providers return live data. Emoji posters are
-    /// last-resort fallback — real posters load from
-    /// image.tmdb.org whenever the movie has a `posterURL`.
-    ///
-    /// Dates are relative windows anchored to the release calendar
-    /// as of app compile-time. Once the TMDB provider is on, the
-    /// live catalog supersedes this seed within 6 hours.
+    /// Fall 2026 → Summer 2027 wide-release calendar as of the most
+    /// recent studio date announcements. Every title here is real and
+    /// every date is the studio's announced domestic opening.
     static func builtInSeed() -> [Movie] {
-        // Anchor a fixed reference date so relative windows don't drift
-        // as this code sits in the binary. Users on live TMDB won't see
-        // these anyway.
         let fmt = DateFormatter()
         fmt.calendar = Calendar(identifier: .gregorian)
+        fmt.timeZone = TimeZone.current
         fmt.dateFormat = "yyyy-MM-dd"
-        func date(_ s: String) -> Date { fmt.date(from: s) ?? Date() }
+        func date(_ s: String) -> Date { fmt.date(from: s) ?? .distantFuture }
 
         let addedAt = Date().addingTimeInterval(-10 * 86400)
         return [
-            .init(id: "m_avatar_fireash", title: "Avatar: Fire and Ash",
-                  studio: "20th Century / Disney",
-                  releaseDate: date("2025-12-19"), posterEmoji: "🔥",
-                  tagline: "The war for Pandora burns on.",
-                  consensusOpeningMillions: 145, impliedVolPct: 25,
-                  genre: "Sci-Fi", addedAt: addedAt,
-                  director: "James Cameron",
-                  cast: ["Sam Worthington", "Zoe Saldaña", "Sigourney Weaver", "Stephen Lang", "Oona Chaplin"],
-                  synopsis: "Jake Sully and Neytiri face a new threat: the Ash People, a fire-wielding Na'vi clan led by the ruthless Varang, as the war for Pandora escalates and the Sully family fractures under grief.",
-                  trailerQuery: "Avatar Fire and Ash official trailer"),
-            .init(id: "m_zootopia2", title: "Zootopia 2",
-                  studio: "Walt Disney Animation",
-                  releaseDate: date("2025-11-26"), posterEmoji: "🐰",
-                  tagline: "Judy and Nick are back on the case.",
-                  consensusOpeningMillions: 60, impliedVolPct: 22,
+            .init(id: "m_clayface", title: "Clayface",
+                  studio: "DC Studios / Warner Bros.",
+                  releaseDate: date("2026-09-11"), posterEmoji: "🎭",
+                  tagline: "A body-horror origin story from the DC Universe.",
+                  consensusOpeningMillions: 30, impliedVolPct: 42,
+                  genre: "Horror", addedAt: addedAt,
+                  director: "James Watkins",
+                  cast: ["Tom Rhys Harries", "Naomi Ackie", "Max Minghella", "Eddie Marsan"],
+                  synopsis: "Struggling actor Basil Karlo takes an experimental treatment to save his face — and it dissolves everything else. Written by Mike Flanagan, this is the DCU's first R-rated horror.",
+                  trailerQuery: "Clayface 2026 official trailer"),
+            .init(id: "m_practical_magic2", title: "Practical Magic 2",
+                  studio: "Warner Bros.",
+                  releaseDate: date("2026-09-18"), posterEmoji: "🔮",
+                  tagline: "The Owens sisters return.",
+                  consensusOpeningMillions: 28, impliedVolPct: 38,
+                  genre: "Fantasy", addedAt: addedAt,
+                  director: "Susanne Bier",
+                  cast: ["Sandra Bullock", "Nicole Kidman", "Joey King", "Maisie Williams", "Lee Pace"],
+                  synopsis: "Twenty-eight years later, Sally and Gillian Owens are back, with a new generation of Owens women — and the family curse — in tow.",
+                  trailerQuery: "Practical Magic 2 official trailer"),
+            .init(id: "m_resident_evil_2026", title: "Resident Evil",
+                  studio: "Sony / Screen Gems",
+                  releaseDate: date("2026-09-18"), posterEmoji: "🧟",
+                  tagline: "From the director of Weapons.",
+                  consensusOpeningMillions: 35, impliedVolPct: 40,
+                  genre: "Horror", addedAt: addedAt,
+                  director: "Zach Cregger",
+                  cast: ["Austin Abrams", "Paul Walter Hauser", "Zach Cherry", "Kali Reis"],
+                  synopsis: "A fresh, standalone take on the Capcom series from the Barbarian and Weapons director — a courier's routine delivery goes very wrong.",
+                  trailerQuery: "Resident Evil 2026 Zach Cregger official trailer"),
+            .init(id: "m_verity", title: "Verity",
+                  studio: "Amazon MGM",
+                  releaseDate: date("2026-10-02"), posterEmoji: "📖",
+                  tagline: "Some manuscripts should stay hidden.",
+                  consensusOpeningMillions: 24, impliedVolPct: 40,
+                  genre: "Thriller", addedAt: addedAt,
+                  director: "Michael Showalter",
+                  cast: ["Anne Hathaway", "Dakota Johnson", "Josh Hartnett"],
+                  synopsis: "A struggling writer hired to finish a bestselling author's series finds the author's unpublished autobiography — and its chilling confessions. From the Colleen Hoover novel.",
+                  trailerQuery: "Verity movie official trailer"),
+            .init(id: "m_social_reckoning", title: "The Social Reckoning",
+                  studio: "Sony Pictures",
+                  releaseDate: date("2026-10-09"), posterEmoji: "📱",
+                  tagline: "The Social Network, sixteen years on.",
+                  consensusOpeningMillions: 22, impliedVolPct: 38,
+                  genre: "Drama", addedAt: addedAt,
+                  director: "Aaron Sorkin",
+                  cast: ["Jeremy Strong", "Mikey Madison", "Jeremy Allen White", "Bill Burr"],
+                  synopsis: "Frances Haugen, a young Facebook engineer, teams with Wall Street Journal reporter Jeff Horwitz to expose what the company knew. Sorkin writes and directs.",
+                  trailerQuery: "The Social Reckoning official trailer"),
+            .init(id: "m_cat_in_the_hat", title: "The Cat in the Hat",
+                  studio: "Warner Bros. Animation",
+                  releaseDate: date("2026-11-06"), posterEmoji: "🎩",
+                  tagline: "Dr. Seuss, animated, at last.",
+                  consensusOpeningMillions: 40, impliedVolPct: 30,
                   genre: "Animation", addedAt: addedAt,
-                  director: "Jared Bush, Byron Howard",
-                  cast: ["Ginnifer Goodwin", "Jason Bateman", "Ke Huy Quan", "Fortune Feimster"],
-                  synopsis: "Judy Hopps and Nick Wilde go undercover to track down a mysterious new arrival — a venomous pit viper named Gary De'Snake — whose appearance sends Zootopia into an uproar.",
-                  trailerQuery: "Zootopia 2 official trailer"),
-            .init(id: "m_wicked2", title: "Wicked: For Good",
+                  director: "Alessandro Carloni, Erica Rivinoja",
+                  cast: ["Bill Hader", "Quinta Brunson", "Bowen Yang", "Xochitl Gomez", "Matt Berry"],
+                  synopsis: "The Cat, an agent of the Institute for the Institution of Imagination, takes on a tough assignment: cheering up two kids who just moved to a new town.",
+                  trailerQuery: "The Cat in the Hat 2026 official trailer"),
+            .init(id: "m_hunger_games_sotr", title: "The Hunger Games: Sunrise on the Reaping",
+                  studio: "Lionsgate",
+                  releaseDate: date("2026-11-20"), posterEmoji: "🏹",
+                  tagline: "Haymitch's Games.",
+                  consensusOpeningMillions: 65, impliedVolPct: 26,
+                  genre: "Sci-Fi", addedAt: addedAt,
+                  director: "Francis Lawrence",
+                  cast: ["Joseph Zada", "Whitney Peak", "Mckenna Grace", "Jesse Plemons", "Ralph Fiennes", "Kieran Culkin", "Elle Fanning"],
+                  synopsis: "The 50th Hunger Games — the second Quarter Quell — as a sixteen-year-old Haymitch Abernathy is reaped from District 12 alongside twice the usual number of tributes.",
+                  trailerQuery: "Hunger Games Sunrise on the Reaping official trailer"),
+            .init(id: "m_focker_in_law", title: "Focker In-Law",
                   studio: "Universal",
-                  releaseDate: date("2025-11-21"), posterEmoji: "💚",
-                  tagline: "The story ends where the story began.",
-                  consensusOpeningMillions: 95, impliedVolPct: 24,
-                  genre: "Musical", addedAt: addedAt,
-                  director: "Jon M. Chu",
-                  cast: ["Cynthia Erivo", "Ariana Grande", "Jonathan Bailey", "Michelle Yeoh", "Jeff Goldblum"],
-                  synopsis: "Now branded the Wicked Witch of the West, Elphaba lives in exile while Glinda becomes the public face of Oz. Then a girl from Kansas arrives, and the friendship that defined them is put to its final test.",
-                  trailerQuery: "Wicked For Good official trailer"),
+                  releaseDate: date("2026-11-25"), posterEmoji: "🤝",
+                  tagline: "The circle of trust gets bigger.",
+                  consensusOpeningMillions: 35, impliedVolPct: 32,
+                  genre: "Comedy", addedAt: addedAt,
+                  director: "John Hamburg",
+                  cast: ["Ben Stiller", "Robert De Niro", "Teri Polo", "Blythe Danner", "Ariana Grande"],
+                  synopsis: "Greg Focker's kids are grown — and now it's his turn to interrogate a prospective in-law. Fourth film in the Meet the Parents series, Thanksgiving weekend.",
+                  trailerQuery: "Focker In-Law official trailer"),
+            .init(id: "m_narnia_nephew", title: "The Chronicles of Narnia: The Magician's Nephew",
+                  studio: "Netflix (IMAX exclusive)",
+                  releaseDate: date("2026-11-26"), posterEmoji: "🦁",
+                  tagline: "Two-week IMAX run before streaming.",
+                  consensusOpeningMillions: 18, impliedVolPct: 48,
+                  genre: "Fantasy", addedAt: addedAt,
+                  director: "Greta Gerwig",
+                  cast: ["Emma Mackey", "Carey Mulligan", "Daniel Craig"],
+                  synopsis: "Gerwig's Narnia begins at the beginning: Digory and Polly's rings, the dying world of Charn, the witch Jadis, and the song that makes a world.",
+                  trailerQuery: "Narnia The Magician's Nephew Greta Gerwig official trailer"),
+            .init(id: "m_jumanji3", title: "Jumanji 3",
+                  studio: "Sony Pictures",
+                  releaseDate: date("2026-12-11"), posterEmoji: "🥁",
+                  tagline: "The game isn't over.",
+                  consensusOpeningMillions: 50, impliedVolPct: 28,
+                  genre: "Adventure", addedAt: addedAt,
+                  director: "Jake Kasdan",
+                  cast: ["Dwayne Johnson", "Kevin Hart", "Jack Black", "Karen Gillan", "Awkwafina"],
+                  synopsis: "The avatars are back in the game, and this time the game has learned. The Rock, Hart, Black, and Gillan return for the third modern Jumanji.",
+                  trailerQuery: "Jumanji 3 official trailer"),
             .init(id: "m_avengers_doomsday", title: "Avengers: Doomsday",
                   studio: "Marvel Studios",
-                  releaseDate: date("2026-05-01"), posterEmoji: "⚡️",
-                  tagline: "Doom always wins.",
-                  consensusOpeningMillions: 180, impliedVolPct: 20,
+                  releaseDate: date("2026-12-18"), posterEmoji: "⚡️",
+                  tagline: "Opens head-to-head with Dune: Part Three.",
+                  consensusOpeningMillions: 200, impliedVolPct: 20,
                   genre: "Superhero", addedAt: addedAt,
                   director: "Anthony & Joe Russo",
-                  cast: ["Robert Downey Jr.", "Chris Hemsworth", "Anthony Mackie", "Pedro Pascal", "Patrick Stewart", "Ian McKellen"],
-                  synopsis: "Robert Downey Jr. returns to the MCU as Doctor Doom. The Avengers, the Fantastic Four, and the X-Men are forced together against a villain who claims he is the only one who can save the multiverse.",
+                  cast: ["Robert Downey Jr.", "Chris Hemsworth", "Pedro Pascal", "Vanessa Kirby", "Patrick Stewart", "Ian McKellen"],
+                  synopsis: "Robert Downey Jr. returns as Doctor Doom. The Avengers, the Fantastic Four, and the X-Men are forced together against a man who says he is the only one who can save the multiverse.",
                   trailerQuery: "Avengers Doomsday official trailer"),
-            .init(id: "m_toystory5", title: "Toy Story 5",
-                  studio: "Pixar",
-                  releaseDate: date("2026-06-19"), posterEmoji: "🤠",
-                  tagline: "The gang plays on.",
-                  consensusOpeningMillions: 105, impliedVolPct: 22,
-                  genre: "Animation", addedAt: addedAt,
-                  director: "Andrew Stanton",
-                  cast: ["Tom Hanks", "Tim Allen", "Joan Cusack", "Tony Hale"],
-                  synopsis: "Woody, Buzz, and the gang face their most modern rival yet: Lilypad, a frog-shaped tablet that has captured Bonnie's attention. In a world of screens, what's a toy for?",
-                  trailerQuery: "Toy Story 5 official trailer"),
-            .init(id: "m_iceage6", title: "Ice Age: Boiling Point",
-                  studio: "20th Century / Disney",
-                  releaseDate: date("2026-07-24"), posterEmoji: "🦣",
-                  tagline: "Sid, Manny and Diego face a hotter world.",
-                  consensusOpeningMillions: 42, impliedVolPct: 28,
-                  genre: "Animation", addedAt: addedAt,
-                  director: "20th Century Animation",
-                  cast: ["Ray Romano", "John Leguizamo", "Denis Leary", "Queen Latifah", "Simon Pegg"],
-                  synopsis: "The herd is back — and the Ice Age is thawing. Manny, Sid, and Diego navigate a world getting hotter by the minute in the sixth theatrical outing.",
-                  trailerQuery: "Ice Age Boiling Point official trailer"),
-            .init(id: "m_masters_universe", title: "Masters of the Universe",
-                  studio: "Amazon MGM",
-                  releaseDate: date("2026-06-05"), posterEmoji: "⚔️",
-                  tagline: "Eternia rises.",
-                  consensusOpeningMillions: 34, impliedVolPct: 40,
-                  genre: "Action", addedAt: addedAt,
-                  director: "Travis Knight",
-                  cast: ["Nicholas Galitzine", "Camila Mendes", "Jared Leto", "Alison Brie", "Idris Elba"],
-                  synopsis: "Prince Adam of Eternia, separated from his home and his Power Sword, must reclaim his destiny as He-Man to stop Skeletor from unleashing the secrets of Castle Grayskull.",
-                  trailerQuery: "Masters of the Universe 2026 official trailer"),
-            .init(id: "m_super_mario_gala", title: "The Super Mario Galaxy Movie",
-                  studio: "Illumination / Nintendo",
-                  releaseDate: date("2026-04-03"), posterEmoji: "🍄",
-                  tagline: "Mama mia, again.",
-                  consensusOpeningMillions: 128, impliedVolPct: 22,
-                  genre: "Animation", addedAt: addedAt,
-                  director: "Aaron Horvath, Michael Jelenic",
-                  cast: ["Chris Pratt", "Anya Taylor-Joy", "Charlie Day", "Jack Black", "Keegan-Michael Key"],
-                  synopsis: "Mario, Luigi, and Peach leave the Mushroom Kingdom behind for the stars, with Bowser in pursuit and a galaxy of new worlds to save.",
-                  trailerQuery: "Super Mario Galaxy Movie official trailer"),
-            .init(id: "m_project_hail_mary", title: "Project Hail Mary",
-                  studio: "Amazon MGM",
-                  releaseDate: date("2026-03-20"), posterEmoji: "🚀",
-                  tagline: "One man. The last hope for Earth.",
-                  consensusOpeningMillions: 38, impliedVolPct: 35,
-                  genre: "Sci-Fi", addedAt: addedAt,
-                  director: "Phil Lord, Christopher Miller",
-                  cast: ["Ryan Gosling", "Sandra Hüller"],
-                  synopsis: "Ryland Grace wakes alone on a spaceship with no memory of how he got there — and discovers he's humanity's last hope against a microbe dimming the sun. Then he meets Rocky, an alien scientist on the same mission. Based on the Andy Weir novel.",
-                  trailerQuery: "Project Hail Mary official trailer"),
             .init(id: "m_dune3", title: "Dune: Part Three",
                   studio: "Warner Bros. / Legendary",
                   releaseDate: date("2026-12-18"), posterEmoji: "🏜️",
-                  tagline: "The desert dreams a new emperor.",
-                  consensusOpeningMillions: 88, impliedVolPct: 26,
+                  tagline: "Opens head-to-head with Avengers: Doomsday.",
+                  consensusOpeningMillions: 85, impliedVolPct: 26,
                   genre: "Sci-Fi", addedAt: addedAt,
                   director: "Denis Villeneuve",
-                  cast: ["Timothée Chalamet", "Zendaya", "Florence Pugh", "Austin Butler", "Rebecca Ferguson", "Robert Pattinson"],
-                  synopsis: "Adapting Dune Messiah — twelve years into Paul Atreides's reign as Emperor, a conspiracy among the Bene Gesserit, the Spacing Guild, and the Tleilaxu threatens to end the jihad he unleashed.",
+                  cast: ["Timothée Chalamet", "Zendaya", "Rebecca Ferguson", "Robert Pattinson", "Anya Taylor-Joy", "Jason Momoa"],
+                  synopsis: "Adapting Dune Messiah — twelve years into Paul Atreides's reign as Emperor, a conspiracy among the Bene Gesserit, the Spacing Guild, and the Tleilaxu moves to end the jihad he unleashed.",
                   trailerQuery: "Dune Part Three official trailer"),
+            .init(id: "m_iceage6", title: "Ice Age: Boiling Point",
+                  studio: "20th Century / Disney",
+                  releaseDate: date("2027-02-05"), posterEmoji: "🦣",
+                  tagline: "The herd returns to theaters.",
+                  consensusOpeningMillions: 45, impliedVolPct: 28,
+                  genre: "Animation", addedAt: addedAt,
+                  director: "20th Century Animation",
+                  cast: ["Ray Romano", "John Leguizamo", "Denis Leary", "Queen Latifah", "Simon Pegg"],
+                  synopsis: "Manny, Sid, and Diego navigate a world getting hotter by the minute in the sixth theatrical Ice Age — the first since 2016.",
+                  trailerQuery: "Ice Age Boiling Point official trailer"),
+            .init(id: "m_sonic4", title: "Sonic the Hedgehog 4",
+                  studio: "Paramount",
+                  releaseDate: date("2027-03-19"), posterEmoji: "💨",
+                  tagline: "Gotta go fast. Again.",
+                  consensusOpeningMillions: 58, impliedVolPct: 26,
+                  genre: "Family", addedAt: addedAt,
+                  director: "Jeff Fowler",
+                  cast: ["Ben Schwartz", "Idris Elba", "Keanu Reeves", "Jim Carrey"],
+                  synopsis: "Sonic, Tails, Knuckles, and Shadow face a new threat in the fourth film of Paramount's billion-dollar series.",
+                  trailerQuery: "Sonic the Hedgehog 4 official trailer"),
+            .init(id: "m_starfighter", title: "Star Wars: Starfighter",
+                  studio: "Lucasfilm / Disney",
+                  releaseDate: date("2027-05-28"), posterEmoji: "🚀",
+                  tagline: "A new story, five years after The Rise of Skywalker.",
+                  consensusOpeningMillions: 150, impliedVolPct: 24,
+                  genre: "Sci-Fi", addedAt: addedAt,
+                  director: "Shawn Levy",
+                  cast: ["Ryan Gosling", "Mia Goth", "Matt Smith", "Flynn Gray", "Amy Adams"],
+                  synopsis: "A standalone Star Wars adventure led by Ryan Gosling, directed by Shawn Levy, set after the Skywalker saga. Memorial Day weekend.",
+                  trailerQuery: "Star Wars Starfighter official trailer"),
         ]
     }
 }
@@ -147,7 +193,7 @@ final class MockMovieProvider: MovieDataProvider {
 
 /// Hits The Movie Database's public /movie/upcoming endpoint.
 /// Free API key required — set in Config.tmdbAPIKey. If unset, the
-/// service degrades gracefully to the mock provider so the app still
+/// service degrades gracefully to the built-in slate so the app still
 /// runs. In production, calls should route through your own backend
 /// (boxcall.com/api/upcoming) that proxies TMDB, layers on tracking
 /// numbers from The Numbers / Deadline, and normalizes the schema.
@@ -196,12 +242,8 @@ final class TMDBMovieProvider: MovieDataProvider {
     private func mapToMovie(_ t: TMDBMovie) -> Movie {
         // Rough algorithmic consensus + IV — in production, replace with
         // pre-release tracking pulled from Deadline / The Numbers.
-        let daysOut = max(1, Calendar.current.dateComponents([.day],
-                          from: Date(), to: t.releaseDate).day ?? 30)
-        // Popularity is TMDB's proprietary trending score; loose proxy for anticipation.
         let popularityFactor = min(200, max(1, t.popularity))
         let consensus = 2.0 + popularityFactor / 3.5     // ~ $2M - $60M range
-        // Independent films / low-popularity get higher IV.
         let iv = max(20.0, 80.0 - popularityFactor * 0.25)
 
         return Movie(
@@ -215,9 +257,9 @@ final class TMDBMovieProvider: MovieDataProvider {
             consensusOpeningMillions: consensus.rounded(),
             impliedVolPct: iv.rounded(),
             genre: t.primaryGenre ?? "—",
-            addedAt: Date()
+            addedAt: Date(),
+            synopsis: t.overview.isEmpty ? nil : t.overview
         )
-        _ = daysOut
     }
 
     static func emojiForGenre(_ g: String?) -> String {
