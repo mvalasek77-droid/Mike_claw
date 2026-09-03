@@ -84,6 +84,7 @@
 		B7552AD1C1B398C2489138B7 /* XcodeReadinessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 985AC3C3B305E1D713812F15 /* XcodeReadinessView.swift */; };
 		6E233EBC07C49287D6DCB435 /* CompareFileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA01E2F65E0C52C00E29464E /* CompareFileView.swift */; };
 		52C29736E3F85F3EF53ABCC3 /* CompareJobsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57EF9545B5E53B7172AB1654 /* CompareJobsView.swift */; };
+		A1B2C3D40001WHEREISMYAPP /* WhereIsMyAppView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D40002WHEREISMYAPP /* WhereIsMyAppView.swift */; };
 		F964F192A3D071EE809F6EA5 /* FirstBuildPromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17DC2294F78DE7C7AC09A403 /* FirstBuildPromptView.swift */; };
 		08D59B17F74238A25FC58FB5 /* TermsAndPrivacyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 355E53B16CF13DCA46E9290C /* TermsAndPrivacyView.swift */; };
 /* End PBXBuildFile section */
@@ -168,6 +169,7 @@
 		985AC3C3B305E1D713812F15 /* XcodeReadinessView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XcodeReadinessView.swift; sourceTree = "<group>"; };
 		EA01E2F65E0C52C00E29464E /* CompareFileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompareFileView.swift; sourceTree = "<group>"; };
 		57EF9545B5E53B7172AB1654 /* CompareJobsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompareJobsView.swift; sourceTree = "<group>"; };
+		A1B2C3D40002WHEREISMYAPP /* WhereIsMyAppView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhereIsMyAppView.swift; sourceTree = "<group>"; };
 		17DC2294F78DE7C7AC09A403 /* FirstBuildPromptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstBuildPromptView.swift; sourceTree = "<group>"; };
 		355E53B16CF13DCA46E9290C /* TermsAndPrivacyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TermsAndPrivacyView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -399,6 +401,7 @@
 				EA01E2F65E0C52C00E29464E /* CompareFileView.swift */,
 				57EF9545B5E53B7172AB1654 /* CompareJobsView.swift */,
 				34113FC63FBC3A222EEC1283 /* ProjectsGalleryView.swift */,
+				A1B2C3D40002WHEREISMYAPP /* WhereIsMyAppView.swift */,
 			);
 			path = Projects;
 			sourceTree = "<group>";
@@ -522,6 +525,7 @@
 				B7552AD1C1B398C2489138B7 /* XcodeReadinessView.swift in Sources */,
 				6E233EBC07C49287D6DCB435 /* CompareFileView.swift in Sources */,
 				52C29736E3F85F3EF53ABCC3 /* CompareJobsView.swift in Sources */,
+				A1B2C3D40001WHEREISMYAPP /* WhereIsMyAppView.swift in Sources */,
 				F964F192A3D071EE809F6EA5 /* FirstBuildPromptView.swift in Sources */,
 				08D59B17F74238A25FC58FB5 /* TermsAndPrivacyView.swift in Sources */,
 				3328327281568756392B795A /* AdminView.swift in Sources */,

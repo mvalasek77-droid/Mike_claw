@@ -6,6 +6,7 @@ struct ProjectsGalleryView: View {
     @State private var showDescribe = false
     /// Set when the user picks "Compare with…" from a row's context menu.
     @State private var compareOrigin: BuildJob?
+    @State private var showWhereIsMyApp = false
 
     private var filtered: [BuildJob] {
         let q = query.trimmingCharacters(in: .whitespaces).lowercased()
@@ -26,6 +27,7 @@ struct ProjectsGalleryView: View {
                     if session.recentJobs.isEmpty {
                         emptyState
                     } else {
+                        whereIsMyAppRow
                         ForEach(filtered) { job in
                             Button {
                                 session.openJob(job, backendID: session.backendJobIDs[job.id])
@@ -74,6 +76,11 @@ struct ProjectsGalleryView: View {
             .presentationDragIndicator(.visible)
             .presentationBackground(.ultraThinMaterial)
         }
+        .sheet(isPresented: $showWhereIsMyApp) {
+            WhereIsMyAppView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
         .sheet(item: $compareOrigin) { job in
             if let backend = session.backendJobIDs[job.id] {
                 CompareJobsPickerView(originJob: job, originBackendID: backend)
@@ -101,6 +108,35 @@ struct ProjectsGalleryView: View {
             }
             .accessibilityLabel("New build")
         }
+    }
+
+    /// "So where actually is it?" is the first question after a build
+    /// finishes, and the Apps tab is where people come looking.
+    private var whereIsMyAppRow: some View {
+        Button {
+            Haptics.selection()
+            showWhereIsMyApp = true
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "questionmark.circle.fill")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(LiquidGlass.accent)
+                    .accessibilityHidden(true)
+                Text("Where is my app?")
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.4))
+            }
+            .padding(.horizontal, 14).padding(.vertical, 11)
+            .background(.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Where is my app?")
+        .accessibilityHint("Explains where your builds are saved and how to get them onto a phone")
     }
 
     private var searchBar: some View {

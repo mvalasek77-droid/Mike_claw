@@ -371,14 +371,15 @@ extension ASCCoach {
         case 3:
             return Walkthrough(
                 plainTitle: "Send your app to Apple",
-                whatThisIs: "This is the actual upload. CodeGenie signs the build, runs Apple's validation, and pushes it to your app record. You don't need a listing, screenshots, or pricing for this — only the record you just made.",
+                whatThisIs: "This is the actual upload. What gets sent is a signed .ipa — one finished, sealed file containing your whole app. Apple only accepts that format, and producing it needs a Mac with Xcode and your signing certificate. You don't need a listing, screenshots, or pricing yet.",
                 doThis: [
                     .init(text: "Make sure step 2 is finished and the app record exists."),
+                    .init(text: "Connect a Mac if you haven't — this step is the one part that cannot happen on the phone alone."),
                     .init(text: "Tap Upload to TestFlight below."),
-                    .init(text: "CodeGenie checks your Apple credentials and the build first. If something's missing it tells you exactly what, instead of failing halfway through."),
+                    .init(text: "CodeGenie checks your credentials and looks for the signed .ipa first. If anything is missing it lists exactly what, instead of failing halfway through."),
                     .init(text: "Leave the app open while the progress strip is moving."),
                 ],
-                watchOut: "An upload rejected for \"no valid signing identity\" almost always means your Apple Developer credentials in Settings are incomplete. Fix them there and tap upload again — you don't need to rebuild.",
+                watchOut: "If it says no .ipa was found, your app has been written but not yet packaged into the sealed file Apple accepts. That packaging step is an archive build and it has to run on your Mac. An upload rejected for \"no valid signing identity\" means the opposite problem — the file exists but your Apple Developer credentials in Settings are incomplete.",
                 timeEstimate: "3 to 10 minutes depending on your connection"
             )
 

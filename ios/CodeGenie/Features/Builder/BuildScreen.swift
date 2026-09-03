@@ -27,6 +27,7 @@ struct BuildScreen: View {
     @State private var githubSyncing: Bool = false
     @State private var jargonHelp: JargonTerm?
     @State private var shipBanner: String?
+    @State private var showWhereIsMyApp: Bool = false
 
     enum JargonTerm: String, Identifiable {
         case pipeline, bitdrop, perfection
@@ -123,6 +124,14 @@ struct BuildScreen: View {
             GitHubSetupView()
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
+        }
+        .sheet(isPresented: $showWhereIsMyApp) {
+            WhereIsMyAppView(
+                job: initialJob,
+                exportURL: swarm.jobID.flatMap { swarm.exportURL(jobID: $0) }
+            )
+            .presentationDragIndicator(.visible)
+            .presentationBackground(.ultraThinMaterial)
         }
         .sheet(item: $jargonHelp) { term in
             jargonExplainSheet(term)
@@ -632,27 +641,39 @@ struct BuildScreen: View {
     }
 
     private var appLocationCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Image(systemName: "tray.full.fill")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(LiquidGlass.accent)
-                Text("Where is my app?")
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundStyle(LiquidGlass.primaryText)
+        Button {
+            Haptics.selection()
+            showWhereIsMyApp = true
+        } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    Image(systemName: "tray.full.fill")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(LiquidGlass.accent)
+                    Text("Where is my app?")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.45))
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    locationRow(icon: "square.grid.2x2.fill", text: "Apps tab — tap to reopen any time")
+                    locationRow(icon: "square.and.arrow.down", text: "Download — save the Xcode project as a zip")
+                    locationRow(icon: "chevron.left.forwardslash.chevron.right", text: "GitHub — back up so you never lose it")
+                    locationRow(icon: "iphone.gen3", text: "Your iPhone — via Apple's TestFlight")
+                }
             }
-            VStack(alignment: .leading, spacing: 4) {
-                locationRow(icon: "square.grid.2x2.fill", text: "Apps tab — tap to reopen any time")
-                locationRow(icon: "square.and.arrow.down", text: "Download — save the full Xcode project as a zip")
-                locationRow(icon: "chevron.left.forwardslash.chevron.right", text: "GitHub — back up so you never lose it")
-                locationRow(icon: "paperplane.fill", text: "Submit — send straight to the App Store")
-            }
+            .padding(12)
+            .background(.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(.white.opacity(0.1)))
+            .contentShape(Rectangle())
         }
-        .padding(12)
-        .background(.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(.white.opacity(0.1)))
+        .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Your app is saved in the Apps tab. You can download, back up to GitHub, or submit to the App Store.")
+        .accessibilityLabel("Where is my app? Saved in the Apps tab, downloadable as a project, backed up to GitHub, or installed via TestFlight.")
+        .accessibilityHint("Opens a full explanation of each place")
     }
 
     private func locationRow(icon: String, text: String) -> some View {
