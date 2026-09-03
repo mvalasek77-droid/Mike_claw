@@ -343,6 +343,15 @@ final class SwarmClient: ObservableObject {
         _ = try await postJSON("/api/coding/swarm/\(jobID)/ship", body: config.wireBody)
     }
 
+    /// Ask the App Store Connect coach a question.
+    ///
+    /// Not scoped to a job id: a user can be stuck on Apple's console
+    /// long before a build exists and long after one is archived, and
+    /// those are exactly the moments they most need an answer.
+    func ascCoach(body: [String: Any]) async throws -> [String: Any] {
+        try await postJSON("/api/coding/swarm/asc/coach", body: body)
+    }
+
     /// URL the iOS share sheet can hand off so the user can save the
     /// generated workspace as a zip. We add the auth token via a
     /// query parameter so `URL` can be passed straight to `ShareLink`.

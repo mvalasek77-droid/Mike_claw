@@ -188,6 +188,8 @@ struct AppStoreConnectGuideView: View {
     /// because seeing all twelve at once is what made this screen
     /// unreadable for a first-time submitter.
     @State private var showAllSteps = false
+    @StateObject private var coachChat = ASCCoachChat()
+    @State private var showCoachChat = false
 
     /// AI-proactive pre-flight gate. Nothing runs the guide's steps
     /// until CodeGenie has actually checked the app — the user never
@@ -272,6 +274,22 @@ struct AppStoreConnectGuideView: View {
             Button("OK") { testFlightErrorMessage = nil }
         } message: {
             Text(testFlightErrorMessage ?? "")
+        }
+        .sheet(isPresented: $showCoachChat) {
+            ASCCoachChatView(
+                chat: coachChat,
+                step: allStepsDone ? nil : currentStep,
+                appName: job.description.title,
+                bundleID: defaultBundleID(for: job.description.title),
+                completed: completed,
+                macPaired: macPaired,
+                blockingIssues: blocking.map { "\($0.message) \($0.fix)" },
+                outstandingItems: (readiness?.items ?? [])
+                    .filter { $0.required && $0.status != "automated" }
+                    .map { "\($0.title): \($0.detail)" }
+            )
+            .presentationDragIndicator(.visible)
+            .presentationBackground(.ultraThinMaterial)
         }
         .sheet(item: $blockedGate) { gate in
             ASCReadinessBlockedSheet(
@@ -372,7 +390,19 @@ struct AppStoreConnectGuideView: View {
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
             }
             Spacer()
-            Color.clear.frame(width: 40, height: 40)
+            Button {
+                Haptics.selection()
+                showCoachChat = true
+            } label: {
+                Image(systemName: "bubble.left.and.text.bubble.right.fill")
+                    .font(.system(size: 15, weight: .semibold))
+                    .padding(10)
+                    .background(LiquidGlass.accent.opacity(0.22), in: Circle())
+                    .overlay(Circle().strokeBorder(LiquidGlass.accent.opacity(0.4)))
+                    .foregroundStyle(LiquidGlass.accent)
+            }
+            .accessibilityLabel("Ask the coach")
+            .accessibilityHint("Ask any question about submitting to the App Store")
         }
         .padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 8)
     }
@@ -642,6 +672,33 @@ struct AppStoreConnectGuideView: View {
                 }
 
                 actionRow(step)
+
+                // The walkthrough covers the happy path. This is the
+                // way out when the user is on a path it doesn't
+                // describe, offered right where they get stuck rather
+                // than buried in a menu.
+                Button {
+                    Haptics.selection()
+                    showCoachChat = true
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "bubble.left.and.text.bubble.right.fill")
+                            .font(.system(size: 12, weight: .bold))
+                        Text("Stuck on this step? Ask")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 10, weight: .bold))
+                            .opacity(0.5)
+                    }
+                    .foregroundStyle(LiquidGlass.accent)
+                    .padding(.horizontal, 14).padding(.vertical, 11)
+                    .background(LiquidGlass.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(LiquidGlass.accent.opacity(0.28)))
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Stuck on this step? Ask the coach")
 
                 // Users mis-tap, and they also revisit a finished step
                 // from the overview list. Either way they need a way

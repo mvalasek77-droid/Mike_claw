@@ -53,6 +53,34 @@ class ShipRequest(BaseModel):
     poll_after_upload: bool = True
 
 
+class ASCCoachTurn(BaseModel):
+    """One prior turn of the coaching conversation, replayed by the
+    client so the coach can follow up coherently. Only user/assistant
+    turns are accepted — the system prompt is server-owned so a client
+    cannot rewrite the coach's rules."""
+    role: Literal["user", "assistant"]
+    content: str = Field(default="", max_length=8000)
+
+
+class ASCCoachRequest(BaseModel):
+    """A question for the App Store Connect coach, plus everything the
+    client knows about where the user is stuck.
+
+    Every situational field is optional: the coach degrades to generic
+    but still-correct answers rather than refusing to help."""
+    question: str = Field(min_length=1, max_length=2000)
+    history: list[ASCCoachTurn] = Field(default_factory=list, max_length=24)
+
+    app_name: str = Field(default="", max_length=200)
+    bundle_id: str = Field(default="", max_length=200)
+    step_number: int | None = Field(default=None, ge=1, le=12)
+    step_title: str = Field(default="", max_length=200)
+    completed_steps: list[int] = Field(default_factory=list, max_length=12)
+    mac_paired: bool = False
+    blocking_issues: list[str] = Field(default_factory=list, max_length=20)
+    outstanding_items: list[str] = Field(default_factory=list, max_length=20)
+
+
 class GitHubSyncRequest(BaseModel):
     """Push a finished workspace to the user's GitHub repository.
 

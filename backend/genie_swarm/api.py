@@ -21,13 +21,16 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from .llm import AnthropicClient, LLMClient
+from .asc_coach import CoachContext, answer as asc_answer, suggested_questions
 from .github_sync import GitHubSyncError, sync_workspace_to_github
 from .models import (
+    ASCCoachRequest,
     AppSpec,
     BuildJob,
     BuildRequest,
     GitHubSyncRequest,
     JobState,
+    Message,
     ReleaseReadinessRequest,
     ShipRequest,
 )
@@ -786,6 +789,55 @@ async def archive_old_jobs(body: dict | None = None):
             for s in summaries
         ]
     }
+
+
+@router.post("/asc/coach")
+async def asc_coach(req: ASCCoachRequest):
+    """Answer one App Store Connect question, grounded in where the
+    user actually is in their submission.
+
+    Not nested under /{job_id} on purpose: someone can be stuck on
+    Apple's console long before a build exists and long after the job
+    has been archived, and refusing to help them in those windows is
+    exactly when they most need it."""
+    context = CoachContext(
+        app_name=req.app_name,
+        bundle_id=req.bundle_id,
+        step_number=req.step_number,
+        step_title=req.step_title,
+        completed_steps=req.completed_steps,
+        mac_paired=req.mac_paired,
+        blocking_issues=req.blocking_issues,
+        outstanding_items=req.outstanding_items,
+    )
+    history = [
+        Message(role=m.role, content=m.content)
+        for m in req.history
+        if m.role in {"user", "assistant"}
+    ]
+    try:
+        result = await asc_answer(
+            llm=state.llm,
+            question=req.question,
+            context=context,
+            history=history,
+        )
+    except Exception as exc:  # noqa: BLE001
+        # The coach is an assist, never a gate. A provider outage must
+        # not look like the submission itself broke.
+        raise HTTPException(503, f"coach unavailable: {exc}") from exc
+    return {
+        "answer": result["answer"],
+        "usage": result.get("usage", {}),
+        "suggested": suggested_questions(req.step_number),
+    }
+
+
+@router.get("/asc/coach/suggestions")
+async def asc_coach_suggestions(step: int | None = Query(default=None)):
+    """Questions worth offering at this point, so the user is not
+    staring at an empty box wondering what they may ask."""
+    return {"suggested": suggested_questions(step)}
 
 
 @router.get("/health")
