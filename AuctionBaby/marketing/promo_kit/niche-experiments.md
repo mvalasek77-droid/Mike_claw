@@ -35,3 +35,11 @@ Auction Baby is human-built (no AI code, human design) — that thread actively 
 2. r/AskMen afford-dating answer (empathy-first, profile-only link)
 3. r/dating_advice dinner-dates thread (the 3,425up one — highest leverage)
 4. r/HingeStories sniper comments (daily 15-min habit)
+## 2026-09-02 sweep — BLOCKED (no data collected)
+Reddit is edge-blocked from this network ("You've been blocked by network security"):
+- www.reddit.com/search.json via curl → 403 block page (HTML, not JSON)
+- Safari (residential IP, per fallback plan) → same block page rendered in the tab
+- old.reddit.com → 404/302; api.reddit.com → 403; r.jina.ai proxy → upstream 403
+Zero posts retrieved; no >100-upvote matches can be claimed this run. Do NOT reuse
+stale numbers from the 2026-08-31 sweep as if fresh — re-run when IP is unblocked
+or via a logged-in session (OAuth dev token). No fabricated entries added.
