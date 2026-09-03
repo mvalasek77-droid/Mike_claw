@@ -43,3 +43,11 @@ Reddit is edge-blocked from this network ("You've been blocked by network securi
 Zero posts retrieved; no >100-upvote matches can be claimed this run. Do NOT reuse
 stale numbers from the 2026-08-31 sweep as if fresh — re-run when IP is unblocked
 or via a logged-in session (OAuth dev token). No fabricated entries added.
+## 2026-09-03 sweep — BLOCKED again (no data collected)
+Re-ran the 4 target queries (dinner date / who pays / dating apps are broken / deleted the apps, sort=top t=week):
+- www.reddit.com/search.json via curl → identical 190KB HTML block page for ALL queries (edge-block, not a real JSON response)
+- Safari fetch fallback (residential IP) → same block page rendered in-tab: "You've been blocked by network security"
+- old.reddit.com → 403 "Blocked" page
+Zero posts retrieved; no >100-upvote matches can be claimed this run. Same block as 2026-09-02 —
+block persists ≥2 days. Unblock path: logged-in session or OAuth dev token, or different network.
+No entries added; no stale numbers reused.
