@@ -37,6 +37,16 @@ final class ASCSubmissionStore: ObservableObject {
         var lastPreflightPassed: Bool?
         var lastPreflightScore: Double?
         var lastPreflightAt: Date?
+        /// Submission-checklist items the user has personally ticked.
+        ///
+        /// Optional, not a defaulted non-optional: Swift's synthesized
+        /// decoder does NOT fall back to a property's default value
+        /// when the key is absent, it throws. Since the whole record
+        /// array is decoded with `try?`, one missing key would silently
+        /// wipe every saved submission written before this field
+        /// existed. Optional decodes to nil instead, and callers read
+        /// it through `?? []`.
+        var checkedItems: Set<String>?
 
         var id: UUID { jobID }
 
@@ -95,7 +105,8 @@ final class ASCSubmissionStore: ObservableObject {
             submittedAt: nil,
             lastPreflightPassed: nil,
             lastPreflightScore: nil,
-            lastPreflightAt: nil
+            lastPreflightAt: nil,
+            checkedItems: []
         )
         records[job.id] = fresh
         return fresh
@@ -129,6 +140,19 @@ final class ASCSubmissionStore: ObservableObject {
         r.lastPreflightAt = .now
         r.lastTouchedAt = .now
         records[jobID] = r
+    }
+
+    func setChecklistItem(_ itemID: String, checked: Bool, for jobID: UUID) {
+        guard var r = records[jobID] else { return }
+        var items = r.checkedItems ?? []
+        if checked { items.insert(itemID) } else { items.remove(itemID) }
+        r.checkedItems = items
+        r.lastTouchedAt = .now
+        records[jobID] = r
+    }
+
+    func checkedItems(for jobID: UUID) -> Set<String> {
+        records[jobID]?.checkedItems ?? []
     }
 
     func markSubmitted(for jobID: UUID) {

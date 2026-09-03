@@ -36,6 +36,9 @@ final class Commands {
         case "xcodebuild":
             return try await runXcodeBuild(payload: payload, requestID: requestID, send: send)
 
+        case "xcodebuild.archive_export":
+            return try await archiveAndExport(payload: payload, requestID: requestID, send: send)
+
         case "screenshot":
             return try await screenshot(display: payload["display"] as? Int ?? 0)
 
@@ -65,6 +68,243 @@ final class Commands {
         if process.terminationStatus != 0 {
             throw CmdError.bad("\(argv[0]) exited \(process.terminationStatus)")
         }
+    }
+
+    // MARK: Archive + export
+    //
+    // This is the step that turns generated source into the one thing
+    // Apple actually accepts: a signed .ipa. It is deliberately NOT
+    // part of `runXcodeBuild`, which hardcodes CODE_SIGNING_ALLOWED=NO
+    // for fast simulator builds — an unsigned archive cannot be
+    // exported for the App Store, so the two paths must stay separate.
+    //
+    // Signing uses `-allowProvisioningUpdates` with the user's App
+    // Store Connect API key. That lets Xcode create and download the
+    // certificate and provisioning profile on its own, with no 2FA
+    // prompt and nothing for the user to configure by hand.
+    private func archiveAndExport(
+        payload: [String: Any],
+        requestID: String,
+        send: @escaping EventSender
+    ) async throws -> [String: Any] {
+        let root = (payload["workspace_root"] as? String) ?? ""
+        try requireExists(root)
+
+        // Auto-detect rather than making the phone guess: only this
+        // machine can see what the generated project actually is.
+        let proj = try (payload["workspace_or_project"] as? String)
+            .flatMap { $0.isEmpty ? nil : $0 } ?? detectProject(in: root)
+        try requireExists(proj)
+        let scheme = try (payload["scheme"] as? String)
+            .flatMap { $0.isEmpty ? nil : $0 } ?? detectScheme(project: proj)
+
+        let configuration = (payload["configuration"] as? String) ?? "Release"
+        let teamID = (payload["team_id"] as? String) ?? ""
+        let method = (payload["export_method"] as? String) ?? "app-store-connect"
+
+        let work = URL(fileURLWithPath: root)
+        let archivePath = work.appendingPathComponent("build/CodeGenie.xcarchive").path
+        let exportPath  = work.appendingPathComponent("build/export").path
+        let plistPath   = work.appendingPathComponent("build/ExportOptions.plist").path
+        try? FileManager.default.createDirectory(
+            at: work.appendingPathComponent("build"),
+            withIntermediateDirectories: true
+        )
+
+        let auth = authArgs(payload: payload, root: root)
+        let flag = proj.hasSuffix(".xcworkspace") ? "-workspace" : "-project"
+
+        // --- archive ---
+        var archiveArgv = [
+            flag, proj,
+            "-scheme", scheme,
+            "-configuration", configuration,
+            "-destination", "generic/platform=iOS",
+            "-archivePath", archivePath,
+            "archive",
+            "-allowProvisioningUpdates",
+        ]
+        archiveArgv.append(contentsOf: auth)
+        if !teamID.isEmpty { archiveArgv.append("DEVELOPMENT_TEAM=\(teamID)") }
+
+        let archiveResult = try await streamXcodebuild(
+            archiveArgv, phase: "archive", requestID: requestID, send: send
+        )
+        guard archiveResult.code == 0 else {
+            return [
+                "ok": false, "phase": "archive",
+                "exit_code": archiveResult.code,
+                "log_tail": archiveResult.tail,
+                "scheme": scheme, "project": proj,
+            ]
+        }
+
+        // --- export options ---
+        try writeExportOptions(path: plistPath, method: method, teamID: teamID)
+
+        // --- export ---
+        var exportArgv = [
+            "-exportArchive",
+            "-archivePath", archivePath,
+            "-exportOptionsPlist", plistPath,
+            "-exportPath", exportPath,
+            "-allowProvisioningUpdates",
+        ]
+        exportArgv.append(contentsOf: auth)
+
+        let exportResult = try await streamXcodebuild(
+            exportArgv, phase: "export", requestID: requestID, send: send
+        )
+        guard exportResult.code == 0 else {
+            return [
+                "ok": false, "phase": "export",
+                "exit_code": exportResult.code,
+                "log_tail": exportResult.tail,
+            ]
+        }
+
+        guard let ipa = firstIPA(in: exportPath) else {
+            return [
+                "ok": false, "phase": "export",
+                "exit_code": 0,
+                "log_tail": "export reported success but no .ipa was produced in \(exportPath)",
+            ]
+        }
+
+        // Hand back a workspace-relative path: the backend addresses
+        // everything through its sandbox, which rejects absolute paths.
+        let relative = ipa.hasPrefix(root)
+            ? String(ipa.dropFirst(root.count)).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            : ipa
+        return [
+            "ok": true,
+            "ipa_path": relative,
+            "absolute_path": ipa,
+            "scheme": scheme,
+            "project": proj,
+        ]
+    }
+
+    /// ASC API key auth so Xcode can register devices and download
+    /// profiles without an interactive 2FA prompt.
+    private func authArgs(payload: [String: Any], root: String) -> [String] {
+        guard let keyID = payload["asc_api_key_id"] as? String, !keyID.isEmpty,
+              let issuer = payload["asc_api_issuer_id"] as? String, !issuer.isEmpty,
+              let keyPath = payload["asc_api_key_path"] as? String, !keyPath.isEmpty
+        else { return [] }
+        let resolved = keyPath.hasPrefix("/")
+            ? keyPath
+            : URL(fileURLWithPath: root).appendingPathComponent(keyPath).path
+        guard FileManager.default.fileExists(atPath: resolved) else { return [] }
+        return [
+            "-authenticationKeyID", keyID,
+            "-authenticationKeyIssuerID", issuer,
+            "-authenticationKeyPath", resolved,
+        ]
+    }
+
+    private func writeExportOptions(path: String, method: String, teamID: String) throws {
+        var dict: [String: Any] = [
+            "method": method,
+            "signingStyle": "automatic",
+            "uploadSymbols": true,
+            "destination": "export",
+        ]
+        if !teamID.isEmpty { dict["teamID"] = teamID }
+        let data = try PropertyListSerialization.data(
+            fromPropertyList: dict, format: .xml, options: 0
+        )
+        try data.write(to: URL(fileURLWithPath: path))
+    }
+
+    private func detectProject(in root: String) throws -> String {
+        let fm = FileManager.default
+        let entries = (try? fm.contentsOfDirectory(atPath: root)) ?? []
+        // A workspace wins when both exist — that is what Xcode opens.
+        if let ws = entries.first(where: { $0.hasSuffix(".xcworkspace") }) {
+            return URL(fileURLWithPath: root).appendingPathComponent(ws).path
+        }
+        if let proj = entries.first(where: { $0.hasSuffix(".xcodeproj") }) {
+            return URL(fileURLWithPath: root).appendingPathComponent(proj).path
+        }
+        throw CmdError.bad("no .xcworkspace or .xcodeproj found in \(root)")
+    }
+
+    private func detectScheme(project: String) throws -> String {
+        let flag = project.hasSuffix(".xcworkspace") ? "-workspace" : "-project"
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/xcodebuild")
+        process.arguments = [flag, project, "-list"]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+        try process.run()
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        let text = String(data: data, encoding: .utf8) ?? ""
+
+        // `xcodebuild -list` prints an indented list under "Schemes:".
+        guard let range = text.range(of: "Schemes:") else {
+            throw CmdError.bad("could not read schemes from \(project)")
+        }
+        let after = text[range.upperBound...]
+        for raw in after.split(separator: "\n") {
+            let line = raw.trimmingCharacters(in: .whitespaces)
+            if !line.isEmpty { return line }
+        }
+        throw CmdError.bad("no schemes defined in \(project)")
+    }
+
+    private func firstIPA(in directory: String) -> String? {
+        let entries = (try? FileManager.default.contentsOfDirectory(atPath: directory)) ?? []
+        guard let name = entries.first(where: { $0.hasSuffix(".ipa") }) else { return nil }
+        return URL(fileURLWithPath: directory).appendingPathComponent(name).path
+    }
+
+    /// Runs xcodebuild, streaming each line as an event so the phone
+    /// shows live progress. Archive builds routinely take minutes;
+    /// silence for that long reads as a hang.
+    private func streamXcodebuild(
+        _ argv: [String],
+        phase: String,
+        requestID: String,
+        send: @escaping EventSender
+    ) async throws -> (code: Int32, tail: String) {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/xcodebuild")
+        process.arguments = argv
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+        try process.run()
+
+        var tail: [String] = []
+        let handle = pipe.fileHandleForReading
+        await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                while process.isRunning || handle.availableData.count > 0 {
+                    let chunk = handle.availableData
+                    if chunk.isEmpty {
+                        Thread.sleep(forTimeInterval: 0.1)
+                        continue
+                    }
+                    guard let s = String(data: chunk, encoding: .utf8) else { continue }
+                    for raw in s.split(separator: "\n", omittingEmptySubsequences: false) {
+                        let line = String(raw)
+                        send([
+                            "v": 1, "kind": "event", "in_response_to": requestID,
+                            "type": "xcodebuild.line",
+                            "payload": ["line": line, "phase": phase],
+                        ])
+                        tail.append(line)
+                        if tail.count > 300 { tail.removeFirst(tail.count - 300) }
+                    }
+                }
+                continuation.resume()
+            }
+        }
+        process.waitUntilExit()
+        return (process.terminationStatus, tail.joined(separator: "\n"))
     }
 
     private func runXcodeBuild(

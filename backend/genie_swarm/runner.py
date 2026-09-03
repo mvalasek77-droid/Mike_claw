@@ -43,6 +43,22 @@ class RunnerResult:
     strategy: str             # "companion" | "local-sandbox"
 
 
+@dataclass
+class ArchiveResult:
+    """Outcome of turning generated source into a signed .ipa.
+
+    `ipa_path` is workspace-relative because everything downstream
+    addresses files through the Sandbox, which rejects absolute paths.
+    """
+    ok: bool
+    ipa_path: str = ""
+    phase: str = ""           # "archive" | "export" — where it stopped
+    exit_code: int = 0
+    log_tail: str = ""
+    scheme: str = ""
+    detail: str = ""
+
+
 class MacRunner(ABC):
     """Abstract Mac-toolchain dispatcher."""
 
@@ -62,6 +78,25 @@ class MacRunner(ABC):
         sandbox: Sandbox,
         on_line: Callable[[str], Awaitable[None]] | None = None,
     ) -> RunnerResult: ...
+
+    @abstractmethod
+    async def archive_export(
+        self,
+        *,
+        workspace_root: str,
+        team_id: str = "",
+        scheme: str = "",
+        workspace_or_project: str = "",
+        configuration: str = "Release",
+        export_method: str = "app-store-connect",
+        asc_api_key_id: str = "",
+        asc_api_issuer_id: str = "",
+        asc_api_key_path: str = "",
+        sandbox: Sandbox,
+        on_line: Callable[[str], Awaitable[None]] | None = None,
+    ) -> "ArchiveResult":
+        """Archive and export a signed App Store .ipa."""
+        ...
 
     @abstractmethod
     async def simctl(
@@ -125,6 +160,35 @@ class CompanionRunner(MacRunner):
             configuration=configuration, on_line=on_line,
         )
 
+    async def archive_export(
+        self, *, workspace_root, team_id="", scheme="", workspace_or_project="",
+        configuration="Release", export_method="app-store-connect",
+        asc_api_key_id="", asc_api_issuer_id="", asc_api_key_path="",
+        sandbox, on_line=None,
+    ) -> ArchiveResult:
+        transport = _transport_for_runner()
+        if transport is None:
+            return ArchiveResult(
+                ok=False, phase="archive",
+                detail=(
+                    "No Mac is connected. Packaging an app for the App Store "
+                    "needs Xcode, which only runs on macOS — pair a Mac in "
+                    "Settings and try again."
+                ),
+            )
+        return await transport.archive_export(
+            workspace_root=workspace_root,
+            team_id=team_id,
+            scheme=scheme,
+            workspace_or_project=workspace_or_project,
+            configuration=configuration,
+            export_method=export_method,
+            asc_api_key_id=asc_api_key_id,
+            asc_api_issuer_id=asc_api_issuer_id,
+            asc_api_key_path=asc_api_key_path,
+            on_line=on_line,
+        )
+
     async def simctl(self, *, subcommand, args, sandbox) -> RunnerResult:
         transport = _transport_for_runner()
         if transport is None:
@@ -182,6 +246,27 @@ class LocalSandboxRunner(MacRunner):
             strategy=self.strategy,
         )
 
+    async def archive_export(
+        self, *, workspace_root, team_id="", scheme="", workspace_or_project="",
+        configuration="Release", export_method="app-store-connect",
+        asc_api_key_id="", asc_api_issuer_id="", asc_api_key_path="",
+        sandbox, on_line=None,
+    ) -> ArchiveResult:
+        """Not attempted locally.
+
+        An archive build routinely runs for many minutes and the Sandbox
+        caps commands at 90 seconds, so a local attempt would be killed
+        part-way through and look like a signing failure. Refusing
+        outright gives the user a true reason instead of a confusing
+        one."""
+        return ArchiveResult(
+            ok=False, phase="archive",
+            detail=(
+                "Packaging runs on your Mac, not on the build server. "
+                "Pair a Mac in Settings and try again."
+            ),
+        )
+
     async def simctl(self, *, subcommand, args, sandbox) -> RunnerResult:
         argv = ["xcrun", "simctl", subcommand, *args]
         import time
@@ -210,6 +295,13 @@ class CompanionTransport(Protocol):
         destination: str, configuration: str,
         on_line: Callable[[str], Awaitable[None]] | None,
     ) -> RunnerResult: ...
+
+    async def archive_export(
+        self, *, workspace_root: str, team_id: str, scheme: str,
+        workspace_or_project: str, configuration: str, export_method: str,
+        asc_api_key_id: str, asc_api_issuer_id: str, asc_api_key_path: str,
+        on_line: Callable[[str], Awaitable[None]] | None,
+    ) -> "ArchiveResult": ...
 
     async def simctl(self, *, subcommand: str, args: list[str]) -> RunnerResult: ...
 

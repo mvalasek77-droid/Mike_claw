@@ -190,6 +190,7 @@ struct AppStoreConnectGuideView: View {
     @State private var showAllSteps = false
     @StateObject private var coachChat = ASCCoachChat()
     @State private var showCoachChat = false
+    @State private var showChecklist = false
 
     /// AI-proactive pre-flight gate. Nothing runs the guide's steps
     /// until CodeGenie has actually checked the app — the user never
@@ -274,6 +275,17 @@ struct AppStoreConnectGuideView: View {
             Button("OK") { testFlightErrorMessage = nil }
         } message: {
             Text(testFlightErrorMessage ?? "")
+        }
+        .sheet(isPresented: $showChecklist) {
+            SubmissionChecklistView(
+                jobID: job.id,
+                appName: job.description.title,
+                forAppStore: testflightDone,
+                autoSatisfied: SubmissionChecklist.autoSatisfied(from: readiness),
+                store: store
+            )
+            .presentationDragIndicator(.visible)
+            .presentationBackground(.ultraThinMaterial)
         }
         .sheet(isPresented: $showCoachChat) {
             ASCCoachChatView(
@@ -589,6 +601,7 @@ struct AppStoreConnectGuideView: View {
                         upNextStrip
                     }
                     if justBecameTestable { testableMilestoneCard }
+                    checklistCard
                     macStatusCard
                     overviewToggle
                     if showAllSteps { overviewList }
@@ -1155,6 +1168,56 @@ struct AppStoreConnectGuideView: View {
         """
     }
 
+    // MARK: Your own checklist
+
+    /// The human half of readiness. CodeGenie's gates cover what a
+    /// machine can prove; this covers what only the user knows, and
+    /// it is where most first apps actually get rejected.
+    private var checklistCard: some View {
+        let scope = testflightDone
+        let items = SubmissionChecklist.items(forAppStore: scope)
+        let auto = SubmissionChecklist.autoSatisfied(from: readiness)
+        let settled = store.checkedItems(for: job.id).union(auto)
+        let done = items.filter { settled.contains($0.id) }.count
+        let complete = done == items.count
+
+        return Button {
+            Haptics.selection()
+            showChecklist = true
+        } label: {
+            GlassSurface(tier: .raised, corner: 18) {
+                HStack(spacing: 12) {
+                    Image(systemName: complete ? "checkmark.seal.fill" : "list.bullet.clipboard.fill")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(complete ? LiquidGlass.success : LiquidGlass.warning)
+                        .frame(width: 38, height: 38)
+                        .background(Circle().fill((complete ? LiquidGlass.success : LiquidGlass.warning).opacity(0.18)))
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Your submission checklist")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText)
+                        Text(complete
+                             ? "All \(items.count) confirmed."
+                             : "\(done) of \(items.count) confirmed — the things only you can check.")
+                            .font(.system(size: 11, weight: .regular, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.68))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.4))
+                }
+                .padding(14)
+                .contentShape(Rectangle())
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Your submission checklist, \(done) of \(items.count) confirmed")
+    }
+
     // MARK: Mac status
 
     private var macStatusCard: some View {
@@ -1478,6 +1541,26 @@ struct AppStoreConnectGuideView: View {
     /// might already be stale.
     private func attemptFinalSubmit() async {
         await runReadinessCheck()
+
+        // The user's own attestations gate this too. CodeGenie can
+        // prove a binary is signed; it cannot prove the app runs, that
+        // the screenshots are real, or that the privacy answers are
+        // true — and those are what Apple actually rejects for.
+        let outstandingChecklist = SubmissionChecklist.outstanding(
+            checked: store.checkedItems(for: job.id),
+            autoSatisfied: SubmissionChecklist.autoSatisfied(from: readiness),
+            forAppStore: true
+        )
+        guard outstandingChecklist.isEmpty else {
+            banner = Banner(
+                text: "\(outstandingChecklist.count) thing\(outstandingChecklist.count == 1 ? "" : "s") on your checklist still need confirming. These are the ones Apple rejects for.",
+                tone: .warning
+            )
+            showChecklist = true
+            Haptics.warning()
+            return
+        }
+
         if ASCCoach.isReadyForAppStoreSubmission(readiness) {
             showSubmitConfirm = true
         } else {

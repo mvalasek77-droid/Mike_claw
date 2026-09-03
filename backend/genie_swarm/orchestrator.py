@@ -118,6 +118,15 @@ class ShipConfig:
     poll_after_upload: bool = True
     poll_timeout_s: float = 60 * 60
     poll_interval_s: float = 30.0
+    # Packaging. When the .ipa is absent we archive and export one
+    # first, on the user's Mac, rather than failing with "ipa not
+    # found" and leaving them nothing to act on.
+    auto_archive: bool = True
+    team_id: str = ""
+    scheme: str = ""                      # blank = detect on the Mac
+    workspace_or_project: str = ""        # blank = detect on the Mac
+    configuration: str = "Release"
+    export_method: str = "app-store-connect"
 
 
 class SwarmOrchestrator:
@@ -648,6 +657,13 @@ class SwarmOrchestrator:
         )
 
         ipa_full = session.sandbox.safe_path(ship.ipa_path)
+        if not ipa_full.exists() and ship.auto_archive:
+            packaged = await self._package_ipa(ship, session, events)
+            if packaged is None:
+                return
+            ship.ipa_path = packaged
+            ipa_full = session.sandbox.safe_path(packaged)
+
         if not ipa_full.exists():
             await events.emit(
                 "testflight.upload", ok=False,
@@ -728,6 +744,64 @@ class SwarmOrchestrator:
             await watch(poller_cfg, events)
         except Exception as exc:  # noqa: BLE001
             await events.emit("testflight.status", state="POLL_ERROR", detail=str(exc))
+
+    async def _package_ipa(
+        self, ship: "ShipConfig", session: Session, events,
+    ) -> str | None:
+        """Archive and export a signed .ipa, returning its workspace-
+        relative path — or None when packaging failed, having already
+        told the user why.
+
+        This is the step that was missing entirely: everything
+        downstream assumed a signed binary already existed, but nothing
+        produced one, so TestFlight upload could never succeed."""
+        from .runner import CompanionRunner
+
+        await events.emit(
+            "job.state", state="shipping",
+            detail="packaging your app for the App Store",
+        )
+        await events.emit("testflight.package", phase="archive", ok=None)
+
+        async def forward(line: str) -> None:
+            await events.emit("testflight.package.progress", line=line)
+
+        result = await CompanionRunner().archive_export(
+            workspace_root=str(session.sandbox.root),
+            team_id=ship.team_id,
+            scheme=ship.scheme,
+            workspace_or_project=ship.workspace_or_project,
+            configuration=ship.configuration,
+            export_method=ship.export_method,
+            asc_api_key_id=ship.asc_api_key_id or "",
+            asc_api_issuer_id=ship.asc_api_issuer_id or "",
+            asc_api_key_path=ship.asc_api_key_path or "",
+            sandbox=session.sandbox,
+            on_line=forward,
+        )
+
+        if not result.ok:
+            reason = result.detail or result.log_tail[-1500:] or "packaging failed"
+            await events.emit(
+                "testflight.package", phase=result.phase or "archive",
+                ok=False, preview=reason,
+            )
+            await events.emit("testflight.upload", ok=False, preview=reason)
+            self.memory.note_decision(
+                session.job.id, "shipping",
+                f"Packaging failed during {result.phase or 'archive'}: {reason[:300]}",
+            )
+            return None
+
+        await events.emit(
+            "testflight.package", phase="export", ok=True,
+            preview=f"signed {result.ipa_path}",
+        )
+        self.memory.note_decision(
+            session.job.id, "shipping",
+            f"Packaged signed IPA at {result.ipa_path} (scheme {result.scheme or 'auto'}).",
+        )
+        return result.ipa_path
 
     def _ship_creds_argv(self, ship: "ShipConfig", session: Session) -> list[str] | None:
         """Prefer ASC API key (no 2FA prompts) over Apple-ID + app-

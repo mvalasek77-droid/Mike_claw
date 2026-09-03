@@ -925,12 +925,29 @@ struct ShipConfig: Hashable {
     var ascIssuerID: String? = nil
     var ascKeyPath: String? = nil
     var pollAfterUpload: Bool = true
+    /// Package a signed .ipa first when one doesn't exist yet. On by
+    /// default: a first-time user has never heard of an archive and
+    /// should not have to produce one by hand.
+    var autoArchive: Bool = true
+    var teamID: String = ""
+    /// Blank means "work it out on the Mac" — only that machine can
+    /// see what the generated project actually is.
+    var scheme: String = ""
+    var workspaceOrProject: String = ""
+    var configuration: String = "Release"
+    var exportMethod: String = "app-store-connect"
 
     var wireBody: [String: Any] {
         var body: [String: Any] = [
             "ipa_path": ipaPath,
             "bundle_id": bundleID,
             "poll_after_upload": pollAfterUpload,
+            "auto_archive": autoArchive,
+            "team_id": teamID,
+            "scheme": scheme,
+            "workspace_or_project": workspaceOrProject,
+            "configuration": configuration,
+            "export_method": exportMethod,
         ]
         if let v = appleID { body["apple_id"] = v }
         if let v = appSpecificPassword { body["app_specific_password"] = v }
@@ -953,6 +970,9 @@ struct ShipConfig: Hashable {
         let credentials = credentials ?? Credentials.shared
         guard credentials.hasAppleDevCreds else { return nil }
         var config = ShipConfig(ipaPath: ipaPath, bundleID: bundleID)
+        // The team id is what lets Xcode pick the right signing
+        // identity without asking anyone anything.
+        config.teamID = credentials.appleTeamID
         if !credentials.ascKeyID.isEmpty {
             config.ascKeyID = credentials.ascKeyID
             config.ascIssuerID = credentials.ascIssuerID

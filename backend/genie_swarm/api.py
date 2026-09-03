@@ -855,4 +855,10 @@ def _to_ship_config(req: ShipRequest) -> ShipConfig:
         asc_api_issuer_id=req.asc_api_issuer_id,
         asc_api_key_path=req.asc_api_key_path,
         poll_after_upload=req.poll_after_upload,
+        auto_archive=req.auto_archive,
+        team_id=req.team_id,
+        scheme=req.scheme,
+        workspace_or_project=req.workspace_or_project,
+        configuration=req.configuration,
+        export_method=req.export_method,
     )
