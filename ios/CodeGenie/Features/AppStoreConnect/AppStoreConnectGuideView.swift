@@ -11,13 +11,13 @@ import UIKit
 /// App Store copy before they could even run their app on a real
 /// device; now testing comes first.
 enum ASCPhase: String, CaseIterable {
-    case testflight = "Get it testable"
-    case appStore = "Publish to the App Store"
+    case testflight = "Part 1 — Get it on your phone"
+    case appStore = "Part 2 — Put it on the App Store"
 
     var subtitle: String {
         switch self {
-        case .testflight: "The minimum Apple needs before you (or friends) can install a real build."
-        case .appStore: "Only needed when you're ready for the public App Store."
+        case .testflight: "The least Apple needs before you and your friends can install the real app."
+        case .appStore: "Only when you want strangers to be able to find and download it."
         }
     }
 }
@@ -183,6 +183,11 @@ struct AppStoreConnectGuideView: View {
     @State private var showTestFlightErrorAlert = false
     @State private var blockedGate: BlockedGate?
     @State private var didLoad = false
+    /// Focus mode is the default: one step on screen at a time. This
+    /// reveals the whole 12-step list only when the user asks for it,
+    /// because seeing all twelve at once is what made this screen
+    /// unreadable for a first-time submitter.
+    @State private var showAllSteps = false
 
     /// AI-proactive pre-flight gate. Nothing runs the guide's steps
     /// until CodeGenie has actually checked the app — the user never
@@ -221,10 +226,6 @@ struct AppStoreConnectGuideView: View {
     private var issues: [ASCCoach.Issue] { ASCCoach.validate(metadata) }
     private var blocking: [ASCCoach.Issue] { issues.filter { $0.severity == .blocking } }
     private var macPaired: Bool { companion.isConnected }
-
-    private var nextAction: ASCCoach.NextAction {
-        ASCCoach.nextAction(completed: completed, metadata: metadata, macPaired: macPaired)
-    }
 
     /// The milestone moment: TestFlight phase finished, App Store phase
     /// not started. Worth calling out explicitly — a first-timer should
@@ -539,22 +540,28 @@ struct AppStoreConnectGuideView: View {
 
     // MARK: Main guide
 
+    /// Focus mode. The user sees exactly one step: what it is, the
+    /// literal clicks, the thing that usually goes wrong, and one
+    /// button. Everything already done collapses to a single line, and
+    /// everything still to come is a count — not twelve open cards.
     private var guideBody: some View {
         VStack(spacing: 0) {
             phaseProgress
             ScrollView {
                 VStack(spacing: 16) {
-                    coachCard
                     if let banner { bannerCard(banner) }
+                    if allStepsDone {
+                        finishedCard
+                    } else {
+                        if !completed.isEmpty { completedStrip }
+                        focusCard
+                        if currentStep.action == .fillForm { listingCard }
+                        upNextStrip
+                    }
                     if justBecameTestable { testableMilestoneCard }
                     macStatusCard
-                    ForEach(ASCPhase.allCases, id: \.self) { phase in
-                        phaseHeader(phase)
-                        if phase == .appStore { listingCard }
-                        ForEach(ASCStep.steps(in: phase)) { step in
-                            stepCard(step)
-                        }
-                    }
+                    overviewToggle
+                    if showAllSteps { overviewList }
                     Color.clear.frame(height: 30)
                 }
                 .padding(.horizontal, 18)
@@ -562,6 +569,323 @@ struct AppStoreConnectGuideView: View {
             }
             .scrollIndicators(.hidden)
         }
+    }
+
+    private var allStepsDone: Bool {
+        completed.count >= ASCStep.all.count
+    }
+
+    private var currentStep: ASCStep {
+        ASCStep.all.first { $0.number == current } ?? ASCStep.all[0]
+    }
+
+    private var currentWalkthrough: ASCCoach.Walkthrough {
+        ASCCoach.walkthrough(
+            for: currentStep,
+            appName: job.description.title,
+            bundleID: defaultBundleID(for: job.description.title),
+            macPaired: macPaired
+        )
+    }
+
+    // MARK: The one step you're on
+
+    private var focusCard: some View {
+        let step = currentStep
+        let walk = currentWalkthrough
+        return GlassSurface(tier: .deep, corner: 22) {
+            VStack(alignment: .leading, spacing: 16) {
+                // Where am I
+                HStack(spacing: 8) {
+                    Text("Step \(step.number) of \(ASCStep.all.count)")
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundStyle(LiquidGlass.accent)
+                        .textCase(.uppercase)
+                        .tracking(1)
+                    ownershipBadge(step)
+                    Spacer(minLength: 0)
+                    if !walk.timeEstimate.isEmpty {
+                        Label(walk.timeEstimate, systemImage: "clock")
+                            .font(.system(size: 10, weight: .semibold, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
+                            .labelStyle(.titleAndIcon)
+                    }
+                }
+
+                Text(walk.plainTitle)
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(walk.whatThisIs)
+                    .font(.system(size: 14, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if !walk.doThis.isEmpty {
+                    Divider().background(.white.opacity(0.1))
+                    Text("Do this")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
+                        .textCase(.uppercase)
+                        .tracking(1)
+                    VStack(alignment: .leading, spacing: 12) {
+                        ForEach(Array(walk.doThis.enumerated()), id: \.element.id) { pair in
+                            instructionRow(index: pair.offset + 1, instruction: pair.element)
+                        }
+                    }
+                }
+
+                if let watchOut = walk.watchOut {
+                    watchOutCard(watchOut)
+                }
+
+                actionRow(step)
+
+                // Users mis-tap, and they also revisit a finished step
+                // from the overview list. Either way they need a way
+                // back out of "done" without hunting for it.
+                if completed.contains(step.number) {
+                    Button {
+                        store.markStepIncomplete(step.number, for: job.id)
+                        completed.remove(step.number)
+                        Haptics.selection()
+                    } label: {
+                        Text("Reopen this step")
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .foregroundStyle(LiquidGlass.accent)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .accessibilityHint("Marks step \(step.number) as not done again")
+                }
+            }
+            .padding(20)
+        }
+        .id(step.number)
+    }
+
+    private func instructionRow(index: Int, instruction: ASCCoach.Walkthrough.Instruction) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Text("\(index)")
+                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.9))
+                .frame(width: 20, height: 20)
+                .background(Circle().fill(.white.opacity(0.12)))
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(instruction.text)
+                    .font(.system(size: 14, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.88))
+                    .lineSpacing(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let value = instruction.copyValue {
+                    copyChip(value)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Step \(index). \(instruction.text)")
+    }
+
+    /// A literal value the user must get exactly right — bundle ID,
+    /// app name. Showing it with a copy button removes the single
+    /// biggest source of "why was my upload rejected": a typo.
+    private func copyChip(_ value: String) -> some View {
+        Button {
+            UIPasteboard.general.string = value
+            banner = Banner(text: "Copied \(value)", tone: .success)
+            Haptics.success()
+        } label: {
+            HStack(spacing: 6) {
+                Text(value)
+                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(LiquidGlass.primaryText)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Image(systemName: "doc.on.doc.fill")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(LiquidGlass.accent)
+            }
+            .padding(.horizontal, 10).padding(.vertical, 7)
+            .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(LiquidGlass.accent.opacity(0.35)))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Copy \(value)")
+        .accessibilityHint("Copies this exact value to your clipboard")
+    }
+
+    private func watchOutCard(_ text: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(LiquidGlass.warning)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Where people get stuck")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundStyle(LiquidGlass.warning)
+                    .textCase(.uppercase)
+                    .tracking(0.6)
+                Text(text)
+                    .font(.system(size: 13, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
+                    .lineSpacing(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(LiquidGlass.warning.opacity(0.1), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(LiquidGlass.warning.opacity(0.28)))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Where people get stuck: \(text)")
+    }
+
+    // MARK: Behind and ahead
+
+    private var completedStrip: some View {
+        Button {
+            Haptics.selection()
+            Motion.run(.spring(response: 0.35)) { showAllSteps = true }
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(LiquidGlass.success)
+                    .accessibilityHidden(true)
+                Text("\(completed.count) step\(completed.count == 1 ? "" : "s") done")
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
+                Spacer()
+                Text("Review")
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(LiquidGlass.accent)
+            }
+            .padding(.horizontal, 14).padding(.vertical, 11)
+            .background(.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(completed.count) steps done. Review them.")
+    }
+
+    private var upNextStrip: some View {
+        let remaining = ASCStep.all.filter { $0.number > current && !completed.contains($0.number) }
+        return Group {
+            if let next = remaining.first {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "arrow.turn.down.right")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.45))
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("After this: \(next.title)")
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+                        if remaining.count > 1 {
+                            Text("\(remaining.count - 1) more after that. Your progress saves as you go.")
+                                .font(.system(size: 11, weight: .regular, design: .rounded))
+                                .foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 4)
+                .accessibilityElement(children: .combine)
+            }
+        }
+    }
+
+    private var finishedCard: some View {
+        GlassSurface(tier: .deep, corner: 22) {
+            VStack(spacing: 12) {
+                Text("🎉").font(.system(size: 40))
+                Text("Submitted")
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText)
+                Text("Every step is done. Apple emails you when review finishes, usually within 24 to 48 hours. If they ask for a change, it comes with the exact reason and you can fix it without rebuilding.")
+                    .font(.system(size: 14, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(24)
+            .frame(maxWidth: .infinity)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Submitted. Apple emails you when review finishes.")
+    }
+
+    // MARK: Full list, on request only
+
+    private var overviewToggle: some View {
+        Button {
+            Haptics.selection()
+            Motion.run(.spring(response: 0.35)) { showAllSteps.toggle() }
+        } label: {
+            Label(
+                showAllSteps ? "Hide the full list" : "See all \(ASCStep.all.count) steps",
+                systemImage: showAllSteps ? "chevron.up" : "chevron.down"
+            )
+            .font(.system(size: 13, weight: .semibold, design: .rounded))
+            .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
+        }
+        .accessibilityHint("Shows every step in the submission, including ones you've finished")
+    }
+
+    private var overviewList: some View {
+        VStack(spacing: 14) {
+            ForEach(ASCPhase.allCases, id: \.self) { phase in
+                phaseHeader(phase)
+                ForEach(ASCStep.steps(in: phase)) { step in
+                    overviewRow(step)
+                }
+            }
+        }
+    }
+
+    private func overviewRow(_ step: ASCStep) -> some View {
+        let isDone = completed.contains(step.number)
+        let isCurrent = step.number == current
+        return Button {
+            Haptics.selection()
+            Motion.run(.spring(response: 0.4)) {
+                current = step.number
+                showAllSteps = false
+            }
+        } label: {
+            HStack(spacing: 12) {
+                statusBadge(step, isDone: isDone, isCurrent: isCurrent)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(step.title)
+                        .font(.system(size: 14, weight: isCurrent ? .bold : .medium, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(isDone ? 0.6 : 1))
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if isCurrent {
+                        Text("You're here")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundStyle(LiquidGlass.accent)
+                    }
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.35))
+            }
+            .padding(.horizontal, 14).padding(.vertical, 11)
+            .background(
+                (isCurrent ? LiquidGlass.accent.opacity(0.12) : Color.white.opacity(0.04)),
+                in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Step \(step.number). \(step.title). \(isDone ? "Done" : isCurrent ? "Current step" : "Not started")")
+        .accessibilityHint("Jump to this step")
     }
 
     /// Two-segment progress instead of one flat bar — "testable" and
@@ -640,47 +964,6 @@ struct AppStoreConnectGuideView: View {
             }
             .padding(14)
         }
-    }
-
-    // MARK: Coach
-
-    /// The always-visible "what do I do right now" panel. This is the
-    /// difference between a checklist and a guide — the user should
-    /// never have to work out which of twelve steps applies to them.
-    private var coachCard: some View {
-        GlassSurface(tier: .deep, corner: 20) {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 10) {
-                    Image(systemName: nextAction.isBlocking ? "exclamationmark.triangle.fill" : "sparkles")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(nextAction.isBlocking ? LiquidGlass.warning : LiquidGlass.accent)
-                        .accessibilityHidden(true)
-                    Text(nextAction.headline)
-                        .font(.system(size: 17, weight: .bold, design: .rounded))
-                        .foregroundStyle(LiquidGlass.primaryText)
-                    Spacer(minLength: 0)
-                }
-                Text(nextAction.detail)
-                    .font(.system(size: 14, weight: .regular, design: .rounded))
-                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.82))
-                    .fixedSize(horizontal: false, vertical: true)
-                    .lineSpacing(2)
-
-                if nextAction.isBlocking {
-                    PrimaryButton(title: "Fix the listing", systemImage: "pencil", style: .filled) {
-                        showMetadataEditor = true
-                    }
-                } else if let step = nextAction.stepNumber {
-                    PrimaryButton(title: "Go to step \(step)", systemImage: "arrow.down.circle.fill", style: .filled) {
-                        Motion.run(.spring(response: 0.4)) { current = step }
-                        Haptics.selection()
-                    }
-                }
-            }
-            .padding(16)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Coach: \(nextAction.headline). \(nextAction.detail)")
     }
 
     private func bannerCard(_ b: Banner) -> some View {
@@ -841,59 +1124,6 @@ struct AppStoreConnectGuideView: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(macPaired ? "Mac connected" : "No Mac paired. Manual steps still available.")
-    }
-
-    // MARK: Steps
-
-    private func stepCard(_ step: ASCStep) -> some View {
-        let isDone = completed.contains(step.number)
-        let isCurrent = step.number == current
-        return GlassSurface(tier: isCurrent ? .deep : .raised) {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 12) {
-                    statusBadge(step, isDone: isDone, isCurrent: isCurrent)
-                    VStack(alignment: .leading, spacing: 3) {
-                        HStack(spacing: 6) {
-                            Text("Step \(step.number)")
-                                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                                .foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
-                                .textCase(.uppercase).tracking(1)
-                            ownershipBadge(step)
-                        }
-                        Text(step.title)
-                            .font(.system(size: 17, weight: .semibold, design: .rounded))
-                            .foregroundStyle(LiquidGlass.primaryText)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    Spacer(minLength: 0)
-                }
-
-                Text(isCurrent
-                     ? ASCCoach.guidance(for: step, metadata: metadata,
-                                         macPaired: macPaired, buildUploaded: completed.contains(3))
-                     : step.body)
-                    .font(.system(size: 14, weight: .regular, design: .rounded))
-                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
-                    .lineSpacing(3)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                if isCurrent { actionRow(step) }
-                if isDone && !isCurrent {
-                    Button {
-                        store.markStepIncomplete(step.number, for: job.id)
-                        completed.remove(step.number)
-                        current = step.number
-                        Haptics.selection()
-                    } label: {
-                        Text("Reopen this step")
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
-                            .foregroundStyle(LiquidGlass.accent)
-                    }
-                }
-            }
-            .padding(16)
-        }
-        .id(step.number)
     }
 
     private func statusBadge(_ step: ASCStep, isDone: Bool, isCurrent: Bool) -> some View {

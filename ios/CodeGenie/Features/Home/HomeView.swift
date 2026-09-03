@@ -13,7 +13,6 @@ struct HomeView: View {
     @State private var showAppleDev = false
     @State private var showGitHub = false
     @State private var xcodeAcknowledged = UserDefaults.standard.bool(forKey: "xcode.readiness.acknowledged")
-    @State private var showSampleApps = false
     @State private var showAppOfYearDNA = false
     @State private var showAutomationAudit = false
     @State private var showFirstBuildPrompt = false
@@ -57,12 +56,6 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showTutorial) {
             TutorialView(mode: .replay) { showTutorial = false }
-                .presentationDragIndicator(.visible)
-                .presentationBackground(.ultraThinMaterial)
-        }
-        .sheet(isPresented: $showSampleApps) {
-            SampleAppsView()
-                .environmentObject(session)
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
         }
@@ -375,12 +368,20 @@ struct HomeView: View {
                         .foregroundStyle(LiquidGlass.primaryText)
                 }
                 Spacer()
-                Button { } label: {
-                    Image(systemName: "person.crop.circle")
-                        .font(.system(size: 22))
-                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
-                        .accessibilityLabel("Account")
+                Button {
+                    Haptics.selection()
+                    showSettings = true
+                } label: {
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 19, weight: .semibold))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
+                        .frame(width: 40, height: 40)
+                        .background(Circle().fill(.white.opacity(0.08)))
+                        .contentShape(Circle())
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Settings")
+                .accessibilityHint("Keys, costs, and shipping setup")
             }
             .padding(.horizontal, 4)
 
@@ -419,17 +420,16 @@ struct HomeView: View {
         }
     }
 
-    /// Whether to expand the full quickGrid. First-timers see four
-    /// essentials (Try a sample / Watch tour / Xcode steps / Costs);
-    /// the advanced tiles unfold after their first finished build, or
-    /// when they tap "Show more". This is the audit fix for "11 things
-    /// to click on first launch".
+    /// Whether to expand the full quickGrid. First-timers see three
+    /// essentials (Watch tour / Xcode steps / Costs); the advanced
+    /// tiles unfold after their first finished build, or when they tap
+    /// "Show more". This is the audit fix for "11 things to click on
+    /// first launch".
     @AppStorage("home.showAdvancedTiles") private var showAdvancedTiles: Bool = false
 
     private var quickGrid: some View {
         VStack(spacing: 12) {
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-                QuickTile(title: "Try a sample",    subtitle: "Watch one build live",  icon: "sparkles",            tint: LiquidGlass.accent)          { showSampleApps = true }
                 QuickTile(title: "Watch the tour",  subtitle: "7-step tutorial",       icon: "play.rectangle.fill", tint: LiquidGlass.accentSecondary) { showTutorial = true }
                 QuickTile(title: "Xcode steps",     subtitle: "Pocket guide",          icon: "hammer.fill",         tint: LiquidGlass.warning)         { showXcodeGuide = true }
                 QuickTile(title: "Costs & keys",    subtitle: "Pick your provider",    icon: "creditcard.fill",     tint: LiquidGlass.success)         { showSettings = true }
@@ -556,7 +556,7 @@ private struct JobRow: View {
                     Text(job.description.title)
                         .font(.system(size: 15, weight: .semibold, design: .rounded))
                         .foregroundStyle(LiquidGlass.primaryText)
-                    Text(job.stage.rawValue)
+                    Text(job.stage.label)
                         .font(.system(size: 12, weight: .regular, design: .rounded))
                         .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
                 }
@@ -568,7 +568,7 @@ private struct JobRow: View {
             .padding(12)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(job.description.title), \(job.stage.rawValue), \(Int(job.stage.progress * 100)) percent")
+        .accessibilityLabel("\(job.description.title), \(job.stage.label), \(Int(job.stage.progress * 100)) percent")
     }
 }
 

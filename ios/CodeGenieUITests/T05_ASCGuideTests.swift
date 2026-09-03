@@ -1,99 +1,77 @@
 import XCTest
 
-/// Tests the App Store Connect guided walkthrough — 10 steps
-/// from sign-in through submission. Since the guide is shown
-/// post-build, these tests verify the sheet presentation and
-/// step navigation, not actual ASC actions.
-final class T05_ASCGuideTests: CodeGenieTestBase {
+/// Apple Developer Program setup walkthrough — the four-screen primer
+/// reachable from Settings that explains the $99/year enrolment, the
+/// difference between App Store Connect and the Developer Portal, and
+/// collects the signing credentials.
+///
+/// This file previously claimed to cover the App Store Connect
+/// submission guide, but its helper only ever opened this screen. The
+/// submission guide itself is covered end to end in
+/// `T11_ASCSubmissionFlowTests`.
+final class T05_AppleDevWalkthroughTests: CodeGenieTestBase {
 
     override func setUpWithError() throws {
         try super.setUpWithError()
         launchOnboarded()
     }
 
-    // MARK: - ASC guide reachable from build success
-
-    func test01_ascGuideStructureExists() {
-        openASCGuideFromSettings()
-        guard waitFor(app.staticTexts.matching(
-            NSPredicate(format: "label CONTAINS[c] 'App Store Connect' OR label CONTAINS[c] 'Submit'")
-        ).firstMatch, timeout: 5) else { return }
-
-        screenshot("01-asc-guide-open")
-    }
-
-    func test02_ascGuideHasTenSteps() {
-        openASCGuideFromSettings()
-        sleep(1)
-
-        var stepCount = 0
-        for i in 1...10 {
-            let step = app.staticTexts.matching(
-                NSPredicate(format: "label CONTAINS[c] 'Step \(i)'")
-            ).firstMatch
-            if step.exists { stepCount += 1 }
-        }
-        scrollDown(times: 3)
-        for i in 1...10 {
-            let step = app.staticTexts.matching(
-                NSPredicate(format: "label CONTAINS[c] 'Step \(i)'")
-            ).firstMatch
-            if step.exists { stepCount += 1 }
-        }
-
-        XCTAssertGreaterThanOrEqual(stepCount, 3,
-                                    "ASC guide should show at least some numbered steps")
-        screenshot("02-asc-steps")
-    }
-
-    func test03_ascStepCardsAreInteractive() {
-        openASCGuideFromSettings()
-        sleep(1)
-
-        let firstStep = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Step 1' OR label CONTAINS[c] 'Sign in'")
+    func test01_walkthroughOpensFromSettings() {
+        openAppleDevWalkthrough()
+        let heading = app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS[c] 'Apple Developer' OR label CONTAINS[c] 'Developer Program'")
         ).firstMatch
-        if firstStep.waitForExistence(timeout: 3) {
-            firstStep.tap()
+        assertExists(heading, "The Apple Developer walkthrough should open from Settings")
+        screenshot("01-apple-dev-open")
+    }
+
+    func test02_walkthroughAnnouncesItsPosition() {
+        openAppleDevWalkthrough()
+        let position = app.otherElements.matching(
+            NSPredicate(format: "label CONTAINS[c] 'of 4'")
+        ).firstMatch
+        XCTAssertTrue(position.waitForExistence(timeout: 4),
+                      "Progress through the four screens should be announced for VoiceOver")
+        screenshot("02-apple-dev-progress")
+    }
+
+    /// The $99/year cost is the single most surprising fact for a
+    /// first-time submitter, so it must be stated up front rather than
+    /// discovered on Apple's site.
+    func test03_costIsDisclosedUpFront() {
+        openAppleDevWalkthrough()
+        let cost = app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS '99'")
+        ).firstMatch
+        XCTAssertTrue(cost.waitForExistence(timeout: 4),
+                      "The annual fee should be disclosed before the user starts")
+        screenshot("03-cost-disclosure")
+    }
+
+    func test04_walkthroughAdvancesThroughScreens() {
+        openAppleDevWalkthrough()
+        for i in 0..<3 {
+            let next = app.buttons.matching(
+                NSPredicate(format: "label CONTAINS[c] 'Next' OR label CONTAINS[c] 'Continue' OR label CONTAINS[c] 'I have'")
+            ).firstMatch
+            guard next.waitForExistence(timeout: 3) else { break }
+            next.tap()
             sleep(1)
-            screenshot("03-asc-step-expanded")
-        }
-    }
-
-    func test04_ascStepShowsAutomationBadge() {
-        openASCGuideFromSettings()
-        sleep(1)
-
-        let badge = app.staticTexts.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Auto' OR label CONTAINS[c] 'Hybrid' OR label CONTAINS[c] 'Manual'")
-        ).firstMatch
-        if badge.waitForExistence(timeout: 3) {
-            screenshot("04-automation-badge")
-        }
-    }
-
-    func test05_ascGuideScrollsThroughAllSteps() {
-        openASCGuideFromSettings()
-        sleep(1)
-
-        for i in 0..<5 {
-            scrollDown(times: 1)
-            sleep(0.5)
-            screenshot("05-asc-scroll-\(i)")
+            screenshot("04-apple-dev-screen-\(i)")
         }
     }
 
     // MARK: - Helpers
 
-    private func openASCGuideFromSettings() {
+    private func openAppleDevWalkthrough() {
         selectTab("Settings")
         sleep(1)
         scrollDown(times: 4)
 
         let apple = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Apple Developer' OR label CONTAINS[c] 'App Store Connect'")
+            NSPredicate(format: "label CONTAINS[c] 'Apple Developer'")
         ).firstMatch
-        if apple.waitForExistence(timeout: 3) {
+        if apple.waitForExistence(timeout: 4) {
             apple.tap()
             sleep(1)
         }

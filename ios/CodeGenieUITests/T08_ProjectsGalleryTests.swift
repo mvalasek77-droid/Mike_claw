@@ -30,7 +30,7 @@ final class T08_ProjectsGalleryTests: CodeGenieTestBase {
         if newBuild.waitForExistence(timeout: 3) {
             newBuild.tap()
             sleep(1)
-            assertExists(app.staticTexts["Shape the experience"],
+            assertExists(app.staticTexts["Describe your app"],
                          "New build should open the Describe form")
             dismissSheet()
         }

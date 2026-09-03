@@ -218,104 +218,6 @@ enum ASCCoach {
         keywords.map { $0.trimmed }.filter { !$0.isEmpty }.joined(separator: ",")
     }
 
-    // MARK: - Step guidance
-
-    /// Plain-English guidance for a step, adapted to live state.
-    /// This is what the coach banner shows: not "step 5 of 10" but
-    /// "here is what to do right now, and why".
-    static func guidance(
-        for step: ASCStep,
-        metadata: AppStoreMetadata,
-        macPaired: Bool,
-        buildUploaded: Bool
-    ) -> String {
-        switch step.number {
-        case 1:
-            return macPaired
-                ? "Tap below and CodeGenie will open App Store Connect in your Mac's Safari. Sign in there — we never see your password or 2FA codes."
-                : "Open appstoreconnect.apple.com and sign in. Pair a Mac in Settings and CodeGenie can open it for you next time."
-        case 2:
-            return "Click + → New App. Use the exact bundle ID below — if it doesn't match your Xcode target, the upload in the next step will be rejected."
-        case 3:
-            return buildUploaded
-                ? "Build uploaded. Apple is processing it — move to the next step."
-                : "CodeGenie checks your Apple credentials and the build itself, then runs Apple's validate-then-upload flow. No listing or screenshots needed for this — just a signed build and the app record from step 2."
-        case 4:
-            return "Usually 5–30 minutes. You don't need to keep the app open — come back when you like."
-        case 5:
-            return "Apple emails the account holder once the build is ready. Accept the invite, then TestFlight installs the real app on this phone."
-        case 6:
-            return "Internal testers (your ASC team) get instant access. External testers need one quick automated review the first time, then it's instant for every build after."
-        case 7:
-            return "Your icon must be exactly 1024×1024, PNG, no transparency, no rounded corners. Apple rejects anything else outright."
-        case 8:
-            return "You need screenshots for at least one iPhone size. Review each one before uploading — Apple rejects screenshots showing placeholder or lorem-ipsum content."
-        case 9:
-            let blocking = blockingIssues(metadata)
-            if blocking.isEmpty {
-                return "Your listing passes every length check. Copy each field below into App Store Connect, or let CodeGenie fill them on your Mac."
-            }
-            return "Fix \(blocking.count) problem\(blocking.count == 1 ? "" : "s") in the listing before you paste anything into App Store Connect — Apple will reject or silently truncate these."
-        case 10:
-            return "Answer honestly. If your app stores anything on-device only and sends nothing anywhere, the answer to 'do you collect data' is No — but if you added analytics, it's Yes."
-        case 11:
-            return "Free with all territories is the safe default. You can change price later without a new review."
-        case 12:
-            return "Final step, and it has to be you: Apple requires the account holder to press Submit. CodeGenie re-checks the full release checklist first and tells you if anything's still missing."
-        default:
-            return step.body
-        }
-    }
-
-    /// The single most useful next action across the whole flow.
-    /// Drives the coach banner at the top of the guide.
-    static func nextAction(
-        completed: Set<Int>,
-        metadata: AppStoreMetadata,
-        macPaired: Bool
-    ) -> NextAction {
-        let blocking = blockingIssues(metadata)
-        let listingStep = 9
-
-        // Listing problems outrank step order — there is no point
-        // walking someone to the upload step with a name that won't save.
-        if !blocking.isEmpty, completed.contains(listingStep) == false, completed.contains(6) {
-            return NextAction(
-                headline: "Fix your listing first",
-                detail: blocking.first!.message + " " + blocking.first!.fix,
-                stepNumber: listingStep,
-                isBlocking: true
-            )
-        }
-
-        let nextIncomplete = ASCStep.all.map(\.number).first { !completed.contains($0) }
-        guard let next = nextIncomplete else {
-            return NextAction(
-                headline: "Everything's done",
-                detail: "You've completed every step. Once Apple finishes review you'll get an email.",
-                stepNumber: nil,
-                isBlocking: false
-            )
-        }
-
-        let step = ASCStep.all.first { $0.number == next }
-        return NextAction(
-            headline: "Next: \(step?.title ?? "Step \(next)")",
-            detail: step.map {
-                guidance(for: $0, metadata: metadata, macPaired: macPaired, buildUploaded: completed.contains(3))
-            } ?? "",
-            stepNumber: next,
-            isBlocking: false
-        )
-    }
-
-    struct NextAction {
-        let headline: String
-        let detail: String
-        let stepNumber: Int?
-        let isBlocking: Bool
-    }
-
     // MARK: - Scoped readiness gates
     //
     // The backend's release-readiness audit returns one flat list of
@@ -383,5 +285,246 @@ enum ASCCoach {
 private extension String {
     var trimmed: String {
         trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+// MARK: - Step walkthroughs
+//
+// The guide used to show each step as one sentence ("Click + → New
+// App"). That assumes the reader already knows what App Store Connect
+// looks like. A first-time submitter does not: they do not know where
+// the + is, what a bundle ID is, what an SKU is, or which of the
+// fifteen fields on the screen actually matter.
+//
+// A `Walkthrough` is the literal set of clicks for one step, plus the
+// single mistake that most often trips people up on it. It stays a
+// deterministic lookup rather than an LLM call — Apple's console is a
+// fixed target, so canned instructions are faster, free, work offline,
+// and cannot hallucinate a button that does not exist.
+
+extension ASCCoach {
+
+    struct Walkthrough {
+        /// The step restated the way a person would say it out loud.
+        let plainTitle: String
+        /// What this step actually is, for someone who has never seen it.
+        let whatThisIs: String
+        /// The literal clicks, in order.
+        let doThis: [Instruction]
+        /// The one thing that most commonly goes wrong here.
+        let watchOut: String?
+        /// Sets expectations so a 20-minute wait doesn't read as a hang.
+        let timeEstimate: String
+
+        struct Instruction: Identifiable, Hashable {
+            let id = UUID()
+            let text: String
+            /// A literal value the user should paste, surfaced with a
+            /// copy button so they never retype it and never typo it.
+            var copyValue: String? = nil
+        }
+    }
+
+    static func walkthrough(
+        for step: ASCStep,
+        appName: String,
+        bundleID: String,
+        macPaired: Bool
+    ) -> Walkthrough {
+        switch step.number {
+
+        case 1:
+            return Walkthrough(
+                plainTitle: "Sign in to Apple's website",
+                whatThisIs: "App Store Connect is the Apple website where you manage your apps. It is separate from your iPhone and from Xcode. Everything about publishing happens here.",
+                doThis: [
+                    .init(text: macPaired
+                          ? "Tap the button below. CodeGenie opens the site in Safari on your Mac."
+                          : "Open appstoreconnect.apple.com in your browser.",
+                          copyValue: macPaired ? nil : "https://appstoreconnect.apple.com"),
+                    .init(text: "Sign in with the Apple ID that is enrolled in the Apple Developer Program. This is often not the Apple ID you use for shopping."),
+                    .init(text: "Enter the 6-digit code Apple sends to your devices."),
+                    .init(text: "You should land on a page with a row of icons: Apps, TestFlight, Users and Access. That means you're in."),
+                ],
+                watchOut: "If you see \"You do not have permission to access this page\", your Apple ID is signed in but not enrolled in the Developer Program yet. That's the $99/year step, and it can take Apple a day to approve.",
+                timeEstimate: "2 minutes"
+            )
+
+        case 2:
+            return Walkthrough(
+                plainTitle: "Tell Apple your app exists",
+                whatThisIs: "Before you can upload anything, Apple needs an empty record to attach it to. You are just reserving the name and the ID here — no screenshots, no description, nothing public.",
+                doThis: [
+                    .init(text: "Click Apps in the top row, then the blue + button near the top-left, then New App."),
+                    .init(text: "Platforms: tick iOS."),
+                    .init(text: "Name: this is the public name on the App Store. It must be unique across the whole store.", copyValue: appName),
+                    .init(text: "Primary Language: whatever language your app's text is in."),
+                    .init(text: "Bundle ID: pick this exact one from the dropdown. It has to match what CodeGenie built, or the upload in the next step is rejected.", copyValue: bundleID),
+                    .init(text: "SKU: your own private reference code. Nobody ever sees it. Reusing the bundle ID is fine.", copyValue: bundleID),
+                    .init(text: "User Access: leave it on Full Access."),
+                    .init(text: "Click Create."),
+                ],
+                watchOut: "If your bundle ID isn't in the dropdown, it hasn't been registered yet. Go to developer.apple.com → Certificates, Identifiers & Profiles → Identifiers → + and register it first, then come back and reload this page.",
+                timeEstimate: "5 minutes"
+            )
+
+        case 3:
+            return Walkthrough(
+                plainTitle: "Send your app to Apple",
+                whatThisIs: "This is the actual upload. CodeGenie signs the build, runs Apple's validation, and pushes it to your app record. You don't need a listing, screenshots, or pricing for this — only the record you just made.",
+                doThis: [
+                    .init(text: "Make sure step 2 is finished and the app record exists."),
+                    .init(text: "Tap Upload to TestFlight below."),
+                    .init(text: "CodeGenie checks your Apple credentials and the build first. If something's missing it tells you exactly what, instead of failing halfway through."),
+                    .init(text: "Leave the app open while the progress strip is moving."),
+                ],
+                watchOut: "An upload rejected for \"no valid signing identity\" almost always means your Apple Developer credentials in Settings are incomplete. Fix them there and tap upload again — you don't need to rebuild.",
+                timeEstimate: "3 to 10 minutes depending on your connection"
+            )
+
+        case 4:
+            return Walkthrough(
+                plainTitle: "Wait for Apple to check it",
+                whatThisIs: "Apple scans every upload before it can be installed. Your build shows as \"Processing\" until that finishes. This is Apple's queue, so nothing you do here speeds it up.",
+                doThis: [
+                    .init(text: "In App Store Connect, open your app and click the TestFlight tab."),
+                    .init(text: "Your build appears with a yellow Processing label."),
+                    .init(text: "Close the app and go do something else. Apple emails you when it's done."),
+                    .init(text: "If Apple asks about export compliance, answer No unless you added your own custom encryption. Using HTTPS does not count as encryption here."),
+                ],
+                watchOut: "If the build disappears instead of turning green, check your email. Apple sends the rejection reason there and never shows it in the TestFlight tab.",
+                timeEstimate: "Usually 5 to 30 minutes, occasionally a few hours"
+            )
+
+        case 5:
+            return Walkthrough(
+                plainTitle: "Install it on your own iPhone",
+                whatThisIs: "TestFlight is Apple's free app for trying builds that aren't on the App Store yet. This is the moment your app becomes real — a genuine icon on your Home Screen.",
+                doThis: [
+                    .init(text: "Install TestFlight from the App Store on this iPhone if you don't have it."),
+                    .init(text: "In App Store Connect, go to Users and Access and confirm your own Apple ID is listed. Add it if it isn't."),
+                    .init(text: "Open your app → TestFlight tab → Internal Testing, click the + next to Testers, and tick yourself."),
+                    .init(text: "Apple emails you an invite. Open it on this iPhone and tap View in TestFlight."),
+                    .init(text: "Tap Install. Your app is now on your Home Screen."),
+                ],
+                watchOut: "Internal testers must be people already listed under Users and Access. Adding a random email address there won't work — that's what External testers in the next step are for.",
+                timeEstimate: "5 minutes once the build is green"
+            )
+
+        case 6:
+            return Walkthrough(
+                plainTitle: "Let other people try it",
+                whatThisIs: "Optional, but this is how you catch problems before the public does. Internal testers are your own team and get builds instantly. External testers are anyone else.",
+                doThis: [
+                    .init(text: "Internal: TestFlight tab → Internal Testing → + → tick the people you want. Up to 100, instant, no review."),
+                    .init(text: "External: TestFlight tab → External Testing → + to create a group, e.g. \"Friends\"."),
+                    .init(text: "Add the build to that group, then add tester emails — or turn on Public Link to get a URL you can share anywhere."),
+                    .init(text: "Click Submit for Review. Apple does a light automated check on your first external build only."),
+                ],
+                watchOut: "External testing needs a filled-in \"What to Test\" note and a working contact email, or Apple bounces the review. Every build after the first one goes out instantly.",
+                timeEstimate: "10 minutes, plus up to a day for the first external review"
+            )
+
+        case 7:
+            return Walkthrough(
+                plainTitle: "Make your app icon",
+                whatThisIs: "The App Store needs one large, perfectly square icon. Apple's rules on this are strict and automatic — a wrong file is rejected before a human ever sees it.",
+                doThis: [
+                    .init(text: "Export a PNG that is exactly 1024 by 1024 pixels."),
+                    .init(text: "No transparency. Fill every pixel — a transparent background is an instant rejection."),
+                    .init(text: "Don't round the corners yourself. Apple rounds them for you; pre-rounded corners look wrong."),
+                    .init(text: "In App Store Connect, open your app, and drag the file onto the App Icon slot."),
+                    .init(text: "CodeGenie's Icon Forge can generate a compliant one if you don't have a designer."),
+                ],
+                watchOut: "Icons exported from screenshots or from a Figma frame often carry a hidden alpha channel. If Apple rejects it for transparency, re-export it flattened onto a solid background.",
+                timeEstimate: "10 minutes"
+            )
+
+        case 8:
+            return Walkthrough(
+                plainTitle: "Take your screenshots",
+                whatThisIs: "The pictures people swipe through on your App Store page. You need at least one iPhone size; Apple scales it to the others for you.",
+                doThis: [
+                    .init(text: "Run your app in the iPhone simulator, or on the phone you just installed it on."),
+                    .init(text: "Capture the screens that show what your app actually does — not the empty first-launch state."),
+                    .init(text: "Use a 6.9-inch iPhone size (1320 × 2868) so Apple can scale down from it."),
+                    .init(text: "Upload them in App Store Connect under Previews and Screenshots."),
+                ],
+                watchOut: "Screenshots showing placeholder text, lorem ipsum, or fake data are one of the most common rejection reasons. Put real-looking content on screen before you capture.",
+                timeEstimate: "20 minutes"
+            )
+
+        case 9:
+            return Walkthrough(
+                plainTitle: "Write your store page",
+                whatThisIs: "The words people read before deciding to download. CodeGenie has drafted these and checked every one against Apple's length limits, so nothing here will be silently cut off.",
+                doThis: [
+                    .init(text: "Tap Edit listing below and read through what CodeGenie drafted."),
+                    .init(text: "Fix anything flagged in red — those are hard limits that stop the form saving."),
+                    .init(text: "Set a Support URL. Apple requires one and actually loads it. A GitHub README or a simple contact page is enough."),
+                    .init(text: macPaired
+                         ? "Tap \"Type listing into my Mac\" and CodeGenie fills each field for you. Your Mac asks permission for every single field."
+                         : "Tap \"Copy listing\", then paste each field into App Store Connect."),
+                    .init(text: "Press Save at the top-right of App Store Connect when you're done."),
+                ],
+                watchOut: "Keywords is one single field capped at 100 characters including the commas — not 100 characters per word. CodeGenie counts it correctly for you.",
+                timeEstimate: "20 minutes"
+            )
+
+        case 10:
+            return Walkthrough(
+                plainTitle: "Answer Apple's privacy questions",
+                whatThisIs: "A questionnaire about what data your app collects. Your answers become the \"App Privacy\" box on your store page. Apple audits these, and a wrong answer can pull a live app.",
+                doThis: [
+                    .init(text: "In App Store Connect, open App Privacy in the left sidebar and click Get Started."),
+                    .init(text: "\"Do you collect data from this app?\" — if your app keeps everything on the phone and sends nothing anywhere, answer No."),
+                    .init(text: "Answer Yes if you added analytics, crash reporting, accounts, or any server that receives user data."),
+                    .init(text: "Add a Privacy Policy URL. This is required even when you collect nothing at all."),
+                    .init(text: "Click Publish."),
+                ],
+                watchOut: "Answer honestly rather than optimistically. This is one of the few things Apple checks after your app is already live, and getting it wrong pulls the app down.",
+                timeEstimate: "10 minutes"
+            )
+
+        case 11:
+            return Walkthrough(
+                plainTitle: "Set your price",
+                whatThisIs: "What your app costs and which countries can see it. Free everywhere is the normal choice for a first app, and you can change it later without another review.",
+                doThis: [
+                    .init(text: "Open Pricing and Availability in the left sidebar."),
+                    .init(text: "Price: choose Free unless you have a reason not to."),
+                    .init(text: "Availability: leave all countries selected."),
+                    .init(text: "Click Save."),
+                ],
+                watchOut: "Charging money means Apple also needs your bank and tax details filled in under Business, which can take several days to clear. Free avoids all of that on a first release.",
+                timeEstimate: "3 minutes"
+            )
+
+        case 12:
+            return Walkthrough(
+                plainTitle: "Send it to Apple for review",
+                whatThisIs: "The final button. A real person at Apple opens your app and checks it against the App Store rules. This is the only step CodeGenie cannot do for you — Apple requires the account holder.",
+                doThis: [
+                    .init(text: "Open your app's main App Store page in App Store Connect."),
+                    .init(text: "Under Build, click + and pick the build that finished processing in step 4."),
+                    .init(text: "Export Compliance: answer No unless you wrote your own encryption."),
+                    .init(text: "Content Rights: answer whether your app shows content you don't own."),
+                    .init(text: "Advertising Identifier: answer No unless you added an ad network."),
+                    .init(text: "Click Add for Review, then Submit for Review."),
+                    .init(text: "Come back here and tap \"I submitted for review\" so CodeGenie can track it."),
+                ],
+                watchOut: "If review rejects you, it is normal and it is not personal. Apple tells you the exact guideline number in Resolution Center. Most first-app rejections are a missing demo account or a broken support link, and both are quick fixes with no rebuild needed.",
+                timeEstimate: "10 minutes to submit, then 24 to 48 hours for Apple's answer"
+            )
+
+        default:
+            return Walkthrough(
+                plainTitle: step.title,
+                whatThisIs: step.body,
+                doThis: [],
+                watchOut: nil,
+                timeEstimate: ""
+            )
+        }
     }
 }

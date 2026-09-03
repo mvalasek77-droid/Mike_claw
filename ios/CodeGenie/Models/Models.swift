@@ -85,6 +85,28 @@ struct BuildJob: Identifiable, Hashable, Codable {
             }
         }
 
+        /// What the user reads.
+        ///
+        /// `rawValue` is the persistence key — it is written into
+        /// UserDefaults for every saved job — so it must not change or
+        /// existing galleries fail to decode and empty themselves.
+        /// Display text lives here instead, which also lets it drop
+        /// jargon like "IPA" that means nothing to a first-time
+        /// builder.
+        var label: String {
+            switch self {
+            case .planning:     "Planning your app"
+            case .scaffolding:  "Setting up the project"
+            case .generatingUI: "Designing the screens"
+            case .wiringLogic:  "Making it work"
+            case .linting:      "Polishing"
+            case .buildingIPA:  "Packaging your app"
+            case .readyForTest: "Ready to try"
+            case .shipping:     "Ready to send to Apple"
+            case .failed:       "Something went wrong"
+            }
+        }
+
         var systemImage: String {
             switch self {
             case .planning: "rectangle.3.group"
@@ -106,9 +128,9 @@ struct BuildJob: Identifiable, Hashable, Codable {
             case .generatingUI: "Drawing your interface in SwiftUI with Liquid Glass."
             case .wiringLogic:  "Connecting models, services, and persistence."
             case .linting:      "Polishing animations, accessibility, and dark mode."
-            case .buildingIPA:  "Compiling the .app archive on remote Xcode."
-            case .readyForTest: "Open the simulator preview to try it live."
-            case .shipping:     "Submission package ready for App Store Connect."
+            case .buildingIPA:  "Turning the code into an app your iPhone can install."
+            case .readyForTest: "Open the preview to try it live."
+            case .shipping:     "Ready to send to Apple."
             case .failed:       "We hit a build error — let's diagnose."
             }
         }

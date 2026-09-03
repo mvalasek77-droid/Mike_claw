@@ -14,10 +14,6 @@ struct BuildScreen: View {
     /// build. Used by the Apps tab to open a forked / resumed job's
     /// live transcript without spending tokens.
     let attachToBackendID: String?
-    /// When non-nil, BuildScreen replays the canned demo script for
-    /// the given sample id instead of running a real build. Same UI
-    /// surface, no backend, no tokens. Used for first-run magic.
-    let demoSampleID: String?
 
     @State private var stage: BuildJob.Stage = .planning
     @State private var displayedLog: [LogLine] = []
@@ -67,19 +63,16 @@ struct BuildScreen: View {
 
     private let builder: BuilderService = LocalSimulatedBuilder()
     /// Whether to show the "live" UI surface (cost badge, retry badge,
-    /// transcript card, upload progress strip). True for either a real
-    /// backend run OR a canned demo — both stream `SwarmEvent`s
-    /// through `swarm` and the user shouldn't see a different layout.
+    /// transcript card, upload progress strip) — i.e. whether this
+    /// build streams `SwarmEvent`s from a real backend.
     private var useRemote: Bool {
-        if demoSampleID != nil { return true }
         let url = Credentials.shared.backendURL
         return !url.isEmpty && !url.hasPrefix("https://api.codegenie.app")
     }
 
-    init(job: BuildJob, attachToBackendID: String? = nil, demoSampleID: String? = nil) {
+    init(job: BuildJob, attachToBackendID: String? = nil) {
         self.initialJob = job
         self.attachToBackendID = attachToBackendID
-        self.demoSampleID = demoSampleID
     }
 
     var body: some View {
@@ -255,7 +248,7 @@ struct BuildScreen: View {
     private var progressBlock: some View {
         GlassSurface(tier: .deep) {
             VStack(spacing: 14) {
-                ProgressOrb(progress: stage.progress, label: stage.rawValue, subtitle: stage.humanCopy)
+                ProgressOrb(progress: stage.progress, label: stage.label, subtitle: stage.humanCopy)
                 HStack(spacing: 8) {
                     StatPill(label: "ETA",   value: etaString,   icon: "timer")
                     StatPill(label: "Score", value: "\(game.score)", icon: "star.fill")
@@ -542,10 +535,10 @@ struct BuildScreen: View {
                             .font(.system(size: 56, weight: .bold))
                             .foregroundStyle(LiquidGlass.success)
                             .accessibilityHidden(true)
-                        Text("Build green")
+                        Text("Your app is built")
                             .font(.system(size: 24, weight: .bold, design: .rounded))
                             .foregroundStyle(LiquidGlass.primaryText)
-                        Text("Your app is ready. It's saved here in CodeGenie — find it any time on the Apps tab.")
+                        Text("It's saved here in CodeGenie — find it any time on the Apps tab. Next: try it in the preview, then walk through putting it on your phone.")
                             .font(.system(size: 14, weight: .regular, design: .rounded))
                             .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
                             .multilineTextAlignment(.center)
@@ -713,9 +706,7 @@ struct BuildScreen: View {
         builderTask?.cancel()
         startedAt = .now
         Telemetry.shared.recordBuildStarted()
-        if let demoSampleID {
-            await runCannedDemo(sampleID: demoSampleID)
-        } else if useRemote {
+        if useRemote {
             await runRemoteBuild()
         } else {
             builderTask = Task {
@@ -734,19 +725,6 @@ struct BuildScreen: View {
                 }
             }
         }
-    }
-
-    /// Drive the screen from a canned `DemoScript-<id>.json`. Every
-    /// observer the live path uses (`costs`, `diffStream`, transcript)
-    /// binds to this screen's internal `swarm` so the demo plays
-    /// through the same UI pipeline as a real build.
-    private func runCannedDemo(sampleID: String) async {
-        costs.bind(to: swarm)
-        diffStream.bind(to: swarm)
-        uploadProgress.bind(to: swarm)
-        CustomAgentLog.shared.bind(to: swarm)
-        JobCostLog.shared.bind(to: swarm)
-        DemoSwarmDriver.play(into: swarm, sampleID: sampleID)
     }
 
     private func runRemoteBuild() async {
@@ -1083,7 +1061,7 @@ private struct PipelineRow: View {
                     Circle().fill(.white.opacity(0.4)).frame(width: 6, height: 6)
                 }
             }
-            Text(stage.rawValue)
+            Text(stage.label)
                 .font(.system(size: 13, weight: status == .active ? .semibold : .regular, design: .rounded))
                 .foregroundStyle(status == .pending ? LiquidGlass.primaryText.opacity(0.5) : LiquidGlass.primaryText)
             Spacer()

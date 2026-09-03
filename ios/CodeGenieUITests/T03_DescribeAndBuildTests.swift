@@ -13,7 +13,7 @@ final class T03_DescribeAndBuildTests: CodeGenieTestBase {
 
     override func setUpWithError() throws {
         try super.setUpWithError()
-        launchOnboarded()
+        launchReadyToBuild()
     }
 
     // MARK: - Describe form
@@ -21,7 +21,7 @@ final class T03_DescribeAndBuildTests: CodeGenieTestBase {
     func test01_describeFormHasAllFields() {
         openDescribeForm()
 
-        assertExists(app.staticTexts["Shape the experience"])
+        assertExists(app.staticTexts["Describe your app"])
         assertExists(app.textFields["App name"])
         assertExists(app.textViews.matching(
             NSPredicate(format: "label CONTAINS[c] 'description' OR placeholderValue CONTAINS[c] 'describe'")
@@ -258,7 +258,7 @@ final class T03_DescribeAndBuildTests: CodeGenieTestBase {
         } else {
             selectTab("Build")
         }
-        _ = waitFor(app.staticTexts["Shape the experience"], timeout: 5)
+        _ = waitFor(app.staticTexts["Describe your app"], timeout: 5)
     }
 
     private func fillMinimalForm() {
@@ -275,21 +275,43 @@ final class T03_DescribeAndBuildTests: CodeGenieTestBase {
         }
     }
 
+    /// Starts a real build on the local simulated builder and returns
+    /// as soon as the build screen is up, so callers can assert on the
+    /// in-progress UI. The canned-sample shortcut this replaced was
+    /// removed along with the sample gallery.
     private func startDemoBuild() {
-        scrollDown(times: 2)
-        let sampleTile = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Sample' OR label CONTAINS[c] 'sample'")
+        let cta = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] 'Start' AND label CONTAINS[c] 'build'")
         ).firstMatch
-        if sampleTile.waitForExistence(timeout: 3) {
-            sampleTile.tap()
-            sleep(1)
-            let demo = app.buttons.matching(
-                NSPredicate(format: "label CONTAINS[c] 'instant grade'")
-            ).firstMatch
-            if demo.waitForExistence(timeout: 3) {
-                demo.tap()
-                sleep(2)
-            }
+        if cta.waitForExistence(timeout: 5) { cta.tap() } else { selectTab("Build") }
+
+        let buildNow = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] 'Just build something'")
+        ).firstMatch
+        if buildNow.waitForExistence(timeout: 3) { buildNow.tap() }
+
+        let nameField = app.textFields["App name"]
+        guard nameField.waitForExistence(timeout: 6) else { return }
+        nameField.tap()
+        nameField.typeText("TestApp")
+
+        let promptField = app.textViews["App description"]
+        if promptField.waitForExistence(timeout: 4) {
+            promptField.tap()
+            promptField.typeText("A simple todo app with haptics and dark mode")
         }
+
+        scrollDown(times: 3)
+        let build = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] 'Build it'")
+        ).firstMatch
+        guard build.waitForExistence(timeout: 4) else { return }
+        build.tap()
+
+        let confirm = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] 'Confirm and build'")
+        ).firstMatch
+        if confirm.waitForExistence(timeout: 6) { confirm.tap() }
+        _ = app.buttons["Minimize build"].waitForExistence(timeout: 8)
     }
 }

@@ -77,7 +77,6 @@
 		F7E9CC0BECF5DD56E9E8EFE0 /* RemoteRunnerSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F0A38DF28F6ADDE3275A043 /* RemoteRunnerSession.swift */; };
 		473E8FAB80911A08F9882AAA /* ASCCoach.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E1EFEAAD387FD4B821B6A2B /* ASCCoach.swift */; };
 		6AB9C3351822054C97B7A09D /* ASCSubmissionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82DD603B12AFE16C9F453717 /* ASCSubmissionStore.swift */; };
-		9DE99A3D66F3F1F6B716585B /* DemoSwarmDriver.swift in Sources */ = {isa = PBXBuildFile; fileRef = B66CA3FF4C58BF0D281FAB1E /* DemoSwarmDriver.swift */; };
 		97D9B47B237323FE1C4482BF /* UserMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C8E6495F8BD351878EB1A5B /* UserMode.swift */; };
 		D5229C361DAE93820DEB06DE /* AppleDevWalkthroughView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D65B4EB0D359A78E115B6EBA /* AppleDevWalkthroughView.swift */; };
 		CC66A133C07DC7B0A4AAF264 /* GitHubSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5083079A17DA0F9760782B54 /* GitHubSetupView.swift */; };
@@ -85,11 +84,8 @@
 		B7552AD1C1B398C2489138B7 /* XcodeReadinessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 985AC3C3B305E1D713812F15 /* XcodeReadinessView.swift */; };
 		6E233EBC07C49287D6DCB435 /* CompareFileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA01E2F65E0C52C00E29464E /* CompareFileView.swift */; };
 		52C29736E3F85F3EF53ABCC3 /* CompareJobsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57EF9545B5E53B7172AB1654 /* CompareJobsView.swift */; };
-		3F557C48304F4F63B081D030 /* DemoBuildScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA07FF1ACF9C588963E60612 /* DemoBuildScreen.swift */; };
 		F964F192A3D071EE809F6EA5 /* FirstBuildPromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17DC2294F78DE7C7AC09A403 /* FirstBuildPromptView.swift */; };
-		75C1AACE749281DD3CB889F6 /* SampleAppsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4EBBAA53C22949CF33C06A5 /* SampleAppsView.swift */; };
 		08D59B17F74238A25FC58FB5 /* TermsAndPrivacyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 355E53B16CF13DCA46E9290C /* TermsAndPrivacyView.swift */; };
-		15DBD3981097D8E1786B365D /* SampleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11FF6BE532B4FD3C26923EB /* SampleApp.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -165,7 +161,6 @@
 		FFE7BA344055F81382B6130B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		5E1EFEAAD387FD4B821B6A2B /* ASCCoach.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ASCCoach.swift; sourceTree = "<group>"; };
 		82DD603B12AFE16C9F453717 /* ASCSubmissionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ASCSubmissionStore.swift; sourceTree = "<group>"; };
-		B66CA3FF4C58BF0D281FAB1E /* DemoSwarmDriver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoSwarmDriver.swift; sourceTree = "<group>"; };
 		0C8E6495F8BD351878EB1A5B /* UserMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserMode.swift; sourceTree = "<group>"; };
 		D65B4EB0D359A78E115B6EBA /* AppleDevWalkthroughView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleDevWalkthroughView.swift; sourceTree = "<group>"; };
 		5083079A17DA0F9760782B54 /* GitHubSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubSetupView.swift; sourceTree = "<group>"; };
@@ -173,11 +168,8 @@
 		985AC3C3B305E1D713812F15 /* XcodeReadinessView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XcodeReadinessView.swift; sourceTree = "<group>"; };
 		EA01E2F65E0C52C00E29464E /* CompareFileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompareFileView.swift; sourceTree = "<group>"; };
 		57EF9545B5E53B7172AB1654 /* CompareJobsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompareJobsView.swift; sourceTree = "<group>"; };
-		BA07FF1ACF9C588963E60612 /* DemoBuildScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoBuildScreen.swift; sourceTree = "<group>"; };
 		17DC2294F78DE7C7AC09A403 /* FirstBuildPromptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstBuildPromptView.swift; sourceTree = "<group>"; };
-		B4EBBAA53C22949CF33C06A5 /* SampleAppsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleAppsView.swift; sourceTree = "<group>"; };
 		355E53B16CF13DCA46E9290C /* TermsAndPrivacyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TermsAndPrivacyView.swift; sourceTree = "<group>"; };
-		F11FF6BE532B4FD3C26923EB /* SampleApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleApp.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -192,7 +184,6 @@
 		2724DC4A5820747416239DB3 /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				F11FF6BE532B4FD3C26923EB /* SampleApp.swift */,
 				7BFD95008827FFF068042261 /* CustomAgent.swift */,
 				EFF4D80E661193574ED4A81A /* Diff.swift */,
 				92919878129FFF48B5768F2A /* Models.swift */,
@@ -314,9 +305,7 @@
 		94BE033707FD88857A783A75 /* Home */ = {
 			isa = PBXGroup;
 			children = (
-				BA07FF1ACF9C588963E60612 /* DemoBuildScreen.swift */,
 				17DC2294F78DE7C7AC09A403 /* FirstBuildPromptView.swift */,
-				B4EBBAA53C22949CF33C06A5 /* SampleAppsView.swift */,
 				61A50E8C6B31B68AAD9F39DB /* AppOfYearPlaybookView.swift */,
 				A90A0CF90092EDC662A84D67 /* HomeView.swift */,
 				1F3EB84BF95C416481890F43 /* LaunchAutomationAuditView.swift */,
@@ -367,7 +356,6 @@
 			children = (
 				5E1EFEAAD387FD4B821B6A2B /* ASCCoach.swift */,
 				82DD603B12AFE16C9F453717 /* ASCSubmissionStore.swift */,
-				B66CA3FF4C58BF0D281FAB1E /* DemoSwarmDriver.swift */,
 				0C8E6495F8BD351878EB1A5B /* UserMode.swift */,
 				C1FCB2B2AB623F9F8B91F0F6 /* Builder.swift */,
 				E40B72546110E4535389C923 /* CompanionBridge.swift */,
@@ -527,7 +515,6 @@
 			files = (
 				473E8FAB80911A08F9882AAA /* ASCCoach.swift in Sources */,
 				6AB9C3351822054C97B7A09D /* ASCSubmissionStore.swift in Sources */,
-				9DE99A3D66F3F1F6B716585B /* DemoSwarmDriver.swift in Sources */,
 				97D9B47B237323FE1C4482BF /* UserMode.swift in Sources */,
 				D5229C361DAE93820DEB06DE /* AppleDevWalkthroughView.swift in Sources */,
 				CC66A133C07DC7B0A4AAF264 /* GitHubSetupView.swift in Sources */,
@@ -535,11 +522,8 @@
 				B7552AD1C1B398C2489138B7 /* XcodeReadinessView.swift in Sources */,
 				6E233EBC07C49287D6DCB435 /* CompareFileView.swift in Sources */,
 				52C29736E3F85F3EF53ABCC3 /* CompareJobsView.swift in Sources */,
-				3F557C48304F4F63B081D030 /* DemoBuildScreen.swift in Sources */,
 				F964F192A3D071EE809F6EA5 /* FirstBuildPromptView.swift in Sources */,
-				75C1AACE749281DD3CB889F6 /* SampleAppsView.swift in Sources */,
 				08D59B17F74238A25FC58FB5 /* TermsAndPrivacyView.swift in Sources */,
-				15DBD3981097D8E1786B365D /* SampleApp.swift in Sources */,
 				3328327281568756392B795A /* AdminView.swift in Sources */,
 				B6FCAE4790A8EE4377261754 /* AgentRoutingView.swift in Sources */,
 				50DC006E829C00B927CA65A2 /* AppOfYearPlaybookView.swift in Sources */,

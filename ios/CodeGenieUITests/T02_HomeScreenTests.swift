@@ -49,7 +49,7 @@ final class T02_HomeScreenTests: CodeGenieTestBase {
         ).firstMatch
         if cta.waitForExistence(timeout: 3) {
             cta.tap()
-            assertExists(app.staticTexts["Shape the experience"],
+            assertExists(app.staticTexts["Describe your app"],
                          "Tapping Start should open the Describe form")
             screenshot("05-describe-sheet")
         }
@@ -68,17 +68,14 @@ final class T02_HomeScreenTests: CodeGenieTestBase {
 
     // MARK: - Quick grid tiles
 
-    func test07_sampleAppsTileOpensSheet() {
-        scrollDown(times: 2)
-        let tile = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Sample' OR label CONTAINS[c] 'sample'")
-        ).firstMatch
-        if tile.waitForExistence(timeout: 3) {
-            tile.tap()
-            sleep(1)
-            screenshot("07-sample-apps-sheet")
-            dismissSheet()
-        }
+    /// The gear in the Home header used to be a decorative icon with
+    /// an empty action — tapping it did nothing at all.
+    func test07_settingsGearInHeaderOpensSettings() {
+        let gear = app.buttons["Settings"]
+        assertExists(gear, "Home header should have a working Settings button")
+        gear.tap()
+        assertExists(app.staticTexts["Settings"], "Tapping the gear should open Settings")
+        screenshot("07-header-settings")
     }
 
     func test08_appOfYearTileOpensSheet() {
@@ -127,25 +124,17 @@ final class T02_HomeScreenTests: CodeGenieTestBase {
                        "No resume callout should appear without a pending job")
     }
 
-    // MARK: - Demo build from Home
+    // MARK: - Removed surfaces
 
-    func test12_sampleAppCanLaunchDemoBuild() {
+    /// The sample gallery was a dead end — its builds could not be
+    /// submitted, downloaded, or reopened, so it was removed.
+    func test12_noSampleGalleryEntryPointRemains() {
         scrollDown(times: 2)
         let tile = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Sample' OR label CONTAINS[c] 'sample'")
+            NSPredicate(format: "label CONTAINS[c] 'Try a sample'")
         ).firstMatch
-        guard tile.waitForExistence(timeout: 3) else { return }
-        tile.tap()
-        sleep(1)
-
-        let firstSample = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'instant grade'")
-        ).firstMatch
-        if firstSample.waitForExistence(timeout: 3) {
-            firstSample.tap()
-            sleep(2)
-            screenshot("12-demo-build-launched")
-        }
+        XCTAssertFalse(tile.waitForExistence(timeout: 2),
+                       "The dead sample tile should no longer be on Home")
     }
 
     // MARK: - Launch automation audit

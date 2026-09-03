@@ -23,7 +23,7 @@ final class T06_TabNavigationTests: CodeGenieTestBase {
     func test02_buildTabOpensDescribeSheet() {
         selectTab("Build")
         sleep(1)
-        assertExists(app.staticTexts["Shape the experience"],
+        assertExists(app.staticTexts["Describe your app"],
                      "Build tab should auto-present the Describe sheet")
         screenshot("02-build-tab-describe")
     }

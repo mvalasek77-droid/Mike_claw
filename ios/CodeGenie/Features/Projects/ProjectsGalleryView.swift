@@ -167,7 +167,7 @@ private struct ProjectCard: View {
                             .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
                     }
                     Spacer()
-                    Text(job.stage.rawValue)
+                    Text(job.stage.label)
                         .font(.system(size: 11, weight: .semibold, design: .rounded))
                         .padding(.horizontal, 8).padding(.vertical, 4)
                         .background(.white.opacity(0.08), in: Capsule())
