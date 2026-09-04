@@ -51,3 +51,12 @@ Re-ran the 4 target queries (dinner date / who pays / dating apps are broken / d
 Zero posts retrieved; no >100-upvote matches can be claimed this run. Same block as 2026-09-02 —
 block persists ≥2 days. Unblock path: logged-in session or OAuth dev token, or different network.
 No entries added; no stale numbers reused.
+## 2026-09-04 sweep — BLOCKED again (no data collected)
+Re-ran the 4 target queries (dinner date / who pays / dating apps are broken / deleted the apps, sort=top t=week):
+- www.reddit.com/search.json via curl → 403 block page, same with full Safari browser headers (UA/Accept/Referer/Sec-Fetch)
+- old.reddit.com → 302 redirect to /login/ (login wall); api.reddit.com → 403
+- PullPush archive API reachable but its newest indexed post is 2025-05-19 (>1 year stale) — cannot cover last 7 days, unusable
+- Safari osascript fallback unavailable this run: AppleEvent automation hangs even on trivial `do JavaScript` (permission never granted/prompt not surfacing)
+Zero posts retrieved; no >100-upvote matches can be claimed this run. Block persists ≥3 days (since 2026-09-02).
+Unblock path unchanged: logged-in session or OAuth dev token, or different network.
+No entries added; no stale numbers reused.
