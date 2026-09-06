@@ -8,6 +8,10 @@ struct PriceChart: View {
     var sr: SRLevel? = nil
     var height: CGFloat = 160
 
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "HH:mm:ss"; return f
+    }()
+
     var body: some View {
         Canvas { ctx, size in
             guard points.count >= 2 else {
@@ -107,11 +111,13 @@ struct PriceChart: View {
                      at: CGPoint(x: plot.minX - 14, y: plot.maxY - 6))
 
             // Time labels
-            let f = DateFormatter(); f.dateFormat = "HH:mm:ss"
-            ctx.draw(Text(f.string(from: points.first!.time)).font(.caption2).foregroundColor(.tertiary),
-                     at: CGPoint(x: plot.minX + 20, y: plot.maxY + 12))
-            ctx.draw(Text(f.string(from: points.last!.time)).font(.caption2).foregroundColor(.tertiary),
-                     at: CGPoint(x: plot.maxX - 20, y: plot.maxY + 12))
+            let f = Self.timeFormatter
+            if let firstPt = points.first, let lastPt = points.last {
+                ctx.draw(Text(f.string(from: firstPt.time)).font(.caption2).foregroundColor(.tertiary),
+                         at: CGPoint(x: plot.minX + 20, y: plot.maxY + 12))
+                ctx.draw(Text(f.string(from: lastPt.time)).font(.caption2).foregroundColor(.tertiary),
+                         at: CGPoint(x: plot.maxX - 20, y: plot.maxY + 12))
+            }
         }
         .frame(height: height)
         .clampDynamicType(.accessibility1)

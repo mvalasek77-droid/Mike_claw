@@ -2,6 +2,7 @@ import Foundation
 import Combine
 
 /// The feed. Predictions become posts; posts get likes, comments, follows.
+@MainActor
 final class SocialService: ObservableObject {
     static let shared = SocialService()
 

@@ -64,7 +64,8 @@ struct ConfettiBurst: View {
         }
         startedAt = Date()
         Haptics.won(large: true)
-        DispatchQueue.main.asyncAfter(deadline: .now() + duration + 0.1) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64((duration + 0.1) * 1_000_000_000))
             particles = []
             startedAt = nil
         }

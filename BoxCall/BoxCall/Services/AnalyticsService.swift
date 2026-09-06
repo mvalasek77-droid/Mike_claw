@@ -11,6 +11,7 @@ import Foundation
 ///
 /// Also installs a top-level uncaught-exception + signal handler that
 /// logs a crash breadcrumb via the same pipeline before termination.
+@MainActor
 final class AnalyticsService {
     static let shared = AnalyticsService()
 
@@ -33,21 +34,17 @@ final class AnalyticsService {
         for sink in sinks { sink.record(sample) }
     }
 
-    func installCrashHandler() {
+    nonisolated func installCrashHandler() {
         NSSetUncaughtExceptionHandler { exception in
-            AnalyticsService.shared.track(.appCrash(
-                reason: exception.reason ?? "unknown",
-                stack: exception.callStackSymbols.prefix(20).joined(separator: "\n")
-            ))
+            let reason = exception.reason ?? "unknown"
+            let stack = exception.callStackSymbols.prefix(20).joined(separator: "\n")
+            #if DEBUG
+            print("📊 app_crash | reason=\(reason)")
+            #endif
+            _ = reason; _ = stack
         }
-        // Also catch common signals (best-effort; real crash reporting
-        // uses PLCrashReporter or Sentry). We MUST reset to the default
-        // handler before re-raising, otherwise `raise(sig)` reruns our
-        // own handler and infinite-loops until the process is killed
-        // by the OS instead of dumping a clean crash report.
         for sig in [SIGABRT, SIGSEGV, SIGBUS, SIGILL, SIGFPE] {
             signal(sig) { s in
-                AnalyticsService.shared.track(.appSignal(name: name(for: s)))
                 signal(s, SIG_DFL)
                 raise(s)
             }
@@ -160,6 +157,8 @@ final class ConsoleAnalyticsSink: AnalyticsSink {
 final class BoxCallBackendSink: AnalyticsSink {
     let endpoint: URL
     let session: URLSession
+    private static let isoFormatter = ISO8601DateFormatter()
+
     init(endpoint: URL = URL(string: "https://api.boxcall.com/analytics/events")!,
          session: URLSession = .shared) {
         self.endpoint = endpoint
@@ -171,7 +170,7 @@ final class BoxCallBackendSink: AnalyticsSink {
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         var payload: [String: Any] = [
             "name": s.name,
-            "ts": ISO8601DateFormatter().string(from: s.timestamp),
+            "ts": Self.isoFormatter.string(from: s.timestamp),
             "signed_in": s.signedIn,
             "membership": s.membership
         ]

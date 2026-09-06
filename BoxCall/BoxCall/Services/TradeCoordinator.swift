@@ -3,6 +3,7 @@ import Combine
 
 /// Global sheet driver so any view can pop the TradeSheet pre-filled
 /// (used by the "Copy call" action on feed posts).
+@MainActor
 final class TradeCoordinator: ObservableObject {
     static let shared = TradeCoordinator()
 

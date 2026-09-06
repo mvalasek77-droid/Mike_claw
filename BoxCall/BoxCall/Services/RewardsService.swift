@@ -3,6 +3,7 @@ import Combine
 
 /// Grants XP, badges, streaks, and followers when trades settle.
 /// Everything here is play-status: no cash, no IAP.
+@MainActor
 final class RewardsService: ObservableObject {
     static let shared = RewardsService()
 

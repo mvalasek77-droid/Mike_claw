@@ -364,9 +364,12 @@ struct MovieDetailView: View {
         .background(RoundedRectangle(cornerRadius: 12).fill(.gray.opacity(0.08)))
     }
 
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "HH:mm:ss"; return f
+    }()
+
     private func shortTime(_ date: Date) -> String {
-        let f = DateFormatter(); f.dateFormat = "HH:mm:ss"
-        return f.string(from: date)
+        Self.timeFormatter.string(from: date)
     }
 }
 

@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 
+@MainActor
 final class PortfolioService: ObservableObject {
     static let shared = PortfolioService()
 

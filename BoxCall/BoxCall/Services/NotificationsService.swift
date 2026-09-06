@@ -5,6 +5,7 @@ import Combine
 /// Local-notification driver + in-app notification inbox.
 /// A real product would swap the local scheduling for APNs pushes
 /// from the server that runs Monday settlement.
+@MainActor
 final class NotificationsService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
     static let shared = NotificationsService()
 
@@ -21,10 +22,10 @@ final class NotificationsService: NSObject, ObservableObject, UNUserNotification
 
     // MARK: - Permission
 
-    func requestAuthorizationIfNeeded() {
-        UNUserNotificationCenter.current().getNotificationSettings { [weak self] settings in
+    nonisolated func requestAuthorizationIfNeeded() {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
             guard settings.authorizationStatus == .notDetermined else {
-                DispatchQueue.main.async {
+                Task { @MainActor [weak self] in
                     self?.authorizationStatus = settings.authorizationStatus
                 }
                 return
@@ -32,14 +33,14 @@ final class NotificationsService: NSObject, ObservableObject, UNUserNotification
             UNUserNotificationCenter.current().requestAuthorization(
                 options: [.alert, .sound, .badge]
             ) { _, _ in
-                DispatchQueue.main.async { self?.refreshAuthorizationStatus() }
+                Task { @MainActor [weak self] in self?.refreshAuthorizationStatus() }
             }
         }
     }
 
     private func refreshAuthorizationStatus() {
-        UNUserNotificationCenter.current().getNotificationSettings { [weak self] settings in
-            DispatchQueue.main.async {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            Task { @MainActor [weak self] in
                 self?.authorizationStatus = settings.authorizationStatus
             }
         }
@@ -159,7 +160,7 @@ final class NotificationsService: NSObject, ObservableObject, UNUserNotification
     }
 
     // Show the banner even when the app is in the foreground.
-    func userNotificationCenter(_ center: UNUserNotificationCenter,
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
                                 willPresent notification: UNNotification,
                                 withCompletionHandler completionHandler:
                                 @escaping (UNNotificationPresentationOptions) -> Void) {
