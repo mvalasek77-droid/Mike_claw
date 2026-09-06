@@ -37,8 +37,11 @@ unsigned build and cannot sign, archive, or upload.
 | ✅ App record created | `com.alphaeliteholdings.watchfighter` |
 | ✅ IAP product created | `com.alphaeliteholdings.watchfighter.fullroster` (Non-Consumable) |
 | ✅ Builds 1–3 uploaded | v1.0 builds 1, 2, 3 processed |
-| ✅ Build 4 uploaded and processed | `VALID`, App Store eligible, no export-compliance issue |
-| ✅ Build 5 uploaded and processed | `VALID`, App Store eligible; two-fighter face-off icon; available to internal `Mike` group |
+| ✅ Builds 1–9 uploaded and processed | v1.0 builds 1–9 `VALID` |
+| ✅ Build 10 uploaded (2026-09-05) | watchOS 27 crash fix (SIGTRAP at
+  launch), production sprites for Dracula/Abaddon, single top-edge callout,
+  master volume; archive via plain `xcodebuild archive` (no SKIP_INSTALL
+  override — see pitfall below) |
 
 ---
 
@@ -63,15 +66,16 @@ product already exists in ASC.
       "UNLOCK ALL $2.99" and "RESTORE"). ⚠️ Still missing in ASC.
 - [ ] IAP review notes — see the wording in §9 below.
 
-## 4. Signing & archive — build 5
+## 4. Signing & archive — build 10
 - [x] Generate the project: `cd Watchsmash && xcodegen generate`
 - [x] Signing & Capabilities → Alpha Elite Holdings team,
       automatic signing, **Release** config.
 - [x] Product → Archive (destination: **Any watchOS Device**, not a simulator).
-- [x] Distribute App → App Store Connect → Upload. Build 5 uploaded on
-      2026-09-01 and processed as `VALID` / `APP_STORE_ELIGIBLE`.
+- [x] Builds 4–9 uploaded and processed `VALID` / `APP_STORE_ELIGIBLE`.
+- [x] Build 10 uploaded 2026-09-05 (Codex changes: watchOS 27 launch-crash fix,
+      Dracula/Abaddon production sprites, top-edge callout, master volume).
 - [ ] Bump `CURRENT_PROJECT_VERSION` in `project.yml` for **every** subsequent
-      upload — ASC rejects duplicate build numbers. Current: **5**.
+      upload — ASC rejects duplicate build numbers. Current: **10**.
 
 ## 5. On-device play-test (nothing below matters until this is clean)
 Run from Xcode on a real watch, not the simulator.
@@ -167,8 +171,17 @@ splash, and a vampire transformation.
 - **Paywall verified by compilation and unit tests only.** No purchase has
   actually been made against the `.storekit` config or the sandbox yet — this
   is the single highest-risk untested path, which is why it's in §5.
-- **Display name vs bundle ID**: the app displays as "Watch Smash" but the
-  bundle ID is `com.alphaeliteholdings.watchfighter` (the ASC-registered
-  identifier from the original name). Bundle IDs cannot be changed after
-  creation; the display name in ASC and the `CFBundleDisplayName` control what
-  users see.
+**Display name vs bundle ID**: the app displays as "Watch Smash" but the
+bundle ID is `com.alphaeliteholdings.watchfighter` (the ASC-registered
+identifier from the original name). Bundle IDs cannot be changed after
+creation; the display name in ASC and the `CFBundleDisplayName` control what
+users see.
+- **SKIP_INSTALL command-line override breaks watchOS archives.** Passing
+  `SKIP_INSTALL=NO` to `xcodebuild archive` applies to BOTH targets (container
+  + watchkitapp), producing a two-app archive whose `Info.plist` lacks
+  `ApplicationProperties` — `exportArchive` then rejects every distribution
+  method ("expected one {}"). The watch-only layout (`SKIP_INSTALL: YES` on the
+  watchkitapp in `project.yml`, container installs) is already correct for
+  Xcode 26; the override was only needed on the older single-target layout.
+  Archive plain: `xcodebuild archive … CODE_SIGN_STYLE=Automatic
+  -allowProvisioningUpdates` (no SKIP_INSTALL flag).
