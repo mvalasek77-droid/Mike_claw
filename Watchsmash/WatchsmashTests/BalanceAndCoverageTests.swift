@@ -31,6 +31,13 @@ final class BalanceAndCoverageTests: XCTestCase {
         }
     }
 
+    func testSecretFightersShipWithProductionSprites() {
+        XCTAssertEqual(FighterArchetype.dracula.imageName, "DigitizedDracula")
+        XCTAssertTrue(FighterArchetype.dracula.usesBitmapSprite)
+        XCTAssertEqual(FighterArchetype.abaddon.imageName, "DigitizedAbaddon")
+        XCTAssertTrue(FighterArchetype.abaddon.usesBitmapSprite)
+    }
+
     // MARK: - §4 The boxer cannot be defeated except by the Million Shot
 
     func testBossSurvivesEveryNonMillionAssault() {

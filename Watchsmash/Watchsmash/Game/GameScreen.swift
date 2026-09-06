@@ -7,6 +7,7 @@ private enum StorageKey {
     static let bestScore = "watchsmash.bestScore"
     static let unlockedRosterIndex = "watchsmash.unlockedRosterIndex"
     static let draculaUnlocked = "watchsmash.draculaUnlocked"
+    static let soundVolume = "watchsmash.soundVolume"   // 0...1, user-facing master volume
 }
 
 struct GameScreen: View {
@@ -18,7 +19,7 @@ struct GameScreen: View {
     @Environment(\.isLuminanceReduced) private var isLuminanceReduced
 
     @State private var engine = WatchsmashEngine()
-    @State private var screenMode: GameScreenMode = .mainMenu
+    @State private var screenMode: GameScreenMode = .title
     @State private var activeMode: FightMode = .tournament
     @State private var selectedRosterIndex = 0
     @State private var selectedLearnDrill: LearnDrill = .movement
@@ -44,6 +45,9 @@ struct GameScreen: View {
     @AppStorage(StorageKey.bestScore) private var bestScore = 0
     @AppStorage(StorageKey.unlockedRosterIndex) private var unlockedRosterIndex = 0
     @AppStorage(StorageKey.draculaUnlocked) private var draculaUnlocked = false
+    /// Master sound level (0...1). Applied to every voice/impact player and the
+    /// music loop; exposed in the main menu so players can turn it down.
+    @AppStorage(StorageKey.soundVolume) private var soundVolume: Double = 1.0
     @FocusState private var crownFocused: Bool
 
     // MARK: - Admin/test mode (pick any two fighters at any floor, plus instant
@@ -63,10 +67,18 @@ struct GameScreen: View {
     @State private var savedRun: RunSnapshot?
 
     @State private var showBugReportSheet = false
+    @State private var showVolumeSheet = false
     @State private var bugReportText = ""
     @State private var bugReportSent = false
 
     private let demoMode = ProcessInfo.processInfo.environment["WATCHSMASH_DEMO"] == "1"
+    /// Simulator-safe art review route. Unlike SIMCTL_CHILD environment
+    /// injection, a process argument does not destabilize CoreSimulatorService.
+    private let showcaseMode = ProcessInfo.processInfo.arguments.contains("--watchsmash-showcase")
+    private let tutorialPreviewMode = ProcessInfo.processInfo.arguments.contains("--watchsmash-tutorial")
+    private let comboPreviewMode = ProcessInfo.processInfo.arguments.contains("--watchsmash-combo")
+    private let lossPreviewMode = ProcessInfo.processInfo.arguments.contains("--watchsmash-loss")
+    private let calloutPreviewMode = ProcessInfo.processInfo.arguments.contains("--watchsmash-callout")
     // When set alongside demo mode, the attract reel also plays the FF cutscenes
     // (auto-advanced) instead of skipping straight between fights — used to
     // capture cutscene frames for the storyboard screenshots.
@@ -85,6 +97,19 @@ struct GameScreen: View {
                 }
                 .opacity(isLuminanceReduced ? 0.55 : 1)
 
+                // Fight gestures belong to the live arena only. Keeping this
+                // layer out of menus and result screens lets their ScrollViews
+                // receive vertical drags instead of turning them into attacks.
+                if screenMode == .fighting, engine.state.phase == .running {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .gesture(dragGesture(size: proxy.size))
+                        .simultaneousGesture(TapGesture(count: 2).onEnded {
+                            pendingDashStrike = true
+                            playHaptic(.directionUp)
+                        })
+                }
+
                 if screenMode == .fighting || screenMode == .pause {
                     hud
                         .padding(.horizontal, 7)
@@ -96,30 +121,19 @@ struct GameScreen: View {
                         .allowsHitTesting(false)
                 }
 
-                // Match-start/round and combo call-outs both live in a band just
-                // under the HUD at the top of the screen, out of the way of the
-                // actual fight action in the center/lower canvas.
-                if engine.state.bannerTimer > 0, engine.state.phase == .running, screenMode == .fighting {
+                // Exactly one call-out owns the very top edge. Named attacks
+                // take priority over combo so labels never stack or cover the
+                // fighters. Spoken cues remain audio-only.
+                if calloutPreviewMode || (engine.state.bannerTimer > 0 && engine.state.phase == .running && screenMode == .fighting) {
                     storyBanner
                         .allowsHitTesting(false)
-                        .padding(.horizontal, 10)
-                        .padding(.top, 62)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                }
-
-                if engine.state.combo > 1, engine.state.phase == .running, screenMode == .fighting {
+                        .ignoresSafeArea(edges: .top)
+                } else if comboPreviewMode || (engine.state.combo > 1 && engine.state.phase == .running && screenMode == .fighting) {
                     comboBadge
                         .allowsHitTesting(false)
-                        .padding(.trailing, 6)
-                        .padding(.top, 62)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                }
-
-                if voiceTimer > 0 {
-                    voiceBadge
-                        .allowsHitTesting(false)
-                        .padding(.bottom, 48)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                        .ignoresSafeArea(edges: .top)
                 }
 
                 if screenMode == .fighting, activeMode == .learn, engine.state.phase == .running {
@@ -135,6 +149,10 @@ struct GameScreen: View {
                         .padding(.leading, 8)
                         .padding(.bottom, 8)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                }
+
+                if screenMode == .title {
+                    titleOverlay
                 }
 
                 if screenMode == .mainMenu {
@@ -163,7 +181,7 @@ struct GameScreen: View {
                     }
                 }
 
-                if screenMode == .pause {
+                if screenMode == .pause, !showcaseMode, !comboPreviewMode, !calloutPreviewMode {
                     pauseOverlay
                 }
 
@@ -171,12 +189,6 @@ struct GameScreen: View {
                     gameOverOverlay
                 }
             }
-            .contentShape(Rectangle())
-            .gesture(dragGesture(size: proxy.size))
-            .simultaneousGesture(TapGesture(count: 2).onEnded {
-                pendingDashStrike = true
-                playHaptic(.directionUp)
-            })
             .focusable(true)
             .focused($crownFocused)
             .digitalCrownRotation(
@@ -194,6 +206,7 @@ struct GameScreen: View {
                 crownFocused = true
                 savedRun = RunStore.load()
                 arcadeAudio.startMusic()
+                arcadeAudio.setVolume(soundVolume)
                 // If the app went down hard last session, offer the crash
                 // report as a starting point for a bug report.
                 if let crash = CrashMonitor.pendingCrashReport() {
@@ -201,7 +214,35 @@ struct GameScreen: View {
                     showBugReportSheet = true
                     CrashMonitor.clearPendingCrashReports()
                 }
-                if demoMode {
+                if calloutPreviewMode {
+                    activeMode = .versus
+                    engine.resetVersus(player: .dracula, opponent: .rook, chapter: .cinderGate)
+                    screenMode = .fighting
+                } else if lossPreviewMode {
+                    activeMode = .versus
+                    engine.resetVersus(player: .dracula, opponent: .abaddon, chapter: .cinderGate)
+                    engine.debugSetPlayer(x: engine.state.player.x, health: 0)
+                    engine.tick(delta: 0.01, input: GameInput())
+                    screenMode = .fighting
+                } else if comboPreviewMode {
+                    activeMode = .versus
+                    engine.resetVersus(player: .dracula, opponent: .abaddon, chapter: .cinderGate)
+                    engine.debugSetPlayerCombo(8)
+                    screenMode = .pause
+                } else if tutorialPreviewMode {
+                    screenMode = .learnSelect
+                } else if showcaseMode {
+                    activeMode = .versus
+                    isAdminSession = true
+                    engine.resetVersus(
+                        player: .dracula,
+                        opponent: .abaddon,
+                        chapter: .cinderGate
+                    )
+                    // Freeze on the neutral matchup pose so art review does
+                    // not turn into an unattended AI fight and loss screen.
+                    screenMode = .pause
+                } else if demoMode {
                     startTournament(skipCard: true)
                 }
             }
@@ -214,6 +255,7 @@ struct GameScreen: View {
                 } else {
                     crownFocused = true
                     arcadeAudio.startMusic()
+                    arcadeAudio.setVolume(soundVolume)
                 }
             }
             .onDisappear {
@@ -282,6 +324,80 @@ struct GameScreen: View {
         .accessibilityLabel("Fight Menu")
     }
 
+    private var titleOverlay: some View {
+        ZStack {
+            LinearGradient(
+                colors: [.black.opacity(0.96), Color(red: 0.24, green: 0.01, blue: 0.03).opacity(0.92), .black.opacity(0.98)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+
+            HStack(spacing: -22) {
+                Image("DigitizedDracula")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 104, height: 164)
+                    .offset(x: -10, y: 34)
+
+                Image("DigitizedAbaddon")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 110, height: 170)
+                    .scaleEffect(x: -1, y: 1)
+                    .offset(x: 10, y: 31)
+            }
+            .opacity(0.72)
+            .allowsHitTesting(false)
+
+            VStack(spacing: 3) {
+                Text("WATCH")
+                    .font(.system(size: 13, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+                    .tracking(1.8)
+
+                Text("SMASH")
+                    .font(.system(size: 25, weight: .black, design: .rounded))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [Color.watchsmashGold, .orange, Color.watchsmashRed],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .shadow(color: Color.watchsmashRed.opacity(0.9), radius: 8)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+
+                Text("THE GATE IS OPEN")
+                    .font(.system(size: 8, weight: .black, design: .rounded))
+                    .foregroundStyle(Color.watchsmashMint)
+                    .tracking(1.1)
+
+                Spacer()
+
+                rosterPurchaseOption
+
+                Button {
+                    screenMode = .mainMenu
+                    lastFrameDate = nil
+                    playHaptic(.start)
+                } label: {
+                    Text("TAP TO ENTER")
+                        .font(.system(size: 12, weight: .black, design: .rounded))
+                        .tracking(0.8)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color.watchsmashRed)
+                .accessibilityLabel("Enter Watch Smash")
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 12)
+            .padding(.bottom, 34)
+        }
+    }
+
     private var mainMenuOverlay: some View {
         // A ScrollView keeps every button reachable now that TEST + REPORT BUG
         // join the original three — the smallest watch sizes would otherwise
@@ -305,6 +421,8 @@ struct GameScreen: View {
                     .foregroundStyle(.white.opacity(0.78))
                     .monospacedDigit()
                     .accessibilityLabel("Best score: \(bestScore)")
+
+                rosterPurchaseOption
 
                 if let savedRun {
                     Button {
@@ -361,6 +479,15 @@ struct GameScreen: View {
                 }
                 .buttonStyle(.bordered)
 
+                Button {
+                    showVolumeSheet = true
+                } label: {
+                    Label(soundVolume >= 0.99 ? "SOUND: LOUD" : (soundVolume >= 0.5 ? "SOUND: MED" : (soundVolume > 0.01 ? "SOUND: LOW" : "SOUND: OFF")),
+                          systemImage: soundVolume > 0.01 ? (soundVolume >= 0.5 ? "speaker.wave.3.fill" : "speaker.wave.1.fill") : "speaker.slash.fill")
+                        .font(.system(size: 10, weight: .heavy, design: .rounded))
+                }
+                .buttonStyle(.bordered)
+
                 if adminUnlocked || adminEnvEnabled {
                     Button {
                         openAdmin()
@@ -392,6 +519,106 @@ struct GameScreen: View {
         .sheet(isPresented: $showBugReportSheet) {
             bugReportSheet
         }
+        .sheet(isPresented: $showVolumeSheet) {
+            volumeSheet
+        }
+    }
+
+    /// The store entry stays visible at both startup and Home, instead of only
+    /// appearing after a player happens to browse to a locked fighter.
+    @ViewBuilder
+    private var rosterPurchaseOption: some View {
+        if purchases.ownsFullRoster {
+            Label("FULL ROSTER OWNED", systemImage: "checkmark.seal.fill")
+                .font(.system(size: 8, weight: .black, design: .rounded))
+                .foregroundStyle(Color.watchsmashMint)
+                .accessibilityLabel("Full roster purchased")
+        } else {
+            HStack(spacing: 5) {
+                Button {
+                    purchases.startPurchase()
+                } label: {
+                    Label(rosterPurchaseLabel, systemImage: "cart.fill")
+                        .font(.system(size: 8, weight: .black, design: .rounded))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.65)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color.watchsmashGold)
+                .disabled(purchases.isPurchasing || purchases.fullRosterProduct == nil)
+                .accessibilityLabel(rosterPurchaseLabel)
+
+                Button {
+                    purchases.startRestore()
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 9, weight: .black))
+                        .frame(width: 28, height: 26)
+                        .background(.white.opacity(0.18), in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .disabled(purchases.isPurchasing)
+                .accessibilityLabel("Restore full roster purchase")
+            }
+
+            if let message = purchases.message {
+                Text(message)
+                    .font(.system(size: 7, weight: .black, design: .rounded))
+                    .foregroundStyle(Color.watchsmashMint)
+                    .lineLimit(1)
+            }
+        }
+    }
+
+    private var rosterPurchaseLabel: String {
+        if purchases.isPurchasing { return "WAIT…" }
+        if let product = purchases.fullRosterProduct {
+            return "FULL ROSTER \(product.displayPrice)"
+        }
+        return "FULL ROSTER"
+    }
+
+    /// Master-volume picker: five discrete levels (0/25/50/75/100%) so the
+    /// Digital Crown isn't required and one tap sets a level.
+    private var volumeSheet: some View {
+        ScrollView {
+            VStack(spacing: 10) {
+                Text("SOUND")
+                    .font(.system(size: 16, weight: .black, design: .rounded))
+                    .foregroundStyle(Color.watchsmashGold)
+
+                ForEach(VolumeLevel.all, id: \.value) { level in
+                    volumeButton(level)
+                }
+            }
+            .padding(12)
+        }
+    }
+
+    private func volumeButton(_ level: VolumeLevel) -> some View {
+        let isSelected = abs(soundVolume - level.value) < 0.01
+        return Button {
+            soundVolume = level.value
+            arcadeAudio.setVolume(level.value)
+            playHaptic(level.value > 0 ? .success : .notification)
+        } label: {
+            HStack {
+                Image(systemName: level.iconName)
+                    .font(.system(size: 11, weight: .heavy))
+                Text(level.label)
+                    .font(.system(size: 12, weight: .black, design: .rounded))
+                    .monospacedDigit()
+                if isSelected {
+                    Spacer()
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .heavy))
+                        .foregroundStyle(Color.watchsmashMint)
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.bordered)
+        .tint(isSelected ? Color.watchsmashMint : Color.white.opacity(0.85))
     }
 
     /// The ladder roster, plus Dracula appended once a full tournament clear
@@ -534,72 +761,83 @@ struct GameScreen: View {
     private var learnSelectOverlay: some View {
         let drill = selectedLearnDrill
 
-        return VStack(spacing: 7) {
-            Text("LEARN")
-                .font(.system(size: 16, weight: .black, design: .rounded))
-                .foregroundStyle(Color.watchsmashGold)
+        return ScrollView {
+            VStack(spacing: 6) {
+                Text("LEARN • STEP \(drill.stepNumber)/\(LearnDrill.allCases.count)")
+                    .font(.system(size: 13, weight: .black, design: .rounded))
+                    .foregroundStyle(Color.watchsmashGold)
 
-            HStack(spacing: 7) {
-                Button {
-                    shiftLearnDrill(-1)
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 13, weight: .black))
-                        .frame(width: 25, height: 30)
+                HStack(spacing: 5) {
+                    Button {
+                        shiftLearnDrill(-1)
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 12, weight: .black))
+                            .frame(width: 22, height: 30)
+                    }
+                    .buttonStyle(.bordered)
+
+                    VStack(spacing: 3) {
+                        Image(systemName: drill.symbolName)
+                            .font(.system(size: 17, weight: .black))
+                            .foregroundStyle(Color.watchsmashMint)
+
+                        Text(drill.title)
+                            .font(.system(size: 12, weight: .black, design: .rounded))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+
+                        Text(drill.controlPrompt)
+                            .font(.system(size: 8, weight: .black, design: .rounded))
+                            .foregroundStyle(Color.watchsmashMint)
+                            .multilineTextAlignment(.center)
+
+                        Text(drill.explanation)
+                            .font(.system(size: 7, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.78))
+                            .lineLimit(4)
+                            .minimumScaleFactor(0.72)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(width: 104, height: 106)
+
+                    Button {
+                        shiftLearnDrill(1)
+                    } label: {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .black))
+                            .frame(width: 22, height: 30)
+                    }
+                    .buttonStyle(.bordered)
                 }
-                .buttonStyle(.bordered)
 
-                VStack(spacing: 3) {
-                    Image(systemName: drill.symbolName)
-                        .font(.system(size: 18, weight: .black))
-                        .foregroundStyle(Color.watchsmashMint)
-                        .frame(width: 50, height: 34)
+                Text("GOAL: \(drill.goal)")
+                    .font(.system(size: 7, weight: .black, design: .rounded))
+                    .foregroundStyle(Color.watchsmashGold)
+                    .multilineTextAlignment(.center)
 
-                    Text(drill.title)
-                        .font(.system(size: 13, weight: .black, design: .rounded))
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
+                HStack(spacing: 8) {
+                    Button {
+                        returnToMainMenu()
+                    } label: {
+                        Image(systemName: "house.fill")
+                            .font(.system(size: 12, weight: .black))
+                            .frame(width: 28, height: 24)
+                    }
+                    .buttonStyle(.bordered)
 
-                    Text(drill.shortPrompt)
-                        .font(.system(size: 7, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.68))
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.70)
-                        .multilineTextAlignment(.center)
+                    Button {
+                        startLearn()
+                    } label: {
+                        Label("PRACTICE", systemImage: "play.fill")
+                            .font(.system(size: 9, weight: .black, design: .rounded))
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Color.watchsmashMint)
                 }
-                .frame(width: 86, height: 78)
-
-                Button {
-                    shiftLearnDrill(1)
-                } label: {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 13, weight: .black))
-                        .frame(width: 25, height: 30)
-                }
-                .buttonStyle(.bordered)
             }
-
-            HStack(spacing: 8) {
-                Button {
-                    returnToMainMenu()
-                } label: {
-                    Image(systemName: "house.fill")
-                        .font(.system(size: 12, weight: .black))
-                        .frame(width: 28, height: 24)
-                }
-                .buttonStyle(.bordered)
-
-                Button {
-                    startLearn()
-                } label: {
-                    Label("START", systemImage: "play.fill")
-                        .font(.system(size: 10, weight: .black, design: .rounded))
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(Color.watchsmashMint)
-            }
+            .padding(10)
         }
-        .padding(10)
         .background(.black.opacity(0.78), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -953,66 +1191,53 @@ struct GameScreen: View {
     }
 
     private var storyBanner: some View {
-        VStack(spacing: 2) {
-            Text(engine.state.bannerText)
-                .font(.system(size: 15, weight: .black, design: .rounded))
+        HStack(spacing: 5) {
+            Text(calloutPreviewMode ? "CHROME RUSH" : engine.state.bannerText)
+                .font(.system(size: 10, weight: .black, design: .rounded))
                 .foregroundStyle(.white)
                 .lineLimit(1)
-                .minimumScaleFactor(0.66)
+                .minimumScaleFactor(0.7)
 
-            Text(engine.state.bannerDetail)
-                .font(.system(size: 8, weight: .bold, design: .rounded))
+            Text(calloutPreviewMode ? "COUNTER PRESSURE" : engine.state.bannerDetail.uppercased())
+                .font(.system(size: 6, weight: .black, design: .rounded))
                 .foregroundStyle(Color.watchsmashGold)
                 .lineLimit(1)
-                .minimumScaleFactor(0.62)
+                .minimumScaleFactor(0.7)
         }
-        .padding(.horizontal, 9)
-        .padding(.vertical, 5)
-        .background(.black.opacity(0.66), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background(.black.opacity(0.80), in: Capsule())
         .overlay(
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
+            Capsule()
                 .stroke(Color.watchsmashGold.opacity(0.45), lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.82), radius: 8, y: 4)
+        .shadow(color: .black.opacity(0.82), radius: 5, y: 2)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(engine.state.bannerText). \(engine.state.bannerDetail)")
     }
 
     private var comboBadge: some View {
-        VStack(spacing: 0) {
-            Text("\(engine.state.combo)")
-                .font(.system(size: 18, weight: .black, design: .rounded))
+        HStack(spacing: 3) {
+            Text("\(displayedCombo)")
                 .foregroundStyle(Color.watchsmashMint)
                 .monospacedDigit()
 
             Text("COMBO")
-                .font(.system(size: 7, weight: .black, design: .rounded))
                 .foregroundStyle(.white.opacity(0.9))
         }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 4)
-        .background(.black.opacity(0.62), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .font(.system(size: 10, weight: .black, design: .rounded))
+        .padding(.horizontal, 7)
+        .padding(.vertical, 2)
+        .background(.black.opacity(0.78), in: Capsule())
         .overlay(
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
+            Capsule()
                 .stroke(Color.watchsmashMint.opacity(0.5), lineWidth: 1)
         )
-        .accessibilityLabel("\(engine.state.combo) hit combo")
+        .accessibilityLabel("\(displayedCombo) hit combo")
     }
 
-    private var voiceBadge: some View {
-        Text(voiceText)
-            .font(.system(size: 16, weight: .black, design: .rounded))
-            .foregroundStyle(Color.watchsmashGold)
-            .lineLimit(1)
-            .minimumScaleFactor(0.58)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 4)
-            .background(.black.opacity(0.68), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .stroke(Color.watchsmashRed.opacity(0.55), lineWidth: 1)
-            )
-            .shadow(color: .black.opacity(0.9), radius: 7, y: 3)
+    private var displayedCombo: Int {
+        comboPreviewMode ? 8 : engine.state.combo
     }
 
     private var learnCoachOverlay: some View {
@@ -1028,10 +1253,10 @@ struct GameScreen: View {
                     .foregroundStyle(Color.watchsmashGold)
                     .lineLimit(1)
 
-                Text(selectedLearnDrill.fightPrompt)
+                Text("\(selectedLearnDrill.controlPrompt) • \(selectedLearnDrill.fightPrompt)")
                     .font(.system(size: 7, weight: .bold, design: .rounded))
                     .foregroundStyle(.white.opacity(0.82))
-                    .lineLimit(1)
+                    .lineLimit(2)
                     .minimumScaleFactor(0.62)
             }
         }
@@ -1046,8 +1271,9 @@ struct GameScreen: View {
     }
 
     private var gameOverOverlay: some View {
-        VStack(spacing: 8) {
-            Text(engine.state.winnerText)
+        ScrollView {
+            VStack(spacing: 8) {
+                Text(engine.state.winnerText)
                 .font(.system(size: 18, weight: .black, design: .rounded))
                 .foregroundStyle(engine.state.playerWins == StoryChapter.allCases.count ? Color.watchsmashGold : .white)
                 .lineLimit(1)
@@ -1083,22 +1309,26 @@ struct GameScreen: View {
             .clipShape(Circle())
             .accessibilityLabel("Retry")
 
-            Button {
-                returnToMainMenu()
-            } label: {
-                Image(systemName: "house.fill")
-                    .font(.system(size: 13, weight: .black))
-                    .frame(width: 30, height: 26)
+                Button {
+                    returnToMainMenu()
+                } label: {
+                    Image(systemName: "house.fill")
+                        .font(.system(size: 13, weight: .black))
+                        .frame(width: 30, height: 26)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityLabel("Main Menu")
             }
-            .buttonStyle(.bordered)
-            .accessibilityLabel("Main Menu")
+            .padding(12)
+            .background(.black.opacity(0.62), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Color.watchsmashGold.opacity(0.44), lineWidth: 1)
+            )
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
         }
-        .padding(12)
-        .background(.black.opacity(0.62), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(Color.watchsmashGold.opacity(0.44), lineWidth: 1)
-        )
+        .scrollIndicators(.hidden)
     }
 
     private func healthBar(value: CGFloat, color: Color, width: CGFloat, trailing: Bool) -> some View {
@@ -1247,7 +1477,7 @@ struct GameScreen: View {
         // In attract/demo mode the AutoPlayDriver plays for us; otherwise build
         // the input from the live controls (crown + touch).
         let tickInput: GameInput
-        if demoMode, !isPressing {
+        if (demoMode || calloutPreviewMode), !isPressing {
             tickInput = autoPlay.input(for: engine.state)
         } else {
             tickInput = GameInput(
@@ -1414,6 +1644,7 @@ struct GameScreen: View {
         resetInputTracking()
         screenMode = .fighting
         arcadeAudio.startMusic()
+        arcadeAudio.setVolume(soundVolume)
         announce("FIGHT")
         playHaptic(.start)
     }
@@ -1450,6 +1681,7 @@ struct GameScreen: View {
         savedRun = nil
         RunStore.clear()
         arcadeAudio.startMusic()
+        arcadeAudio.setVolume(soundVolume)
         playHaptic(.start)
         playCutscene(FFScript.intro, toFight: skipCard)   // FF intro, then the first fight
     }
@@ -1471,6 +1703,7 @@ struct GameScreen: View {
         screenMode = .fighterCard
         demoSceneClock = 0
         arcadeAudio.startMusic()
+        arcadeAudio.setVolume(soundVolume)
         playHaptic(.start)
     }
 
@@ -1501,6 +1734,7 @@ struct GameScreen: View {
         resetInputTracking()
         screenMode = .fighting
         arcadeAudio.startMusic()
+        arcadeAudio.setVolume(soundVolume)
         announce("FIGHT")
         playHaptic(.start)
     }
@@ -1513,6 +1747,7 @@ struct GameScreen: View {
         completedLearnDrills = Set(LearnDrill.allCases.filter { $0.rawValue < selectedLearnDrill.rawValue })
         screenMode = .fighting
         arcadeAudio.startMusic()
+        arcadeAudio.setVolume(soundVolume)
         announce(selectedLearnDrill.callout)
         playHaptic(.start)
     }
@@ -1634,6 +1869,7 @@ struct GameScreen: View {
 }
 
 private enum GameScreenMode {
+    case title
     case mainMenu
     case versusSelect
     case learnSelect
@@ -1687,18 +1923,50 @@ private enum LearnDrill: Int, CaseIterable, Hashable {
         }
     }
 
-    var shortPrompt: String {
+    var stepNumber: Int { rawValue + 1 }
+
+    var controlPrompt: String {
         switch self {
         case .movement:
-            return "Crown or drag to hold range."
+            return "TURN THE CROWN OR DRAG"
         case .strike:
-            return "Press center to chain hits."
+            return "PRESS THE CENTER"
         case .defense:
-            return "Release near danger or drag low."
+            return "RELEASE OR DRAG LOW"
         case .dash:
-            return "Double tap to burst forward."
+            return "DOUBLE-TAP"
         case .special:
-            return "Full meter turns dash into power."
+            return "FILL METER, THEN DOUBLE-TAP"
+        }
+    }
+
+    var explanation: String {
+        switch self {
+        case .movement:
+            return "Move left or right to control distance. Back away from attacks; step in when you are ready to strike."
+        case .strike:
+            return "Press near the screen center for a fast attack. Stay close and time repeated hits before the combo expires."
+        case .defense:
+            return "When the rival gets close, release the screen to auto-block. Drag along the lower third to crouch guard."
+        case .dash:
+            return "Double-tap anywhere to burst forward with a dash strike. Use it to punish rivals who stay out of reach."
+        case .special:
+            return "Attacks build the lower meter. At 100%, double-tap to spend it on your strongest special move."
+        }
+    }
+
+    var goal: String {
+        switch self {
+        case .movement:
+            return "LEAVE YOUR STARTING POSITION"
+        case .strike:
+            return "LAND ONE CLEAN HIT"
+        case .defense:
+            return "BLOCK OR CROUCH-GUARD ONCE"
+        case .dash:
+            return "CONNECT WITH A DASH STRIKE"
+        case .special:
+            return "SPEND A FULL METER"
         }
     }
 
@@ -1883,6 +2151,16 @@ private final class ArcadeAudio {
         music.start()
     }
 
+    /// Apply the user's master volume (0...1) to every player, including music.
+    func setVolume(_ v: Double) {
+        let clamped = min(max(v, 0), 1)
+        for player in voicePlayers.values { player.volume = Float(0.72 * clamped) }
+        for (impact, player) in impactPlayers {
+            player.volume = Float((impact == .punch ? 0.92 : 1.0) * clamped)
+        }
+        music.setVolume(clamped)
+    }
+
     func stopMusic() {
         music.stop()
     }
@@ -1922,6 +2200,10 @@ private final class ArcadeMusic {
         }
         try? AVAudioSession.sharedInstance().setActive(true)
         player?.play()
+    }
+
+    func setVolume(_ v: Double) {
+        player?.volume = Float(0.24 * v)
     }
 
     func stop() {
@@ -2113,5 +2395,29 @@ struct CutsceneOverlay: View {
         case "THE PIT":  return Color(red: 0.95, green: 0.45, blue: 0.12)
         default:         return Color(red: 0.95, green: 0.78, blue: 0.30)
         }
+    }
+}
+
+
+/// One discrete master-volume step shown in the SOUND sheet.
+private struct VolumeLevel: Identifiable {
+    let value: Double
+    var id: Double { value }
+
+    static let all: [VolumeLevel] = [
+        VolumeLevel(value: 1.0),
+        VolumeLevel(value: 0.75),
+        VolumeLevel(value: 0.5),
+        VolumeLevel(value: 0.25),
+        VolumeLevel(value: 0.0),
+    ]
+
+    var label: String {
+        value == 0 ? "OFF" : "\(Int(value * 100))%"
+    }
+
+    var iconName: String {
+        if value <= 0.01 { return "speaker.slash.fill" }
+        return value >= 0.5 ? "speaker.wave.3.fill" : "speaker.wave.1.fill"
     }
 }

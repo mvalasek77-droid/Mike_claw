@@ -1,13 +1,21 @@
 import Foundation
 
-/// A lightweight, dependency-free crash monitor: installs a POSIX signal
-/// handler and an uncaught-exception handler once at launch, and persists a
-/// plain-text crash log to disk if the app goes down hard. On the *next*
-/// launch, `GameScreen` checks `pendingCrashReport()` and offers the player a
-/// chance to review and send it through the bug-report sheet.
+/// A lightweight, dependency-free crash monitor: installs an uncaught-exception
+/// handler once at launch, and persists a plain-text crash log to disk if the
+/// app goes down hard. On the *next* launch, `GameScreen` checks
+/// `pendingCrashReport()` and offers the player a chance to review and send it
+/// through the bug-report sheet.
+///
+/// watchOS 27 (build 24R5315i+) forbids installing POSIX handlers for fatal
+/// signals: any signal() call on a fatal signal raises EXC_BREAKPOINT with
+/// "sigaction on fatal signals is not supported" and kills the app at launch.
+/// Confirmed in on-device crash logs (bug_type 309, ~dozen identical SIGTRAP
+/// crashes at <1s uptime). The signal() loop is therefore kept only for
+/// pre-27 runtimes; NSSetUncaughtExceptionHandler remains supported on all
+/// versions and is the primary net.
 ///
 /// This is not a full crash-reporting SDK (no symbolication, no network
-/// upload) — it's a best-effort local net so a hard crash isn't silent, sized
+/// upload) - it's a best-effort local net so a hard crash isn't silent, sized
 /// for a small watchOS app with no backend of its own.
 enum CrashMonitor {
     private static let logDirectoryName = "CrashLogs"
@@ -19,19 +27,21 @@ enum CrashMonitor {
 
         NSSetUncaughtExceptionHandler { exception in
             CrashMonitor.writeLog(
-                reason: "Uncaught exception: \(exception.name.rawValue) — \(exception.reason ?? "no reason given")",
+                reason: "Uncaught exception: \(exception.name.rawValue) - \(exception.reason ?? "no reason given")",
                 stack: exception.callStackSymbols
             )
         }
 
-        for signalNumber in [SIGABRT, SIGILL, SIGSEGV, SIGFPE, SIGBUS, SIGTRAP] {
-            signal(signalNumber) { receivedSignal in
-                CrashMonitor.writeLog(
-                    reason: "Signal \(receivedSignal) received",
-                    stack: Thread.callStackSymbols
-                )
-                signal(receivedSignal, SIG_DFL)
-                raise(receivedSignal)
+        if #unavailable(watchOS 27.0) {
+            for signalNumber in [SIGILL, SIGSEGV, SIGFPE, SIGBUS] {
+                signal(signalNumber) { receivedSignal in
+                    CrashMonitor.writeLog(
+                        reason: "Signal \(receivedSignal) received",
+                        stack: Thread.callStackSymbols
+                    )
+                    signal(receivedSignal, SIG_DFL)
+                    raise(receivedSignal)
+                }
             }
         }
     }

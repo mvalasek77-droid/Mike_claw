@@ -29,7 +29,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.alphaeliteholdings.watchfighter
         MARKETING_VERSION: "1.0"
-        CURRENT_PROJECT_VERSION: "5"
+        CURRENT_PROJECT_VERSION: "10"
         VERSIONING_SYSTEM: apple-generic
         DEVELOPMENT_TEAM: "UDM4W27W9V"
         GENERATE_INFOPLIST_FILE: YES
@@ -49,7 +49,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.alphaeliteholdings.watchfighter.watchkitapp
         PRODUCT_MODULE_NAME: Watchsmash
         MARKETING_VERSION: "1.0"
-        CURRENT_PROJECT_VERSION: "5"
+        CURRENT_PROJECT_VERSION: "10"
         VERSIONING_SYSTEM: apple-generic
         DEVELOPMENT_TEAM: "UDM4W27W9V"
         SKIP_INSTALL: YES

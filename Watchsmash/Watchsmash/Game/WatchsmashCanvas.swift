@@ -137,13 +137,10 @@ struct WatchsmashCanvas: View {
         let recoil = fighter.action == .hit ? -fighter.facing * unit * 0.026 * strike : 0
         let jumpLift = fighter.action == .jumpKick ? -unit * 0.14 * strike : 0
         let crouchDrop = fighter.action == .crouch ? unit * 0.036 : 0
-        // Vampire fights take to the air: Dracula and whoever he's bitten hover
-        // well off the canvas floor, bobbing gently, for the rest of the round.
-        let isAirborneVampire = fighter.archetype == .dracula || fighter.isVampire
-        let hover = isAirborneVampire
-            ? -unit * 0.30 + CGFloat(sin(date.timeIntervalSinceReferenceDate * 2.4 + Double(side == .player ? 0 : 2))) * unit * 0.03
-            : 0
-        let anchor = CGPoint(x: baseAnchor.x + lunge + recoil, y: baseAnchor.y + breathing + jumpLift + crouchDrop + hover)
+        // Every neutral stance shares the same arena-floor anchor. Vertical
+        // movement belongs to explicit actions such as jump kicks; otherwise a
+        // character can appear to float far above their opponent.
+        let anchor = CGPoint(x: baseAnchor.x + lunge + recoil, y: baseAnchor.y + breathing + jumpLift + crouchDrop)
         let sprite = DigitizedSprite(
             imageName: fighter.archetype.imageName,
             aspectRatio: fighter.archetype.aspectRatio,
@@ -373,15 +370,8 @@ struct WatchsmashCanvas: View {
             context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Color.watchsmashRed.opacity(flash)))
         }
 
-        if state.finisherTimer > 0 {
-            context.draw(
-                Text(state.finisherText)
-                    .font(.system(size: max(17, size.width * 0.078), weight: .black, design: .rounded))
-                    .foregroundStyle(Color.watchsmashRed),
-                at: CGPoint(x: size.width * 0.5, y: size.height * 0.56),
-                anchor: .center
-            )
-        }
+        // Finisher names use GameScreen's single top-edge call-out. Drawing the
+        // same label here used to duplicate it across the fighters.
     }
 
     private func drawFinisherEffect(in context: inout GraphicsContext, center: CGPoint, radius: CGFloat, progress: CGFloat, kind: StrikeKind, size: CGSize) {

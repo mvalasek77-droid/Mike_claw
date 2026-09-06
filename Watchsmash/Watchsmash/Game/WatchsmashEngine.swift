@@ -485,8 +485,8 @@ struct WatchsmashEngine {
         }
 
         if action == .throwAttack, !defenderGuarding, attacker.archetype.inflictsVampireBite {
-            // The bite lands: the victim turns for the rest of the fight — darker
-            // skin, bat wings, and an airborne stance (WatchsmashCanvas).
+            // The bite lands: the victim turns for the rest of the fight and
+            // keeps the transformed vampire look (WatchsmashCanvas).
             if side == .player {
                 state.opponent.isVampire = true
             } else {

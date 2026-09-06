@@ -459,8 +459,10 @@ enum FighterArchetype: CaseIterable, Equatable, Sendable {
             return "DigitizedWarlord"
         case .titan:
             return "DigitizedTitan"
-        case .dracula, .abaddon:
-            return nil
+        case .dracula:
+            return "DigitizedDracula"
+        case .abaddon:
+            return "DigitizedAbaddon"
         }
     }
 
@@ -484,10 +486,8 @@ enum FighterArchetype: CaseIterable, Equatable, Sendable {
             return 428.0 / 640.0
         case .titan:
             return 2.0 / 3.0
-        case .dracula:
-            return 0.54
-        case .abaddon:
-            return 0.68
+        case .dracula, .abaddon:
+            return 2.0 / 3.0
         }
     }
 
@@ -953,8 +953,8 @@ struct DuelFighter: Equatable, Sendable {
     var hitStun: TimeInterval
     var combo: Int
     var facing: CGFloat
-    /// Set once bitten by Dracula: darker skin, bat wings, and an airborne
-    /// stance for the rest of the fight (WatchsmashCanvas renders the look).
+    /// Set once bitten by Dracula so the canvas can render the transformed
+    /// vampire look for the rest of the fight.
     var isVampire: Bool = false
 
     init(archetype: FighterArchetype, x: CGFloat, facing: CGFloat) {
