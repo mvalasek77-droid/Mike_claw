@@ -27,7 +27,29 @@ struct TradeSheet: View {
         market.chain(for: contract.movieId).first(where: { $0.id == contract.id }) ?? contract
     }
 
-    var cost: Double { liveContract.premium * Double(quantity) }
+    /// The agent desk's current two-sided market for this line.
+    var liveBook: QuoteBook? { market.book(contractId: contract.id) }
+
+    /// The contract as a taker actually sees it. Buying lifts the desk's
+    /// offer, so the price that matters is the ask, not the printed mid.
+    var executableContract: Contract {
+        let c = liveContract
+        let ask = market.ask(contractId: c.id)
+        guard ask > 0 else { return c }
+        return Contract(
+            id: c.id, movieId: c.movieId, side: c.side,
+            strikeMillions: c.strikeMillions,
+            basePremium: c.basePremium,
+            premium: ask,
+            multiplier: c.multiplier,
+            openInterest: c.openInterest
+        )
+    }
+
+    /// Price per contract a buyer pays right now.
+    var askPrice: Double { executableContract.premium }
+
+    var cost: Double { askPrice * Double(quantity) }
 
     var body: some View {
         NavigationStack {
@@ -44,9 +66,27 @@ struct TradeSheet: View {
 
                 Section {
                     ScenarioPrimer(contract: contract, movie: movie,
-                                   quantity: quantity, liveMark: liveContract.premium)
+                                   quantity: quantity, liveMark: askPrice)
                         .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                         .listRowBackground(Color.clear)
+                }
+
+                if let book = liveBook {
+                    Section {
+                        QuoteStrip(book: book)
+                        NavigationLink {
+                            TradingDeskView(contract: contract, movie: movie)
+                        } label: {
+                            Label("See the desk that made this price",
+                                  systemImage: "person.3.sequence.fill")
+                                .font(.callout)
+                        }
+                    } header: {
+                        Text("Market makers")
+                    } footer: {
+                        Text("You buy at the ask and sell at the bid. Five agents quote against live social sentiment — when they agree the spread is tight, when the crowd splits them it widens.")
+                            .font(.caption2)
+                    }
                 }
 
                 Section {
@@ -95,7 +135,12 @@ struct TradeSheet: View {
                     Stepper("Quantity: \(quantity)", value: $quantity, in: 1...100)
                     HStack {
                         Text("Premium (each)"); Spacer()
-                        Text(liveContract.premium, format: .number.precision(.fractionLength(2)))
+                        if let book = liveBook, book.nbbo.spread > 0 {
+                            Text("ask ")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        Text(askPrice, format: .number.precision(.fractionLength(2)))
                             .monospacedDigit()
                     }
                     HStack {
@@ -182,7 +227,8 @@ struct TradeSheet: View {
                 Section {
                     Button {
                         do {
-                            let live = liveContract
+                            // Buy at the desk's offer, not the mid.
+                            let live = executableContract
                             if useLimit {
                                 _ = try OrderBookService.shared.placeBuyLimit(
                                     contract: live, quantity: quantity, limitPrice: limitPrice)

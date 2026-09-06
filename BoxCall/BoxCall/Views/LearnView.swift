@@ -42,7 +42,7 @@ struct LearnView: View {
 // MARK: - Sections
 
 enum LearnSection: String, CaseIterable, Identifiable {
-    case theBigIdea, whatsACall, whatsAPut, strike, premium, liveMarket, settlement, losingCoins, closeEarly, multiplier, rewards, glossary
+    case theBigIdea, whatsACall, whatsAPut, strike, premium, liveMarket, theDesk, settlement, losingCoins, closeEarly, multiplier, rewards, glossary
 
     var id: String { rawValue }
 
@@ -54,6 +54,7 @@ enum LearnSection: String, CaseIterable, Identifiable {
         case .strike:       return "The strike price"
         case .premium:      return "Premium & implied volatility"
         case .liveMarket:   return "The live market — how mark moves 24/7"
+        case .theDesk:      return "The desk — bid, ask, and social sentiment"
         case .settlement:   return "Opening weekend & settlement"
         case .losingCoins:  return "Losing coins — what actually happens"
         case .closeEarly:   return "Closing early at the mark"
@@ -71,6 +72,7 @@ enum LearnSection: String, CaseIterable, Identifiable {
         case .strike:       StrikeSection()
         case .premium:      PremiumSection()
         case .liveMarket:   LiveMarketSection()
+        case .theDesk:      TheDeskSection()
         case .settlement:   SettlementSection()
         case .losingCoins:  LosingCoinsSection()
         case .closeEarly:   CloseEarlySection()
@@ -352,10 +354,80 @@ struct LiveMarketSection: View {
     }
 }
 
+struct TheDeskSection: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            LearnHeader(index: 7, title: LearnSection.theDesk.title)
+            LearnParagraph("Behind every price is a desk of five automated market makers. They do not agree with each other, and that disagreement is the price you trade against.")
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Two prices, not one")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.orange)
+                Text("The **bid** is what the desk will pay you. The **ask** is what it will sell to you for. You always buy at the ask and sell at the bid, so the gap between them — the **spread** — is what it costs to change your mind.")
+                    .font(.callout)
+                Text("A tight spread means the agents agree and it is cheap to trade. A wide one means they do not, and impatience gets expensive.")
+                    .font(.callout)
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 10).fill(.orange.opacity(0.10)))
+
+            LearnParagraph("Every agent quotes against one live number: the **crowd score**, from −1 to +1. It blends trailer engagement, mention volume, published reviews, Hot Takes in the feed, and real order flow from people trading the app. Bullish crowd is a tailwind for Calls and a headwind for Puts.")
+
+            agent("chart.line.uptrend.xyaxis", "Trend Rider",
+                  "Leans into the crowd. Raises its market and tightens its bid when sentiment runs positive, so a hyped movie's Calls climb before anything has actually happened.")
+            agent("arrow.uturn.backward.circle", "Fade Desk",
+                  "Ignores everything until the crowd goes extreme, then takes the other side hard. This is what stops one viral trailer from repricing a chain to infinity.")
+            agent("scalemass", "The Anchor",
+                  "Never chases. Quotes big size on both sides around rolling support and resistance so the book is never empty, and only widens when the crowd fragments.")
+            agent("bolt.horizontal.circle", "Tape Scalper",
+                  "Trades how fast sentiment is moving rather than where it sits. Tightest market on the desk in calm tape, and the first to pull a quote when the story flips.")
+            agent("waveform.path.ecg", "Vol Breaker",
+                  "Has no directional view at all. It prices disagreement — the more split the crowd, the wider it quotes and the less size it shows. On a genuine shock it goes dark entirely.")
+
+            FormulaBox(title: "How the market gets made",
+                       formula: "bid = highest of 5 bids\nask = lowest of 5 asks")
+
+            LearnParagraph("Whichever agent is most willing to trade sets the price. Nothing special-cases a 'volatile' state — when sentiment splits the agents, the spread widens on its own, and when two of them cross, the market prints tight because they would have traded with each other.")
+
+            bullet("Watch the desk live.",
+                   "Open any contract's Trade Sheet and tap through to the Trading Desk. You get the crowd gauge, every agent's current market, the reason each one gives in plain English, and the stream of chatter that moved them.")
+            bullet("Trade when the desk is deep.",
+                   "The spread meter grades every market from Deep to Fractured. Entering a Fractured market and exiting it later can cost more than the move you were right about.")
+            bullet("Your own trades feed it.",
+                   "Buying Calls registers as bullish flow and nudges the crowd score. Enough people piling into one side genuinely moves the price the next person sees.")
+        }
+    }
+
+    private func agent(_ glyph: String, _ name: String, _ body: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: glyph)
+                .foregroundStyle(.orange)
+                .frame(width: 22)
+                .padding(.top, 2)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(name).font(.subheadline.weight(.semibold))
+                Text(body).font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func bullet(_ head: String, _ body: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "arrow.forward.circle").foregroundStyle(.orange).padding(.top, 2)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(head).font(.subheadline.weight(.semibold))
+                Text(body).font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
 struct SettlementSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            LearnHeader(index: 7, title: LearnSection.settlement.title)
+            LearnHeader(index: 8, title: LearnSection.settlement.title)
             LearnParagraph("Trading on a movie closes when the first show goes up on Friday night. Over the weekend, the studio reports Friday, Saturday, and Sunday grosses. Monday morning, BoxCall pulls the reported domestic three-day number and settles every open position on that movie.")
             LearnParagraph("Settlement pays the intrinsic value of each contract:")
             HStack(spacing: 10) {
@@ -370,7 +442,7 @@ struct SettlementSection: View {
 struct LosingCoinsSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            LearnHeader(index: 8, title: LearnSection.losingCoins.title)
+            LearnHeader(index: 9, title: LearnSection.losingCoins.title)
             LearnParagraph("BoxCall is a real market. You will lose trades. Here are the three ways it happens, exactly what they cost, and how the Monday reset gets you back in.")
 
             Text("How losses happen")
@@ -479,7 +551,7 @@ private struct LossScenarioCard: View {
 struct CloseEarlySection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            LearnHeader(index: 9, title: LearnSection.closeEarly.title)
+            LearnHeader(index: 10, title: LearnSection.closeEarly.title)
             LearnParagraph("You don't have to hold until settlement. Every open position has a Close button that sells at the current mark price.")
             bullet("Take profit early", "If tracking spikes and your Call's mark doubles, you can lock in the gain without waiting for opening weekend to actually deliver.")
             bullet("Cut losses",         "If the movie's buzz collapses (bad reviews, marketing disaster) and your position is underwater, close early rather than eating the full premium.")
@@ -502,7 +574,7 @@ struct CloseEarlySection: View {
 struct MultiplierSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            LearnHeader(index: 10, title: LearnSection.multiplier.title)
+            LearnHeader(index: 11, title: LearnSection.multiplier.title)
             LearnParagraph("Every contract has a multiplier — the number of Reel Coins each dollar of intrinsic value converts to.")
             FormulaBox(title: "Default multiplier",
                        formula: "1 RC per $1M of intrinsic value")
@@ -514,7 +586,7 @@ struct MultiplierSection: View {
 struct RewardsSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            LearnHeader(index: 11, title: LearnSection.rewards.title)
+            LearnHeader(index: 12, title: LearnSection.rewards.title)
             LearnParagraph("Reel Coins are the fuel — 500 refill weekly, and you never buy or redeem them. What actually accrues is status.")
             HStack(alignment: .top, spacing: 10) {
                 pillar("🎯", "XP & tiers", "Wins grant XP proportional to profit. Six tiers unlock functional social power — verified checkmark, gold username, ability to create custom markets, pinned posts.")
@@ -555,7 +627,7 @@ struct GlossarySection: View {
     ]
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            LearnHeader(index: 12, title: LearnSection.glossary.title)
+            LearnHeader(index: 13, title: LearnSection.glossary.title)
             ForEach(terms, id: \.0) { term in
                 VStack(alignment: .leading, spacing: 2) {
                     Text(term.0).font(.subheadline.weight(.bold)).foregroundStyle(.orange)

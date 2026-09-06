@@ -127,6 +127,14 @@ struct DataSourcesView: View {
                           role: "Once the chain is live, market makers step in at rolling support/resistance so premiums mean-revert inside a band. Real user flow overrides.",
                           status: "Live. See the Learn section on the live market.",
                           wired: true)
+                SourceRow(name: "SentimentEngine",
+                          role: "Fuses trailer engagement, mention velocity, published reviews, in-app Hot Takes, headlines, and real order flow into one crowd score from -1 to +1, plus its rate of change, chatter volume, and how split the crowd is.",
+                          status: "Live. Real social captures set the slow baseline; everything else moves the pulse tick by tick.",
+                          wired: true)
+                SourceRow(name: "Market-making desk (5 agents)",
+                          role: "Five agents quote a two-sided market against that crowd score. Trend Rider chases it, Fade Desk fades extremes, The Anchor holds support/resistance, Tape Scalper trades its velocity, Vol Breaker prices disagreement. Best bid and lowest offer become the market.",
+                          status: "Live. Open any contract's Trade Sheet and tap through to the Trading Desk to watch it quote.",
+                          wired: true)
             }
         }
     }

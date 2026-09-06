@@ -124,9 +124,14 @@ final class PortfolioService: ObservableObject {
 
     func closeAtMark(position: Position) {
         guard position.isOpen else { return }
+        // Closing is a sell, so the user hits the desk's bid rather than
+        // getting the mid. That spread is the cost of impatience, and it
+        // is exactly what the agents are being paid for.
         let chain = MarketService.shared.chain(for: position.movieId)
-        let mark = chain.first { $0.id == position.contractId }?.premium ?? position.entryPremium
-        let proceeds = mark * Double(position.quantity)
+        let fallback = chain.first { $0.id == position.contractId }?.premium
+            ?? position.entryPremium
+        let bid = MarketService.shared.quote(contractId: position.contractId)?.bid ?? fallback
+        let proceeds = bid * Double(position.quantity)
         user.reelCoins += proceeds
         user.lifetimePnL += proceeds - position.cost
         MarketService.shared.recordSell(contractId: position.contractId, quantity: position.quantity)

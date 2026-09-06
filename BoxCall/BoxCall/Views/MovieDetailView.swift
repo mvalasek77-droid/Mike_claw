@@ -30,6 +30,7 @@ struct MovieDetailView: View {
                 filmFacts
                 TicketStubDivider()
                 consensusCard
+                DeskSummaryCard(movieId: movie.id)
                 if !events.isEmpty { newsTicker }
                 ticketButtons
                 sidePicker

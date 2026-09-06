@@ -102,7 +102,33 @@ Ship-ready test matrix. Run through this before every App Store submission. Auto
 - [ ] Privacy Policy + ToS linked from Profile and match `appstore/category_and_rating.txt` App Privacy answers.
 - [ ] Delete-account path: sign out clears local credentials; server deletion via email per policy.
 
-## 13 · App Store gates (final)
+## 13 · Market-making desk (sentiment-driven quotes)
+
+Automated coverage lives in `MarketMakingAgentTests`, `MarketMakingDeskTests`, and `SentimentEngineTests`. This section covers what a human has to watch happen.
+
+- [ ] Open any contract's Trade Sheet → a **Market makers** section shows bid, ask, spread percentage, liquidity grade, and the crowd mood.
+- [ ] Tap **See the desk that made this price** → Trading Desk opens with the sentiment gauge, all five agents, and the chatter feed.
+- [ ] Leave the desk open for 60 seconds. The gauge needle, the agent quotes, and the chatter list all update without stutter. No flicker on the numeric transitions.
+- [ ] Every agent row shows a rationale sentence that matches its numbers — an agent marked *Bidding* has the larger size on the bid.
+- [ ] **Trend Rider** and **Fade Desk** visibly disagree on a movie whose crowd score is past ±0.5.
+- [ ] **The Anchor** always shows size on both sides, at every sentiment reading.
+- [ ] Wait for a news headline to fire on a movie you are watching. The Momentum metric spikes, the shock banner appears, and at least one agent shows *Stepped away*.
+- [ ] After the shock decays, spreads visibly tighten again and the stepped-away agents come back.
+- [ ] Buy 20 contracts of one strike → the crowd chatter feed gains an **Order flow** entry, and the desk's inventory skew shades its next quotes down.
+- [ ] Post a Hot Take from the Trade Sheet → a **Chatter** entry appears on that movie's desk within one tick.
+- [ ] Submit a 5-star review → a positive **Review** entry appears; a 1-star review produces a negative one.
+- [ ] Buy at the ask, then immediately close the position. Proceeds come back at the **bid**, so a round trip loses the spread. This is expected, not a bug.
+- [ ] Movie Detail shows the **Market makers** roll-up card with average spread and a headline that matches the state of the chain.
+- [ ] Learn → section 7 **The desk** renders fully, with all five agent descriptions.
+
+### Desk edge cases
+
+- [ ] A movie added mid-session (pull to refresh with a TMDB key set) gets a book within one tick; no contract renders a dash for both sides.
+- [ ] With no API keys configured, ambient chatter still moves the gauge — the desk never sits perfectly still.
+- [ ] VoiceOver on the Trading Desk reads the gauge, the inside market, and each agent row as single coherent elements.
+- [ ] Dark mode and accessibility-3 Dynamic Type: the agent rows wrap without clipping and the depth bars stay aligned.
+
+## 14 · App Store gates (final)
 
 - [ ] Ten screenshots per `appstore/screenshots.md`, at 1290×2796 and 1179×2556.
 - [ ] `appstore/review_notes.txt` pasted into the App Review notes field.

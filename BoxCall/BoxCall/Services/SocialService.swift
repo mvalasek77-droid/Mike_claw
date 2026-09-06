@@ -52,6 +52,9 @@ final class SocialService: ObservableObject {
             isLikedByMe: false
         )
         reviews.insert(review, at: 0)
+        SentimentEngine.shared.recordReview(movieId: movie.id,
+                                            rating: rating,
+                                            handle: user.handle)
     }
 
     func toggleReviewLike(id: UUID) {
@@ -136,6 +139,10 @@ final class SocialService: ObservableObject {
         )
         feed.insert(post, at: 0)
         postByPositionId[positionId] = post.id
+        // A public Hot Take is crowd chatter the desk quotes against.
+        SentimentEngine.shared.recordHotTake(movieId: movie.id,
+                                             side: contract.side,
+                                             handle: user.handle)
     }
 
     func attachOutcome(positionId: UUID, actual: Double, payoutPerContract: Double, netProfit: Double) {

@@ -28,9 +28,21 @@ final class MarketService: ObservableObject {
     /// Rolling support / resistance per contract, refreshed each tick.
     @Published private(set) var srLevels: [String: SRLevel] = [:]
 
+    /// Consolidated two-sided market per contract, published by the
+    /// agent desk each tick. The printed mark is this book's mid.
+    @Published private(set) var books: [String: QuoteBook] = [:]
+    /// Desk-wide roll-up per movie, for the Trading Desk header.
+    @Published private(set) var deskSummaries: [String: DeskSummary] = [:]
+
     var provider: MovieDataProvider = Config.preferredProvider
     var trackingSource: TrackingDataSource = Config.enrichedTrackingSource
+    /// Raw social capture, used to set the crowd read's slow baseline.
+    /// The tracking source consumes the same data to move consensus; the
+    /// desk needs the unaggregated signal to quote against.
+    var socialSignalSource: SocialSignalSource = Config.socialSignalSource
     var priceSetter: PriceSetter = PriceSetter()
+    /// The roster of market-making agents quoting every line.
+    var desk = MarketMakingDesk()
     private var refreshTimer: Timer?
 
     // Per-contract signed demand imbalance (unitless).
@@ -41,6 +53,13 @@ final class MarketService: ObservableObject {
     private let liquidity: Double = 80.0
     // Rolling history window (points per contract).
     private let historyCap: Int = 90
+    // Net position the agent desk is carrying per contract. A user buy
+    // leaves the desk short, which shades its quotes down until it
+    // works the risk back off.
+    private var deskInventory: [String: Double] = [:]
+    // Monotonic tick counter, mixed into the agents' random seed so the
+    // jitter changes every tick but stays reproducible for a given tick.
+    private var tickCount: UInt64 = 0
 
     private var updateTimer: Timer?
     private let tickInterval: TimeInterval = 3.0
@@ -67,6 +86,9 @@ final class MarketService: ObservableObject {
             if !newlyAddedIds.isEmpty {
                 await enrichTracking(for: newlyAddedIds)
             }
+            // Re-read social for the whole catalog, not just new titles —
+            // a movie's crowd can turn long after it was first listed.
+            await refreshSocialSignals()
         } catch {
             lastRefreshError = error.localizedDescription
         }
@@ -175,6 +197,46 @@ final class MarketService: ObservableObject {
     }
     func srLevel(contractId: String) -> SRLevel? { srLevels[contractId] }
 
+    // MARK: - Desk reads
+
+    /// Full consolidated book for a contract, including every agent's
+    /// individual quote and its stated reason.
+    func book(contractId: String) -> QuoteBook? { books[contractId] }
+
+    /// Inside market for a contract.
+    func quote(contractId: String) -> Quote? { books[contractId]?.nbbo }
+
+    /// What a taker pays to buy right now. Falls back to the printed
+    /// mark before the desk has published a book.
+    func ask(contractId: String) -> Double {
+        books[contractId]?.nbbo.ask ?? markFallback(contractId)
+    }
+
+    /// What a taker receives on a sell right now.
+    func bid(contractId: String) -> Double {
+        books[contractId]?.nbbo.bid ?? markFallback(contractId)
+    }
+
+    /// The price a taker gets on the given side of the trade.
+    func executionPrice(contractId: String, isBuy: Bool) -> Double {
+        isBuy ? ask(contractId: contractId) : bid(contractId: contractId)
+    }
+
+    /// Desk-wide roll-up across a movie's whole chain.
+    func deskSummary(movieId: String) -> DeskSummary? { deskSummaries[movieId] }
+
+    /// Live crowd read driving the desk for this movie.
+    func sentiment(for movieId: String) -> SentimentPulse {
+        SentimentEngine.shared.pulse(for: movieId)
+    }
+
+    private func markFallback(_ contractId: String) -> Double {
+        for chain in chains.values {
+            if let c = chain.first(where: { $0.id == contractId }) { return c.premium }
+        }
+        return 0
+    }
+
     /// The current crowd-forecast opening. Base tracker × movie sentiment,
     /// where sentiment is nudged by every buy/sell/news event on the movie.
     func impliedConsensus(for movieId: String) -> Double {
@@ -193,18 +255,32 @@ final class MarketService: ObservableObject {
 
     func recordBuy(contractId: String, quantity: Int) {
         demand[contractId, default: 0] += Double(quantity)
+        // The user lifted the offer, so the desk is now short that many
+        // contracts and will shade its quotes down to buy them back.
+        deskInventory[contractId, default: 0] -= Double(quantity)
         // Buying a Call is a mildly bullish signal for the whole movie;
         // buying a Put is mildly bearish.
         if let c = findContract(contractId) {
             let bump = Double(quantity) * 0.002 * (c.side == .call ? 1 : -1)
             movieSentiment[c.movieId, default: 1.0] =
                 clamp((movieSentiment[c.movieId] ?? 1.0) + bump, 0.5, 1.5)
+            // Real order flow is the highest-quality sentiment input the
+            // desk gets — it is people betting rather than posting.
+            SentimentEngine.shared.recordFlow(movieId: c.movieId,
+                                              side: c.side, quantity: quantity)
         }
         tickImmediate()
     }
 
     func recordSell(contractId: String, quantity: Int) {
         demand[contractId, default: 0] -= Double(quantity)
+        // The user hit the bid; the desk is long and wants to work out.
+        deskInventory[contractId, default: 0] += Double(quantity)
+        if let c = findContract(contractId) {
+            SentimentEngine.shared.recordFlow(movieId: c.movieId,
+                                              side: c.side == .call ? .put : .call,
+                                              quantity: quantity)
+        }
         tickImmediate()
     }
 
@@ -222,34 +298,71 @@ final class MarketService: ObservableObject {
     private func tickImmediate() { tick() }
 
     private func tick() {
+        tickCount &+= 1
+
         // 1. Market makers step in at support / resistance across the book.
         runMarketMakers()
 
         // 2. Occasionally inject a news event that shocks a random movie.
         maybeInjectEvent()
 
-        // 3. Drift demand slowly back toward zero (mean reversion).
+        // 3. Advance the crowd read for every listed movie. This runs
+        // before pricing so the agents quote against the freshest
+        // sentiment rather than last tick's.
+        let titles = Dictionary(uniqueKeysWithValues: movies.map { ($0.id, $0.title) })
+        SentimentEngine.shared.tick(movieIds: movies.map(\.id), titles: titles)
+
+        // 4. Drift demand slowly back toward zero (mean reversion).
         for k in demand.keys {
             demand[k] = (demand[k] ?? 0) * 0.995
         }
-        // Drift sentiment toward 1.0.
+        // Drift sentiment toward where the crowd currently sits rather
+        // than flat neutral, so social mood feeds the implied consensus.
         for k in movieSentiment.keys {
             let s = movieSentiment[k] ?? 1.0
-            movieSentiment[k] = s + (1.0 - s) * 0.02
+            let target = 1.0 + SentimentEngine.shared.pulse(for: k).score * 0.12
+            movieSentiment[k] = clamp(s + (target - s) * 0.02, 0.5, 1.5)
+        }
+        // Desk inventory decays as the agents work their risk off.
+        for k in deskInventory.keys {
+            deskInventory[k] = (deskInventory[k] ?? 0) * 0.97
         }
 
-        // 4. Recompute marks and append to history.
+        // 5. Price every line. The demand model produces a theoretical
+        // fair value; the agent desk then quotes a two-sided market
+        // around it, and the mid of that market becomes the print.
         let now = Date()
         var newChains: [String: [Contract]] = [:]
+        var newBooks: [String: QuoteBook] = [:]
+        var newSummaries: [String: DeskSummary] = [:]
+
         for (mid, chain) in chains {
-            let sentiment = movieSentiment[mid] ?? 1.0
+            let sentimentMultiplier = movieSentiment[mid] ?? 1.0
+            let pulse = SentimentEngine.shared.pulse(for: mid)
+            let dte = movie(id: mid)?.daysToRelease ?? 30
+            var movieBooks: [QuoteBook] = []
+
             newChains[mid] = chain.map { c in
                 let d = demand[c.id] ?? 0
-                let sideBias = c.side == .call ? sentiment : (2 - sentiment)
+                let sideBias = c.side == .call ? sentimentMultiplier : (2 - sentimentMultiplier)
                 let noise = Double.random(in: -0.01...0.01)
-                var mark = c.basePremium * exp(d / liquidity) * sideBias * (1 + noise)
-                mark = max(0.25, (mark * 100).rounded() / 100)
-                // Small open-interest tick to look alive.
+                let fair = max(0.25, c.basePremium * exp(d / liquidity) * sideBias * (1 + noise))
+
+                let ctx = QuoteContext(
+                    contract: c,
+                    fairValue: fair,
+                    pulse: pulse,
+                    level: srLevels[c.id],
+                    daysToRelease: dte,
+                    inventory: deskInventory[c.id] ?? 0
+                )
+                let book = desk.makeBook(ctx, seed: bookSeed(for: c.id))
+                newBooks[c.id] = book
+                movieBooks.append(book)
+
+                let mark = max(0.25, (book.mark * 100).rounded() / 100)
+                // Open interest grows with how much size the desk is
+                // showing, so a busy line visibly builds a book.
                 let oi = c.openInterest + Int.random(in: 0...2)
 
                 appendHistory(contractId: c.id, mark: mark, at: now)
@@ -263,10 +376,15 @@ final class MarketService: ObservableObject {
                     openInterest: oi
                 )
             }
+            newSummaries[mid] = DeskSummary.build(movieId: mid,
+                                                  books: movieBooks,
+                                                  pulse: pulse)
         }
         chains = newChains
+        books = newBooks
+        deskSummaries = newSummaries
 
-        // 5. Recompute S/R per contract now that history has one more point.
+        // 6. Recompute S/R per contract now that history has one more point.
         var newSR: [String: SRLevel] = [:]
         for chain in chains.values {
             for c in chain {
@@ -288,9 +406,17 @@ final class MarketService: ObservableObject {
 
         lastTickAt = now
 
-        // 6. Match any resting limit orders whose limit is at or above
+        // 7. Match any resting limit orders whose limit is at or above
         // the freshly-computed mark.
         Task { @MainActor in OrderBookService.shared.tickMatch() }
+    }
+
+    /// Per-contract, per-tick seed for the agents' jitter. Stable within
+    /// a tick so the same book can be rebuilt for debugging, but rotating
+    /// across ticks so the tape keeps moving.
+    private func bookSeed(for contractId: String) -> UInt64 {
+        var g = SeededGenerator(seed: contractId)
+        return g.next() ^ (tickCount &* 0x9E3779B97F4A7C15)
     }
 
     private func appendHistory(contractId: String, mark: Double, at time: Date) {
@@ -338,6 +464,13 @@ final class MarketService: ObservableObject {
         let current = movieSentiment[movie.id] ?? 1.0
         movieSentiment[movie.id] = clamp(current + magnitude, 0.5, 1.5)
 
+        // Feed the same headline to the crowd read. This is what makes a
+        // news event visibly widen spreads: the pulse spikes, velocity
+        // jumps, and the scalper and vol desks pull their quotes.
+        SentimentEngine.shared.recordHeadline(movieId: movie.id,
+                                              headline: headline,
+                                              magnitude: magnitude)
+
         // Also drop an inbox notification for the user IF they hold any
         // position on this movie (news matters when you're exposed).
         if PortfolioService.shared.positions.contains(where: {
@@ -376,6 +509,20 @@ final class MarketService: ObservableObject {
             impliedVolPct: movie.impliedVolPct
         )
         return priceSetter.chain(for: movie, tracking: fallback)
+    }
+
+    /// Pull a fresh social capture for every listed movie and hand it to
+    /// the sentiment engine as the slow baseline the pulse reverts to.
+    ///
+    /// Sources with no API key configured return nil immediately, so this
+    /// costs nothing in the default build and the desk falls back to
+    /// order flow, Hot Takes, headlines, and ambient chatter.
+    @MainActor
+    func refreshSocialSignals() async {
+        for m in movies {
+            guard let signal = await socialSignalSource.signal(for: m) else { continue }
+            SentimentEngine.shared.ingest(signal: signal, for: m.id)
+        }
     }
 
     /// Optional post-merge step: hit the backend tracking source for
