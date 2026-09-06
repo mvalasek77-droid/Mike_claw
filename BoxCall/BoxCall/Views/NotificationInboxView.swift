@@ -71,9 +71,13 @@ struct NotificationInboxView: View {
         .padding(.vertical, 2)
     }
 
-    private func relative(_ date: Date) -> String {
+    private static let relativeFormatter: RelativeDateTimeFormatter = {
         let f = RelativeDateTimeFormatter()
         f.unitsStyle = .short
-        return f.localizedString(for: date, relativeTo: Date())
+        return f
+    }()
+
+    private func relative(_ date: Date) -> String {
+        Self.relativeFormatter.localizedString(for: date, relativeTo: Date())
     }
 }

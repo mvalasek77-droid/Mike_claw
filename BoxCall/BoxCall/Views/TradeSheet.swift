@@ -210,6 +210,9 @@ struct TradeSheet: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(.orange)
+                    .accessibilityLabel(useLimit
+                        ? "Place limit order for \(quantity) contracts"
+                        : "Buy \(quantity) \(contract.side.display) contracts for \(String(format: "%.2f", cost)) Reel Coins")
                 }
             }
             .navigationTitle("Place Trade")

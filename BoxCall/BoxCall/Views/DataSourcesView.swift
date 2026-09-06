@@ -167,9 +167,14 @@ struct DataSourcesView: View {
         }
     }
 
+    private static let refreshFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMM d 'at' h:mm a"
+        return f
+    }()
+
     private func format(_ d: Date) -> String {
-        let f = DateFormatter(); f.dateFormat = "MMM d 'at' h:mm a"
-        return f.string(from: d)
+        Self.refreshFormatter.string(from: d)
     }
 }
 

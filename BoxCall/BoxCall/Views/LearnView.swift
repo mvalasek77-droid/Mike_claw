@@ -20,11 +20,10 @@ struct LearnView: View {
             }
             .navigationTitle("How BoxCall Works")
             .navigationBarTitleDisplayMode(.inline)
-            .onAppear {
+            .task {
                 if initialSection != .theBigIdea {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                        withAnimation { proxy.scrollTo(initialSection, anchor: .top) }
-                    }
+                    try? await Task.sleep(nanoseconds: 150_000_000)
+                    withAnimation { proxy.scrollTo(initialSection, anchor: .top) }
                 }
             }
         }

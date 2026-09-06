@@ -45,6 +45,8 @@ struct LeaderboardView: View {
                             }
                         }
                         .padding(.vertical, 2)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("Rank \(idx + 1), \(entry.handle), \(entry.tier.name), \(Int(entry.reelCoins)) Reel Coins, win rate \(Int(entry.winRate * 100)) percent")
                     }
                 }
                 Section {

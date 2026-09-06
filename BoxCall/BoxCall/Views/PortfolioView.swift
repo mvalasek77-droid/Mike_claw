@@ -33,6 +33,7 @@ struct PortfolioView: View {
                                 Button("Cancel") { book.cancel(orderId: order.id) }
                                     .buttonStyle(.bordered)
                                     .controlSize(.small)
+                                    .accessibilityLabel("Cancel limit order")
                             }
                         }
                     }
@@ -141,6 +142,7 @@ struct PositionRow: View {
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
+                    .accessibilityLabel("Close position at current mark")
                 }
                 .font(.caption)
             } else if let actual = position.actualOWMillions {
@@ -192,6 +194,7 @@ struct PositionRow: View {
             .font(.callout.weight(.bold))
             .monospacedDigit()
             .foregroundStyle(pnl >= 0 ? .green : .red)
+            .accessibleCoinDelta(pnl)
     }
 
     private func infoPair(_ label: String, _ value: Double) -> some View {

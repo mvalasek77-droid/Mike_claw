@@ -55,10 +55,14 @@ enum RefillClock {
         return "\(minutes)m"
     }
 
-    /// Localized long form, e.g. "Monday, Aug 25 at 12:00 AM".
-    static func nextMondayFormatted(from now: Date = Date()) -> String {
+    private static let dayFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "EEEE, MMM d 'at' h:mm a"
-        return f.string(from: nextMonday(after: now))
+        return f
+    }()
+
+    /// Localized long form, e.g. "Monday, Aug 25 at 12:00 AM".
+    static func nextMondayFormatted(from now: Date = Date()) -> String {
+        dayFormatter.string(from: nextMonday(after: now))
     }
 }
