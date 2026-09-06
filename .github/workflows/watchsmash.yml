@@ -112,6 +112,18 @@ jobs:
         working-directory: Watchsmash
         run: xcodegen generate
 
+      - name: Pick and boot a watch simulator
+        id: sim
+        run: |
+          set -euo pipefail
+          UDID=$(xcrun simctl list devices available \
+            | grep "Apple Watch" \
+            | grep -oE '[0-9A-Fa-f]{8}-[0-9A-Fa-f-]{27}' \
+            | head -1)
+          echo "Booting ${UDID}"
+          echo "udid=${UDID}" >> "${GITHUB_OUTPUT}"
+          xcrun simctl bootstatus "${UDID}" -b
+
       - name: Build app for the simulator
         working-directory: Watchsmash
         run: |
@@ -119,7 +131,7 @@ jobs:
           xcodebuild build \
             -project Watchsmash.xcodeproj \
             -scheme Watchsmash \
-            -sdk watchsimulator \
+            -destination "platform=watchOS Simulator,id=${{ steps.sim.outputs.udid }}" \
             -configuration Debug \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO DEVELOPMENT_TEAM="" \
@@ -137,18 +149,6 @@ jobs:
         with:
           name: watchsmash-simulator-app
           path: Watchsmash/Watchsmash-simulator.zip
-
-      - name: Boot a watch simulator
-        id: sim
-        run: |
-          set -euo pipefail
-          UDID=$(xcrun simctl list devices available \
-            | grep "Apple Watch" \
-            | grep -oE '[0-9A-Fa-f]{8}-[0-9A-Fa-f-]{27}' \
-            | head -1)
-          echo "Booting ${UDID}"
-          echo "udid=${UDID}" >> "${GITHUB_OUTPUT}"
-          xcrun simctl bootstatus "${UDID}" -b
 
       - name: Install and launch in attract/demo mode
         working-directory: Watchsmash
