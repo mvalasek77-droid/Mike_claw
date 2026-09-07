@@ -52,6 +52,15 @@ struct DataSourcesView: View {
                 statRow("Last error", err, color: .red)
             }
             statRow("Auto-refresh", "Every 6 hours + pull-to-refresh")
+            if let social = market.socialDiagnostics {
+                statRow("Social pull", social.statusLine,
+                        color: social.quotaExhausted || social.lastError != nil
+                            ? .red
+                            : (social.isHealthy ? .green : .primary))
+            }
+            if let at = market.lastSocialRefreshAt {
+                statRow("Social last run", format(at))
+            }
         }
         .padding(12)
         .background(RoundedRectangle(cornerRadius: 12).fill(Color(.secondarySystemBackground)))
@@ -96,14 +105,12 @@ struct DataSourcesView: View {
                 Text("Social signals (adjusts consensus ±30%)")
                     .font(.headline).padding(.top, 4)
                 SourceRow(name: "YouTube trailer engagement",
-                          role: "Trailer views (7-day) and like ratio via YouTube Data API v3. Bullish trailer stats shift consensus up and tighten IV.",
-                          status: Config.youtubeAPIKey.isEmpty
-                            ? "Not configured (add YOUTUBE_API_KEY in Info.plist)"
-                            : "Connected — fetched client-side.",
-                          wired: !Config.youtubeAPIKey.isEmpty)
+                          role: "Trailing-7-day trailer views, estimated from the lifetime count and the video's publish date, plus likes-per-view engagement. YouTube removed public dislike counts in 2021, so engagement rate stands in for a like ratio.",
+                          status: youtubeStatus,
+                          wired: market.socialDiagnostics?.isHealthy ?? false)
                 SourceRow(name: "X (Twitter) mention velocity + sentiment",
                           role: "24h mention volume + sentiment score. High velocity + positive sentiment lifts the crowd forecast.",
-                          status: "Backend-only. Paid X API tier proxied through api.boxcall.com/x-signal. Endpoint stubbed.",
+                          status: "Backend-only. Paid X API tier proxied through api.boxcall.com/x-signal. Endpoint stubbed — while it is, the signal reports no data rather than zero mentions, so its absence does not bias the crowd read.",
                           wired: false)
             }
             Group {
@@ -173,6 +180,19 @@ struct DataSourcesView: View {
                 Text(body).font(.caption).foregroundStyle(.secondary)
             }
         }
+    }
+
+    /// Reports what the last pull actually did, not merely whether a key
+    /// string is present.
+    private var youtubeStatus: String {
+        guard !Config.youtubeAPIKey.isEmpty else {
+            return "Not configured (add YOUTUBE_API_KEY in Info.plist)."
+        }
+        guard let d = market.socialDiagnostics else {
+            return "Configured. No pull has run yet this session."
+        }
+        return d.statusLine
+            + " Trailer ids are cached per movie, and the whole slate is priced in one batched request."
     }
 
     private static let refreshFormatter: DateFormatter = {

@@ -34,6 +34,15 @@ final class MarketService: ObservableObject {
     /// Desk-wide roll-up per movie, for the Trading Desk header.
     @Published private(set) var deskSummaries: [String: DeskSummary] = [:]
 
+    /// What the social sources actually did on the last pull, so the app
+    /// can tell "connected and quiet" from "silently failing".
+    @Published private(set) var socialDiagnostics: SocialSourceDiagnostics?
+    /// When the last social capture ran.
+    @Published private(set) var lastSocialRefreshAt: Date?
+    /// Minimum gap between social pulls. Social numbers move on the order
+    /// of hours and the upstream quota is a daily budget.
+    private let socialRefreshInterval: TimeInterval = 3 * 3600
+
     var provider: MovieDataProvider = Config.preferredProvider
     var trackingSource: TrackingDataSource = Config.enrichedTrackingSource
     /// Raw social capture, used to set the crowd read's slow baseline.
@@ -149,6 +158,10 @@ final class MarketService: ObservableObject {
         // Publish. Sort by release date so the Slate lists soonest first.
         movies = Array(byId.values).sorted { $0.releaseDate < $1.releaseDate }
         chains = chainsById
+        // Drop sentiment state for movies that just left the catalog —
+        // every per-movie map in the engine is keyed by an id that can
+        // disappear when an opened film is pruned.
+        SentimentEngine.shared.prune(keeping: Set(byId.keys))
         return addedIds
     }
 
@@ -511,18 +524,35 @@ final class MarketService: ObservableObject {
         return priceSetter.chain(for: movie, tracking: fallback)
     }
 
-    /// Pull a fresh social capture for every listed movie and hand it to
-    /// the sentiment engine as the slow baseline the pulse reverts to.
+    /// Pull a fresh social capture for the whole slate and hand it to the
+    /// sentiment engine as the slow baseline the pulse reverts to.
     ///
-    /// Sources with no API key configured return nil immediately, so this
-    /// costs nothing in the default build and the desk falls back to
-    /// order flow, Hot Takes, headlines, and ambient chatter.
+    /// Batched, not per-movie: YouTube prices up to 50 videos in one
+    /// request, so the whole catalog costs a single API unit once trailer
+    /// ids are cached. Sources with no API key configured return nothing
+    /// immediately, so this costs nothing in the default build and the
+    /// desk falls back to order flow, Hot Takes, headlines, and chatter.
+    ///
+    /// - Parameter force: bypass the throttle. Used by an explicit
+    ///   pull-to-refresh; the periodic timer leaves it off.
     @MainActor
-    func refreshSocialSignals() async {
-        for m in movies {
-            guard let signal = await socialSignalSource.signal(for: m) else { continue }
-            SentimentEngine.shared.ingest(signal: signal, for: m.id)
+    func refreshSocialSignals(force: Bool = false) async {
+        guard !movies.isEmpty else { return }
+        let now = Date()
+        // Social numbers move on the order of hours, and the upstream
+        // quota is a daily budget. Re-pulling on every catalog refresh
+        // spent it for no additional signal.
+        if !force, let last = lastSocialRefreshAt,
+           now.timeIntervalSince(last) < socialRefreshInterval {
+            return
         }
+        lastSocialRefreshAt = now
+
+        let batch = await socialSignalSource.signals(for: movies)
+        for (movieId, signal) in batch {
+            SentimentEngine.shared.ingest(signal: signal, for: movieId, now: now)
+        }
+        socialDiagnostics = await socialSignalSource.diagnostics()
     }
 
     /// Optional post-merge step: hit the backend tracking source for

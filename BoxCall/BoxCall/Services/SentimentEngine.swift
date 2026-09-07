@@ -134,6 +134,12 @@ final class SentimentEngine: ObservableObject {
 
     /// Slow baseline from the real social sources, per movie id.
     private var baselines: [String: Double] = [:]
+    /// How much of the social model actually had data behind each
+    /// baseline, 0…1. A YouTube-only read covers 0.7 and is trusted
+    /// proportionally less than a full YouTube + X read.
+    private var baselineCoverage: [String: Double] = [:]
+    /// Last time a capture produced a visible chatter item, per movie.
+    private var lastIngestAt: [String: Date] = [:]
     /// Timestamped impacts inside the rolling attention window.
     private var impactWindow: [String: [Impact]] = [:]
     private var lastTickAt: Date = Date()
@@ -173,14 +179,51 @@ final class SentimentEngine: ObservableObject {
     // MARK: - Ingest
 
     /// Fold a real social capture into the slow baseline.
+    ///
+    /// A capture with no measurements behind it is discarded rather than
+    /// stored as a neutral opinion — the desk should keep quoting off
+    /// whatever it already knew, not be told the crowd went quiet.
     func ingest(signal: SocialSignal, for movieId: String,
-                genreBaseline: SignalBaseline = .generic) {
+                genreBaseline: SignalBaseline = .generic,
+                now: Date = Date()) {
+        guard signal.hasAnyData else { return }
         let score = SentimentModel.baseline(from: signal, genreBaseline: genreBaseline)
         baselines[movieId] = score
-        record(movieId: movieId, source: .trailer, impact: score,
-               text: signal.youtubeTrailerViews7d > 0
-                   ? "Trailer at \(compact(signal.youtubeTrailerViews7d)) views, crowd reads \(signed(score))."
-                   : "Social capture refreshed, crowd reads \(signed(score)).")
+        baselineCoverage[movieId] = signal.coverage
+
+        // Refreshes can arrive in bursts when someone pulls to refresh
+        // repeatedly. Update the baseline every time, but only publish a
+        // visible chatter item once a minute so the window is not stuffed
+        // with duplicates of the same capture.
+        if let last = lastIngestAt[movieId], now.timeIntervalSince(last) < 60 { return }
+        lastIngestAt[movieId] = now
+
+        let text: String
+        if let views = signal.youtubeTrailerViews7d {
+            let engagement = signal.youtubeEngagementRate
+                .map { String(format: " at %.1f%% engagement", $0 * 100) } ?? ""
+            text = "Trailer pulling \(compact(views)) views this week\(engagement)."
+        } else if let mentions = signal.xMentions24h {
+            text = "\(compact(mentions)) mentions in the last 24h."
+        } else {
+            text = "Social capture refreshed, crowd reads \(signed(score))."
+        }
+        record(movieId: movieId, source: .trailer, impact: score, text: text, at: now)
+    }
+
+    /// Drop state for movies that are no longer listed.
+    ///
+    /// Every per-movie dictionary here is keyed by an id that can vanish
+    /// when the catalog prunes an opened film. Without this the maps grow
+    /// for the life of the process.
+    func prune(keeping liveIds: Set<String>) {
+        pulses = pulses.filter { liveIds.contains($0.key) }
+        history = history.filter { liveIds.contains($0.key) }
+        baselines = baselines.filter { liveIds.contains($0.key) }
+        baselineCoverage = baselineCoverage.filter { liveIds.contains($0.key) }
+        impactWindow = impactWindow.filter { liveIds.contains($0.key) }
+        lastIngestAt = lastIngestAt.filter { liveIds.contains($0.key) }
+        events.removeAll { !liveIds.contains($0.movieId) }
     }
 
     /// A real trade moved the tape. Call buying reads bullish.
@@ -241,14 +284,23 @@ final class SentimentEngine: ObservableObject {
 
             let agg = SentimentModel.aggregate(impacts: window.map(\.value))
             let baseline = baselines[id] ?? 0
+            let coverage = baselineCoverage[id] ?? 0
 
             // The window is the news; the baseline is the standing view.
             // Weight the window more when it is loud, so a quiet movie
             // sits on its baseline instead of drifting on two comments.
+            //
+            // The baseline's share is scaled by how much of the social
+            // model was actually observed. A movie we have no social read
+            // on contributes nothing rather than dragging the pulse
+            // toward a zero it never measured.
             let windowWeight = 0.35 + 0.45 * agg.volume
-            let target = SentimentPulse.clampSigned(
-                agg.mean * windowWeight + baseline * (1 - windowWeight)
-            )
+            let baselineWeight = (1 - windowWeight) * coverage
+            let totalWeight = windowWeight + baselineWeight
+            let target = totalWeight > 0
+                ? SentimentPulse.clampSigned(
+                    (agg.mean * windowWeight + baseline * baselineWeight) / totalWeight)
+                : 0
 
             let previous = pulses[id] ?? .flat
             let next = SentimentModel.blend(

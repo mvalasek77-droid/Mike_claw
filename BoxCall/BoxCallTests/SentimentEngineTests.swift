@@ -179,21 +179,30 @@ final class SentimentModelTests: XCTestCase {
 
     func testBaseline_rescalesConsensusAdjustmentToFullRange() {
         let bullish = SocialSignal(youtubeTrailerViews7d: 60_000_000,
-                                   youtubeLikeRatio: 0.98,
+                                   youtubeEngagementRate: 0.06,
                                    xMentions24h: 200_000,
-                                   xSentiment: 0.9,
-                                   capturedAt: Date())
+                                   xSentiment: 0.9)
         let bearish = SocialSignal(youtubeTrailerViews7d: 100_000,
-                                   youtubeLikeRatio: 0.4,
+                                   youtubeEngagementRate: 0.002,
                                    xMentions24h: 200,
-                                   xSentiment: -0.9,
-                                   capturedAt: Date())
+                                   xSentiment: -0.9)
         let up = SentimentModel.baseline(from: bullish)
         let down = SentimentModel.baseline(from: bearish)
         XCTAssertGreaterThan(up, 0.5)
         XCTAssertLessThan(down, -0.5)
         XCTAssertLessThanOrEqual(up, 1.0)
         XCTAssertGreaterThanOrEqual(down, -1.0)
+    }
+
+    /// A YouTube-only capture must not read bearish just because X was
+    /// unreachable. This is the end-to-end version of the bias fix.
+    func testBaseline_partialCaptureOfAnAverageMovieIsNeutral() {
+        let base = SignalBaseline.generic
+        let youtubeOnly = SocialSignal(
+            youtubeTrailerViews7d: Int(base.trailerViewsMean),
+            youtubeEngagementRate: base.engagementMean
+        )
+        XCTAssertLessThan(abs(SentimentModel.baseline(from: youtubeOnly)), 0.05)
     }
 }
 
@@ -297,6 +306,60 @@ final class SentimentEngineTests: XCTestCase {
             XCTAssertTrue((0...1).contains(p.dispersion))
             XCTAssertTrue((0...1).contains(p.confidence))
         }
+    }
+
+    /// A capture with nothing behind it must not be stored as a neutral
+    /// opinion — the desk should keep whatever it already knew.
+    func testEmptyCaptureIsIgnored() {
+        let engine = SentimentEngine.shared
+        let id = uniqueMovieId()
+        engine.ingest(signal: SocialSignal(), for: id)
+        XCTAssertTrue(engine.chatter(for: id).isEmpty)
+    }
+
+    func testCaptureProducesAChatterItem() {
+        let engine = SentimentEngine.shared
+        let id = uniqueMovieId()
+        engine.ingest(signal: SocialSignal(youtubeTrailerViews7d: 12_000_000,
+                                           youtubeEngagementRate: 0.04),
+                      for: id)
+        let items = engine.chatter(for: id)
+        XCTAssertEqual(items.count, 1)
+        XCTAssertEqual(items.first?.source, .trailer)
+        XCTAssertGreaterThan(items.first?.impact ?? 0, 0)
+    }
+
+    /// Pull-to-refresh can fire repeatedly. The baseline should update
+    /// every time, but the visible feed must not fill with duplicates of
+    /// the same capture.
+    func testBurstedCapturesDoNotStackChatter() {
+        let engine = SentimentEngine.shared
+        let id = uniqueMovieId()
+        let now = Date()
+        for _ in 0..<8 {
+            engine.ingest(signal: SocialSignal(youtubeTrailerViews7d: 9_000_000,
+                                               youtubeEngagementRate: 0.03),
+                          for: id, now: now)
+        }
+        XCTAssertEqual(engine.chatter(for: id).count, 1)
+    }
+
+    func testPruneDropsStateForDelistedMovies() {
+        let engine = SentimentEngine.shared
+        let keep = uniqueMovieId()
+        let drop = uniqueMovieId()
+        var rng = SeededGenerator(seed: 5)
+        engine.recordFlow(movieId: keep, side: .call, quantity: 5)
+        engine.recordFlow(movieId: drop, side: .put, quantity: 5)
+        engine.tick(movieIds: [keep, drop], now: Date(), rng: &rng)
+
+        XCTAssertFalse(engine.chatter(for: drop).isEmpty)
+        engine.prune(keeping: [keep])
+        XCTAssertTrue(engine.chatter(for: drop).isEmpty)
+        XCTAssertTrue(engine.scoreHistory(for: drop).isEmpty)
+        XCTAssertEqual(engine.pulse(for: drop).score, 0)
+        // The surviving movie keeps everything.
+        XCTAssertFalse(engine.chatter(for: keep).isEmpty)
     }
 
     /// Ticking a movie nobody is talking about must not invent an opinion.
