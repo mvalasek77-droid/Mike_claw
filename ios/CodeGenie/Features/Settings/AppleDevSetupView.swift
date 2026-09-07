@@ -18,6 +18,7 @@ struct AppleDevSetupView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var teamID: String = ""
+    @State private var bundlePrefix: String = ""
     @State private var keyID: String = ""
     @State private var issuerID: String = ""
     @State private var p8: String = ""
@@ -33,6 +34,7 @@ struct AppleDevSetupView: View {
                 VStack(spacing: 14) {
                     header
                     statusBlock
+                    bundlePrefixBlock
                     teamIDBlock
                     ascAPIBlock
                     legacyBlock
@@ -47,6 +49,7 @@ struct AppleDevSetupView: View {
         }
         .onAppear {
             teamID = creds.appleTeamID
+            bundlePrefix = creds.bundleIDPrefix
             keyID = creds.ascKeyID
             issuerID = creds.ascIssuerID
             p8 = creds.ascP8PEM
@@ -80,6 +83,40 @@ struct AppleDevSetupView: View {
                  : "Add your Team ID + either an ASC API key (preferred) or Apple ID + app-specific password.")
                 .font(.system(size: 13, weight: .regular, design: .rounded))
                 .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
+        }
+    }
+
+    private var bundlePrefixBlock: some View {
+        GlassCard(title: "Your app ID prefix", icon: "tag.fill", tint: LiquidGlass.accent) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Every app needs an ID that's unique across the whole App Store. CodeGenie builds it as this prefix plus your app's name.")
+                    .font(.system(size: 12, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("Use your website backwards, or just your name — com.janesmith is fine. It doesn't have to be a domain you own.")
+                    .font(.system(size: 12, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+                    .fixedSize(horizontal: false, vertical: true)
+                fieldRow("com.janesmith", text: $bundlePrefix, secure: false)
+                Text("Your next app would be: \(AppBundleID.make(prefix: bundlePrefix, title: "Tide Times"))")
+                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                    .foregroundStyle(LiquidGlass.accent)
+                    .fixedSize(horizontal: false, vertical: true)
+                if bundlePrefix.trimmingCharacters(in: .whitespaces).isEmpty {
+                    Text("Leave this empty and CodeGenie uses a shared prefix. That works until someone else ships an app with the same name — then Apple refuses yours.")
+                        .font(.system(size: 11, weight: .regular, design: .rounded))
+                        .foregroundStyle(LiquidGlass.warning)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Button("Save prefix") {
+                    creds.setBundleIDPrefix(bundlePrefix)
+                    savedAt = .now
+                    Haptics.success()
+                }
+                .buttonStyle(.plain)
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundStyle(LiquidGlass.accent)
+            }
         }
     }
 

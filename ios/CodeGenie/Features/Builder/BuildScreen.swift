@@ -996,12 +996,9 @@ struct BuildScreen: View {
         }
     }
 
+    /// Single source of truth — see `AppBundleID`.
     private func defaultBundleID(for title: String) -> String {
-        let slug = title
-            .lowercased()
-            .components(separatedBy: CharacterSet.alphanumerics.inverted)
-            .joined()
-        return "com.codegenie.\(slug.isEmpty ? "app" : slug)"
+        AppBundleID.make(title: title)
     }
 
     private func appendLog(for stage: BuildJob.Stage) {

@@ -179,6 +179,9 @@ struct AppStoreConnectGuideView: View {
     @State private var showMetadataEditor = false
     @State private var showSubmitConfirm = false
     @State private var showTestFlightUploading = false
+    /// Newest line from Apple's toolchain while packaging and
+    /// uploading run, so a multi-minute wait doesn't look frozen.
+    @State private var uploadStatusLine: String?
     @State private var testFlightErrorMessage: String?
     @State private var showTestFlightErrorAlert = false
     @State private var blockedGate: BlockedGate?
@@ -376,9 +379,11 @@ struct AppStoreConnectGuideView: View {
         readiness = try? await swarm.runReleaseReadiness(jobID: backendID, ship: cfg)
     }
 
+    /// Single source of truth — see `AppBundleID`. Derived here and in
+    /// the build screen independently, this used to disagree with the
+    /// identifier the project was actually signed with.
     private func defaultBundleID(for title: String) -> String {
-        let slug = title.lowercased().components(separatedBy: CharacterSet.alphanumerics.inverted).joined()
-        return "com.codegenie.\(slug.isEmpty ? "app" : slug)"
+        AppBundleID.make(title: title)
     }
 
     // MARK: Chrome
@@ -1309,10 +1314,20 @@ struct AppStoreConnectGuideView: View {
                 }
                 .disabled(showTestFlightUploading)
                 .accessibilityHint("CodeGenie validates and uploads the build to Apple")
-                Text("CodeGenie checks your Apple credentials and the build itself first — if anything's missing, it'll tell you exactly what.")
-                    .font(.system(size: 11, weight: .regular, design: .rounded))
-                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
-                    .fixedSize(horizontal: false, vertical: true)
+                if showTestFlightUploading, let line = uploadStatusLine {
+                    Text(line)
+                        .font(.system(size: 10, weight: .regular, design: .monospaced))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
+                        .lineLimit(2)
+                        .truncationMode(.tail)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityLabel("Latest step: \(line)")
+                } else {
+                    Text("CodeGenie packages and signs your app, then uploads it. This takes a few minutes — it'll tell you exactly what happened either way.")
+                        .font(.system(size: 11, weight: .regular, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
 
             case .openTestFlightApp:
                 PrimaryButton(title: "Open TestFlight", systemImage: "arrow.up.forward.app.fill", style: .filled) {
@@ -1517,6 +1532,17 @@ struct AppStoreConnectGuideView: View {
             return
         }
 
+        // Preferred path: sign and upload on the paired Mac. The
+        // signing key stays on your devices — it is handed to the Mac
+        // over the local connection for the length of the command and
+        // never reaches CodeGenie's server, which is also the only
+        // reason the server has no copy to sign with.
+        let creds = Credentials.shared
+        if macPaired && !creds.ascKeyID.isEmpty && !creds.ascP8PEM.isEmpty {
+            await shipViaMac(step: step, backendID: backendID)
+            return
+        }
+
         guard let cfg = ShipConfig.fromCredentials(bundleID: defaultBundleID(for: job.description.title)) else {
             testFlightErrorMessage = "Missing Apple Developer credentials. Add them in Settings, then try again."
             showTestFlightErrorAlert = true
@@ -1524,14 +1550,186 @@ struct AppStoreConnectGuideView: View {
         }
         do {
             try await swarm.ship(jobID: backendID, config: cfg)
-            banner = Banner(text: "Uploaded. Apple is validating and processing it now.", tone: .success)
-            Haptics.success()
-            advance(step)
         } catch {
             testFlightErrorMessage = "\(error)"
             showTestFlightErrorAlert = true
             Haptics.error()
+            return
         }
+
+        // The ship endpoint is fire-and-forget: it starts a background
+        // task and returns `{"ok": true}` straight away. Treating that
+        // as success told the user their app was uploaded before
+        // anything had even been packaged, and moved them on to "wait
+        // for Apple" for a build that never left the building.
+        switch await awaitShipOutcome(backendID: backendID) {
+        case .uploaded:
+            banner = Banner(text: "Uploaded. Apple is validating and processing it now.", tone: .success)
+            Haptics.success()
+            advance(step)
+        case .failed(let why):
+            testFlightErrorMessage = why
+            showTestFlightErrorAlert = true
+            Haptics.error()
+        case .stillRunning:
+            banner = Banner(
+                text: "Still working. This can take a while on a big app — leave it running and check back on the build screen.",
+                tone: .warning
+            )
+            Haptics.warning()
+        }
+    }
+
+    /// Fetch, sign, and upload entirely on the paired Mac.
+    ///
+    /// Three steps, each of which can take minutes, so each one
+    /// narrates itself. The Mac streams tool output as companion
+    /// events; `observeCompanionLines` mirrors the newest one into the
+    /// status line under the button.
+    private func shipViaMac(step: ASCStep, backendID: String) async {
+        let creds = Credentials.shared
+        let watcher = observeCompanionLines()
+        defer {
+            NotificationCenter.default.removeObserver(watcher)
+            uploadStatusLine = nil
+        }
+
+        guard let exportURL = swarm.exportURL(jobID: backendID) else {
+            testFlightErrorMessage = "CodeGenie couldn't work out where your app's files are on the server."
+            showTestFlightErrorAlert = true
+            return
+        }
+
+        do {
+            uploadStatusLine = "Sending your app's files to your Mac…"
+            let root = try await companion.fetchWorkspace(
+                jobID: backendID,
+                exportURL: exportURL.absoluteString,
+                token: creds.backendToken
+            )
+
+            uploadStatusLine = "Building and signing on your Mac…"
+            let archive = try await companion.archiveExport(
+                workspaceRoot: root,
+                teamID: creds.appleTeamID,
+                keyID: creds.ascKeyID,
+                issuerID: creds.ascIssuerID,
+                keyPEM: creds.ascP8PEM
+            )
+            guard archive.ok, let ipa = archive.ipaPath else {
+                testFlightErrorMessage = macFailureMessage(archive)
+                showTestFlightErrorAlert = true
+                Haptics.error()
+                return
+            }
+
+            uploadStatusLine = "Uploading to Apple…"
+            let upload = try await companion.uploadToTestFlight(
+                ipaPath: ipa,
+                keyID: creds.ascKeyID,
+                issuerID: creds.ascIssuerID,
+                keyPEM: creds.ascP8PEM,
+                appSpecificPassword: creds.appSpecificPassword
+            )
+            guard upload.ok else {
+                testFlightErrorMessage = macFailureMessage(upload)
+                showTestFlightErrorAlert = true
+                Haptics.error()
+                return
+            }
+
+            banner = Banner(text: "Uploaded from your Mac. Apple is processing it now.", tone: .success)
+            Haptics.success()
+            advance(step)
+        } catch {
+            testFlightErrorMessage = "Lost contact with your Mac (\(error)). Check it's awake and CodeGenie Companion is still running, then try again."
+            showTestFlightErrorAlert = true
+            Haptics.error()
+        }
+    }
+
+    /// Prefer the Mac's own plain-English reason, falling back to the
+    /// tail of the tool output so the user is never left with nothing.
+    private func macFailureMessage(_ result: CompanionBridge.MacStepResult) -> String {
+        if !result.detail.isEmpty {
+            return result.logTail.isEmpty
+                ? result.detail
+                : "\(result.detail)\n\n\(String(result.logTail.suffix(800)))"
+        }
+        let where_ = result.phase.isEmpty ? "packaging" : result.phase
+        return "Something went wrong during \(where_).\n\n\(String(result.logTail.suffix(800)))"
+    }
+
+    /// Mirror the Mac's streamed tool output into the status line.
+    private func observeCompanionLines() -> NSObjectProtocol {
+        NotificationCenter.default.addObserver(
+            forName: .companionEvent,
+            object: nil,
+            queue: .main
+        ) { note in
+            guard let payload = note.userInfo?["payload"] as? [String: Any],
+                  let line = payload["line"] as? String,
+                  !line.trimmingCharacters(in: .whitespaces).isEmpty
+            else { return }
+            Task { @MainActor in uploadStatusLine = line }
+        }
+    }
+
+    private enum ShipOutcome {
+        case uploaded
+        case failed(String)
+        /// Neither finished nor failed before we stopped watching.
+        case stillRunning
+    }
+
+    /// Watch the job's event stream until shipping actually resolves.
+    ///
+    /// Polls the client's accumulated events rather than racing a
+    /// continuation against a timeout — the array is in memory and
+    /// tiny, and this keeps the whole wait on the main actor with no
+    /// shared mutable state to get wrong.
+    private func awaitShipOutcome(backendID: String) async -> ShipOutcome {
+        swarm.openStream(jobID: backendID)
+        defer { swarm.closeStream() }
+
+        // An archive plus a validate plus an upload legitimately runs
+        // for many minutes on a real app.
+        let deadline = Date().addingTimeInterval(15 * 60)
+        while Date() < deadline {
+            if let outcome = shipOutcome(in: swarm.events) { return outcome }
+            uploadStatusLine = latestShipLine(in: swarm.events)
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+        }
+        return .stillRunning
+    }
+
+    private func shipOutcome(in events: [SwarmEvent]) -> ShipOutcome? {
+        for event in events {
+            switch event.type {
+            case "testflight.package":
+                // A null `ok` means packaging is still running.
+                if (event.payload["ok"] as? Bool) == false {
+                    return .failed((event.payload["preview"] as? String)
+                                   ?? "CodeGenie couldn't package your app.")
+                }
+            case "testflight.upload":
+                if (event.payload["ok"] as? Bool) == true { return .uploaded }
+                return .failed((event.payload["preview"] as? String)
+                               ?? "The upload to Apple didn't go through.")
+            default:
+                continue
+            }
+        }
+        return nil
+    }
+
+    /// The newest line from Apple's toolchain, so a multi-minute wait
+    /// shows something moving instead of a frozen button.
+    private func latestShipLine(in events: [SwarmEvent]) -> String? {
+        events.last {
+            $0.type == "testflight.package.progress"
+                || $0.type == "testflight.upload.progress"
+        }?.payload["line"] as? String
     }
 
     /// The second hard gate, at the very end: re-verifies the full

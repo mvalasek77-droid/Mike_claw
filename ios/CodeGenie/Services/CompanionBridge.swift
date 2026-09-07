@@ -173,6 +173,91 @@ final class CompanionBridge: ObservableObject {
         return (r["filled"] as? Bool) ?? false
     }
 
+    // MARK: - Shipping on the Mac
+
+    /// Outcome of a long Mac-side step. `detail` is already written for
+    /// a person to read; `logTail` is the raw tool output behind it.
+    struct MacStepResult {
+        let ok: Bool
+        let phase: String
+        let detail: String
+        let logTail: String
+        /// Absolute path on the Mac, set when an archive produced one.
+        let ipaPath: String?
+
+        init(_ response: [String: Any]) {
+            ok = (response["ok"] as? Bool) ?? false
+            phase = (response["phase"] as? String) ?? ""
+            logTail = (response["log_tail"] as? String) ?? ""
+            ipaPath = (response["absolute_path"] as? String)
+                ?? (response["ipa_path"] as? String)
+            detail = (response["detail"] as? String) ?? ""
+        }
+    }
+
+    /// Ask the Mac to pull the generated app's source from the build
+    /// server. Signing has to happen where Xcode is, and Xcode needs
+    /// the actual files — this saves the user downloading and unzipping
+    /// a workspace by hand. Returns the folder the project lives in.
+    func fetchWorkspace(jobID: String, exportURL: String, token: String) async throws -> String {
+        let r = try await request(
+            type: "workspace.fetch",
+            payload: ["job_id": jobID, "export_url": exportURL, "token": token]
+        )
+        guard (r["ok"] as? Bool) == true, let root = r["workspace_root"] as? String else {
+            throw BridgeError.remote((r["detail"] as? String) ?? "could not fetch the workspace")
+        }
+        return root
+    }
+
+    /// Archive and export a signed .ipa on the Mac.
+    ///
+    /// The signing key is sent inline for this one command. It never
+    /// touches CodeGenie's server, and the companion writes it
+    /// owner-only and deletes it however the command ends.
+    func archiveExport(
+        workspaceRoot: String,
+        teamID: String,
+        keyID: String,
+        issuerID: String,
+        keyPEM: String
+    ) async throws -> MacStepResult {
+        MacStepResult(try await request(
+            type: "xcodebuild.archive_export",
+            payload: [
+                "workspace_root": workspaceRoot,
+                "team_id": teamID,
+                "asc_api_key_id": keyID,
+                "asc_api_issuer_id": issuerID,
+                "asc_api_key_pem": keyPEM,
+                "export_method": "app-store-connect",
+                "configuration": "Release",
+            ]
+        ))
+    }
+
+    /// Validate and upload a signed .ipa to TestFlight from the Mac.
+    func uploadToTestFlight(
+        ipaPath: String,
+        keyID: String,
+        issuerID: String,
+        keyPEM: String,
+        appleID: String = "",
+        appSpecificPassword: String = ""
+    ) async throws -> MacStepResult {
+        MacStepResult(try await request(
+            type: "asc.upload",
+            payload: [
+                "ipa_path": ipaPath,
+                "asc_api_key_id": keyID,
+                "asc_api_issuer_id": issuerID,
+                "asc_api_key_pem": keyPEM,
+                "apple_id": appleID,
+                "app_specific_password": appSpecificPassword,
+            ]
+        ))
+    }
+
     // MARK: - Internals
 
     private func request(type: String, payload: [String: Any]) async throws -> [String: Any] {

@@ -93,7 +93,41 @@ def test_release_readiness_reports_missing_automation(tmp_path: Path):
     assert keys["xcode_project"]["status"] == "needs_setup"
     assert keys["apple_credentials"]["status"] == "needs_setup"
     assert keys["privacy_manifest"]["status"] == "needs_setup"
-    assert any("Archive and export" in action for action in result["next_actions"])
+    # The audit still has to say what is missing.
+    assert any("credentials" in action.lower() for action in result["next_actions"])
+
+
+def test_upload_readiness_does_not_wait_on_the_ipa_it_creates(tmp_path: Path):
+    """Uploading packages the app first, so requiring a finished binary
+    beforehand deadlocked the flow — the only step that produces one sat
+    behind the gate demanding it, and a fresh build could never ship.
+
+    Credentials are the real precondition, so that is what this gates on.
+    """
+    from genie_swarm.orchestrator import ShipConfig
+
+    ws = tmp_path / "job_nobinary"
+    ws.mkdir()
+    result = run_release_readiness(
+        spec=AppSpec(title="Tides", prompt="ship"),
+        workspace=ws,
+        ship=ShipConfig(
+            ipa_path="Build.ipa",
+            bundle_id="com.mike.tides",
+            asc_api_key_id="KEY1",
+            asc_api_issuer_id="ISS1",
+            asc_api_key_path="asc-key.p8",
+        ),
+        github=None,
+    )
+    keys = {item["key"]: item for item in result["items"]}
+    assert keys["testflight_upload"]["status"] == "automated"
+    # And it says so plainly rather than implying a binary exists.
+    assert "packaged and signed first" in keys["testflight_upload"]["detail"]
+    # The IPA item stays honest about not existing yet, but tells the
+    # user it is not their job.
+    assert keys["ipa"]["status"] == "needs_setup"
+    assert "creates it" in keys["ipa"]["action"]
 
 
 @pytest.mark.asyncio

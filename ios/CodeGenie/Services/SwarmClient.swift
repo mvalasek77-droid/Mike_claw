@@ -59,6 +59,9 @@ final class SwarmClient: ObservableObject {
                 "category": spec.category,
                 "style": spec.style,
                 "target_ios": spec.targetIOS,
+                // Pins the generated Xcode project to the same
+                // identifier the submission flow uses later.
+                "bundle_id": spec.bundleID,
                 "features": spec.features
             ],
             "parallel": true,
@@ -737,6 +740,10 @@ struct AppSpec: Hashable {
     var style: String = "liquidGlass"
     var targetIOS: String = "17.0"
     var features: [String] = []
+    /// The identifier the generated project is pinned to, so signing,
+    /// the App Store Connect record, the upload and TestFlight polling
+    /// all refer to the same app. See `AppBundleID`.
+    var bundleID: String = ""
 }
 
 extension AppSpec {
@@ -754,7 +761,14 @@ extension AppSpec {
             rawPrompt: raw,
             category: description.category.rawValue,
             style: description.style.rawValue,
-            features: description.features
+            features: description.features,
+            // Read straight from UserDefaults rather than through
+            // `Credentials`, which is main-actor isolated while this
+            // initialiser is not. Same key, same value.
+            bundleID: AppBundleID.make(
+                prefix: UserDefaults.standard.string(forKey: "apple.bundlePrefix") ?? "",
+                title: description.title
+            )
         )
     }
 }

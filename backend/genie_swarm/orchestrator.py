@@ -175,6 +175,7 @@ class SwarmOrchestrator:
 
             await self._run_agent(INTEGRATOR, session, events,
                                    prompt=self._integrator_prompt(job))
+            await self._pin_bundle_id(session, events)
             await self._checkpoint(session, events, "after-integrator")
 
             # ---- TEST LAYER ----
@@ -558,6 +559,7 @@ class SwarmOrchestrator:
             if "after-integrator" not in done:
                 await self._run_agent(INTEGRATOR, session, events,
                                        prompt=self._integrator_prompt(job))
+                await self._pin_bundle_id(session, events)
                 await self._checkpoint(session, events, "after-integrator")
 
             if "after-tests" not in done and not self.config.skip_tests:
@@ -745,6 +747,32 @@ class SwarmOrchestrator:
             await watch(poller_cfg, events)
         except Exception as exc:  # noqa: BLE001
             await events.emit("testflight.status", state="POLL_ERROR", detail=str(exc))
+
+    async def _pin_bundle_id(self, session: Session, events) -> None:
+        """Force the assembled project onto the bundle ID the phone will
+        actually use.
+
+        The agents write the project, so its identifier is whatever the
+        model chose. Everything downstream — the App Store Connect
+        record, signing, the upload, TestFlight polling — keys off the
+        one the phone sends. Left unpinned those disagree, and Apple
+        rejects a build signed as one app and submitted as another.
+        """
+        from .bundle_id import enforce_bundle_id
+
+        wanted = (session.job.spec.bundle_id or "").strip()
+        if not wanted:
+            return
+        changed = enforce_bundle_id(session.sandbox.policy.workspace, wanted)
+        if not changed:
+            return
+        await events.emit(
+            "bundle.pinned", bundle_id=wanted, files=changed,
+        )
+        self.memory.note_decision(
+            session.job.id, "integration",
+            f"Pinned bundle ID to {wanted} in {', '.join(changed)}.",
+        )
 
     async def _package_ipa(
         self, ship: "ShipConfig", session: Session, events,

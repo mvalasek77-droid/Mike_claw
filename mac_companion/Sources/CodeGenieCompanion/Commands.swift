@@ -39,6 +39,12 @@ final class Commands {
         case "xcodebuild.archive_export":
             return try await archiveAndExport(payload: payload, requestID: requestID, send: send)
 
+        case "asc.upload":
+            return try await uploadToAppStore(payload: payload, requestID: requestID, send: send)
+
+        case "workspace.fetch":
+            return try await fetchWorkspace(payload: payload, requestID: requestID, send: send)
+
         case "screenshot":
             return try await screenshot(display: payload["display"] as? Int ?? 0)
 
@@ -111,7 +117,13 @@ final class Commands {
             withIntermediateDirectories: true
         )
 
-        let auth = authArgs(payload: payload, root: root)
+        // The signing key arrives inline from the phone and must not
+        // outlive this command. It is written owner-only, used, and
+        // deleted however this function exits.
+        let ephemeralKey = try ephemeralKeyFile(payload: payload)
+        defer { discardKey(ephemeralKey) }
+
+        let auth = authArgs(payload: payload, root: root, keyOverride: ephemeralKey)
         let flag = proj.hasSuffix(".xcworkspace") ? "-workspace" : "-project"
 
         // --- archive ---
@@ -185,16 +197,247 @@ final class Commands {
         ]
     }
 
+    /// Validate then upload a signed `.ipa` to TestFlight.
+    ///
+    /// This runs here rather than on the build server because the
+    /// signing key lives in the phone's Keychain and the user chose to
+    /// keep it off any server. The phone hands it over the local
+    /// connection, this writes it owner-only for the length of the
+    /// upload, and deletes it on every exit path.
+    ///
+    /// Validate first: `altool` reports most rejections (wrong bundle
+    /// ID, missing icon, bad entitlements) in seconds, and finding
+    /// them before a multi-minute upload saves the user that wait.
+    private func uploadToAppStore(
+        payload: [String: Any],
+        requestID: String,
+        send: @escaping EventSender
+    ) async throws -> [String: Any] {
+        guard let ipa = payload["ipa_path"] as? String, !ipa.isEmpty else {
+            throw CmdError.bad("ipa_path missing")
+        }
+        try requireExists(ipa)
+
+        let ephemeralKey = try ephemeralKeyFile(payload: payload)
+        defer { discardKey(ephemeralKey) }
+
+        var creds: [String] = []
+        if let keyID = payload["asc_api_key_id"] as? String, !keyID.isEmpty,
+           let issuer = payload["asc_api_issuer_id"] as? String, !issuer.isEmpty,
+           let key = ephemeralKey {
+            // altool looks for the key by id in a set of well-known
+            // directories unless given an explicit path.
+            creds = [
+                "--apiKey", keyID,
+                "--apiIssuer", issuer,
+                "--apiKeyPath", key,
+            ]
+        } else if let appleID = payload["apple_id"] as? String, !appleID.isEmpty,
+                  let password = payload["app_specific_password"] as? String, !password.isEmpty {
+            creds = ["-u", appleID, "-p", password]
+        } else {
+            return [
+                "ok": false, "phase": "validate",
+                "detail": "No Apple credentials were provided, so there is nothing to sign in with.",
+            ]
+        }
+
+        let validate = try await streamProcess(
+            executable: "/usr/bin/xcrun",
+            argv: ["altool", "--validate-app", "-f", ipa, "-t", "ios"] + creds,
+            phase: "validate",
+            eventType: "asc.upload.line",
+            requestID: requestID,
+            send: send
+        )
+        guard validate.code == 0 else {
+            return [
+                "ok": false, "phase": "validate",
+                "exit_code": validate.code,
+                "log_tail": validate.tail,
+                "detail": "Apple rejected the build before upload.",
+            ]
+        }
+
+        let upload = try await streamProcess(
+            executable: "/usr/bin/xcrun",
+            argv: ["altool", "--upload-app", "-f", ipa, "-t", "ios"] + creds,
+            phase: "upload",
+            eventType: "asc.upload.line",
+            requestID: requestID,
+            send: send
+        )
+        return [
+            "ok": upload.code == 0,
+            "phase": "upload",
+            "exit_code": upload.code,
+            "log_tail": upload.tail,
+            "detail": upload.code == 0
+                ? "Uploaded. Apple is processing the build."
+                : "The upload did not complete.",
+        ]
+    }
+
+    /// Pull the generated app's source onto this Mac.
+    ///
+    /// Signing has to happen where Xcode is, and Xcode needs the actual
+    /// files. Rather than making the user find, download and unzip a
+    /// workspace by hand, the companion fetches it straight from the
+    /// build server using the token the phone already holds.
+    private func fetchWorkspace(
+        payload: [String: Any],
+        requestID: String,
+        send: @escaping EventSender
+    ) async throws -> [String: Any] {
+        guard let urlString = payload["export_url"] as? String,
+              let url = URL(string: urlString),
+              let scheme = url.scheme?.lowercased(),
+              scheme == "https" || scheme == "http"
+        else { throw CmdError.bad("export_url missing or not an http(s) URL") }
+        guard let jobID = payload["job_id"] as? String, !jobID.isEmpty else {
+            throw CmdError.bad("job_id missing")
+        }
+        // The job id names a directory, so it must not be able to climb
+        // out of the workspaces folder.
+        guard !jobID.contains("/"), !jobID.contains(".."), jobID.count <= 128 else {
+            throw CmdError.bad("job_id is not a usable folder name")
+        }
+
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 600
+        if let token = payload["token"] as? String, !token.isEmpty {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        send([
+            "v": 1, "kind": "event", "in_response_to": requestID,
+            "type": "workspace.fetch.line",
+            "payload": ["line": "Downloading your app's files…", "phase": "download"],
+        ])
+
+        let (tempFile, response) = try await URLSession.shared.download(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+            return [
+                "ok": false,
+                "detail": "The build server returned \(http.statusCode) for the workspace download.",
+            ]
+        }
+
+        let base = URL(fileURLWithPath: NSHomeDirectory())
+            .appendingPathComponent("Library/Application Support/CodeGenie/workspaces", isDirectory: true)
+        let dest = base.appendingPathComponent(jobID, isDirectory: true)
+        // A previous attempt's files would otherwise shadow this one.
+        try? FileManager.default.removeItem(at: dest)
+        try FileManager.default.createDirectory(at: dest, withIntermediateDirectories: true)
+
+        send([
+            "v": 1, "kind": "event", "in_response_to": requestID,
+            "type": "workspace.fetch.line",
+            "payload": ["line": "Unpacking…", "phase": "unpack"],
+        ])
+
+        // `ditto` ships with macOS and handles the zip layout Finder
+        // produces, which `unzip` sometimes mangles.
+        let unzip = Process()
+        unzip.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
+        unzip.arguments = ["-x", "-k", tempFile.path, dest.path]
+        try unzip.run()
+        unzip.waitUntilExit()
+        try? FileManager.default.removeItem(at: tempFile)
+
+        guard unzip.terminationStatus == 0 else {
+            return ["ok": false, "detail": "Could not unpack the workspace zip."]
+        }
+
+        // The zip may contain a single top-level folder; the project
+        // lives inside it, and that is what xcodebuild needs.
+        let root = projectRoot(startingAt: dest.path)
+        return ["ok": true, "workspace_root": root]
+    }
+
+    /// Find the folder that actually holds the Xcode project, in case
+    /// the archive wrapped everything in one top-level directory.
+    private func projectRoot(startingAt path: String) -> String {
+        let fm = FileManager.default
+        let entries = (try? fm.contentsOfDirectory(atPath: path)) ?? []
+        if entries.contains(where: { $0.hasSuffix(".xcworkspace") || $0.hasSuffix(".xcodeproj") }) {
+            return path
+        }
+        let dirs = entries.filter { name in
+            var isDir: ObjCBool = false
+            let child = URL(fileURLWithPath: path).appendingPathComponent(name).path
+            return fm.fileExists(atPath: child, isDirectory: &isDir) && isDir.boolValue
+        }
+        if dirs.count == 1 {
+            return projectRoot(startingAt: URL(fileURLWithPath: path).appendingPathComponent(dirs[0]).path)
+        }
+        return path
+    }
+
+    /// Write an inline `.p8` to a private temporary file.
+    ///
+    /// The phone holds the signing key in its Keychain and hands it
+    /// over the local connection for the length of one command. Keeping
+    /// it in memory is not an option — `xcodebuild` and `altool` both
+    /// take a *path* — so it goes to disk owner-only and is deleted by
+    /// the caller's `defer`, whatever happens in between.
+    ///
+    /// Returns nil when the phone sent no inline key, in which case the
+    /// caller falls back to `asc_api_key_path`.
+    private func ephemeralKeyFile(payload: [String: Any]) throws -> String? {
+        guard let pem = payload["asc_api_key_pem"] as? String,
+              !pem.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { return nil }
+
+        let dir = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("codegenie-key-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: dir,
+            withIntermediateDirectories: true,
+            attributes: [.posixPermissions: 0o700]
+        )
+        let path = dir.appendingPathComponent("asc-key.p8").path
+        guard FileManager.default.createFile(
+            atPath: path,
+            contents: Data(pem.utf8),
+            attributes: [.posixPermissions: 0o600]
+        ) else {
+            throw CmdError.bad("could not stage the signing key")
+        }
+        return path
+    }
+
+    /// Remove a staged key and its directory. Best-effort by design:
+    /// a failure to clean up must not mask the command's real result,
+    /// but it must still be attempted on every exit path.
+    private func discardKey(_ path: String?) {
+        guard let path else { return }
+        let dir = URL(fileURLWithPath: path).deletingLastPathComponent()
+        try? FileManager.default.removeItem(atPath: path)
+        try? FileManager.default.removeItem(at: dir)
+    }
+
     /// ASC API key auth so Xcode can register devices and download
     /// profiles without an interactive 2FA prompt.
-    private func authArgs(payload: [String: Any], root: String) -> [String] {
+    private func authArgs(
+        payload: [String: Any],
+        root: String,
+        keyOverride: String? = nil
+    ) -> [String] {
         guard let keyID = payload["asc_api_key_id"] as? String, !keyID.isEmpty,
-              let issuer = payload["asc_api_issuer_id"] as? String, !issuer.isEmpty,
-              let keyPath = payload["asc_api_key_path"] as? String, !keyPath.isEmpty
+              let issuer = payload["asc_api_issuer_id"] as? String, !issuer.isEmpty
         else { return [] }
-        let resolved = keyPath.hasPrefix("/")
-            ? keyPath
-            : URL(fileURLWithPath: root).appendingPathComponent(keyPath).path
+
+        let resolved: String
+        if let keyOverride {
+            resolved = keyOverride
+        } else {
+            guard let keyPath = payload["asc_api_key_path"] as? String, !keyPath.isEmpty
+            else { return [] }
+            resolved = keyPath.hasPrefix("/")
+                ? keyPath
+                : URL(fileURLWithPath: root).appendingPathComponent(keyPath).path
+        }
         guard FileManager.default.fileExists(atPath: resolved) else { return [] }
         return [
             "-authenticationKeyID", keyID,
@@ -270,8 +513,31 @@ final class Commands {
         requestID: String,
         send: @escaping EventSender
     ) async throws -> (code: Int32, tail: String) {
+        try await streamProcess(
+            executable: "/usr/bin/xcodebuild",
+            argv: argv,
+            phase: phase,
+            eventType: "xcodebuild.line",
+            requestID: requestID,
+            send: send
+        )
+    }
+
+    /// Run a long-lived tool, forwarding each line as an event.
+    ///
+    /// Shared by the archive and the TestFlight upload: both run for
+    /// minutes, and both look like a hang if the phone sees nothing
+    /// until they finish.
+    private func streamProcess(
+        executable: String,
+        argv: [String],
+        phase: String,
+        eventType: String,
+        requestID: String,
+        send: @escaping EventSender
+    ) async throws -> (code: Int32, tail: String) {
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/xcodebuild")
+        process.executableURL = URL(fileURLWithPath: executable)
         process.arguments = argv
         let pipe = Pipe()
         process.standardOutput = pipe
@@ -293,7 +559,7 @@ final class Commands {
                         let line = String(raw)
                         send([
                             "v": 1, "kind": "event", "in_response_to": requestID,
-                            "type": "xcodebuild.line",
+                            "type": eventType,
                             "payload": ["line": line, "phase": phase],
                         ])
                         tail.append(line)

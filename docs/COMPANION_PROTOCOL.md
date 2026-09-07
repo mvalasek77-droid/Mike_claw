@@ -84,6 +84,73 @@ Opens Safari. Returns nothing.
 Streams `xcodebuild.line` events as the build progresses, finishes with
 a `response` carrying `{ ok, exit_code, log_tail }`.
 
+### `workspace.fetch`
+```json
+{
+  "job_id": "job_abc123",
+  "export_url": "https://api.example/api/coding/swarm/job_abc123/export",
+  "token": "<backend token>"
+}
+```
+Downloads the generated app's workspace zip from the build server and
+unpacks it under `~/Library/Application Support/CodeGenie/workspaces/
+<job_id>`. Signing has to happen where Xcode is, and Xcode needs the
+actual files. Streams `workspace.fetch.line` events; returns
+`{ ok, workspace_root }` pointing at the folder that holds the project.
+
+`job_id` is used as a directory name and is rejected if it contains a
+path separator or `..`.
+
+### `xcodebuild.archive_export`
+```json
+{
+  "workspace_root": "/Users/you/Library/.../job_abc123",
+  "team_id": "ABCD123456",
+  "scheme": "",
+  "workspace_or_project": "",
+  "configuration": "Release",
+  "export_method": "app-store-connect",
+  "asc_api_key_id": "ABCDEFGH12",
+  "asc_api_issuer_id": "0000-...",
+  "asc_api_key_pem": "-----BEGIN PRIVATE KEY-----\n..."
+}
+```
+Archives and exports a signed `.ipa` with automatic signing
+(`-allowProvisioningUpdates`). Blank `scheme` / `workspace_or_project`
+means "detect it here" — only this machine can see what the generated
+project actually is. Streams `xcodebuild.line` events; returns
+`{ ok, ipa_path, absolute_path, scheme, project }`, or
+`{ ok: false, phase, exit_code, log_tail }`.
+
+### `asc.upload`
+```json
+{
+  "ipa_path": "/Users/you/.../build/export/App.ipa",
+  "asc_api_key_id": "ABCDEFGH12",
+  "asc_api_issuer_id": "0000-...",
+  "asc_api_key_pem": "-----BEGIN PRIVATE KEY-----\n..."
+}
+```
+Runs `altool --validate-app` then `--upload-app`. Validating first is
+deliberate: most rejections surface in seconds, and finding them before
+a multi-minute upload saves that wait. Streams `asc.upload.line`
+events; returns `{ ok, phase, exit_code, log_tail, detail }`.
+
+Falls back to `apple_id` + `app_specific_password` when no API key is
+supplied.
+
+#### Handling of `asc_api_key_pem`
+
+The App Store Connect signing key lives in the phone's Keychain and is
+never sent to CodeGenie's servers. Both commands above accept it inline
+for the duration of one command: the daemon writes it to a `0600` file
+inside a `0700` temporary directory, passes that path to `xcodebuild` /
+`altool` (neither accepts a key any other way), and deletes it on every
+exit path including thrown errors. It is never logged and never written
+to the workspace.
+
+`asc_api_key_path` remains supported for a key already on the Mac.
+
 ### `screenshot`
 ```json
 { "display": 0 }
@@ -104,8 +171,10 @@ connection.
 
 ## Events the daemon may emit
 
-- `xcodebuild.line` — `{ "line": "..." }`
+- `xcodebuild.line` — `{ "line": "...", "phase": "archive|export|..." }`
 - `xcodebuild.diagnostic` — `{ "file": "...", "line": 42, "severity": "error", "message": "..." }`
+- `asc.upload.line` — `{ "line": "...", "phase": "validate|upload" }`
+- `workspace.fetch.line` — `{ "line": "...", "phase": "download|unpack" }`
 - `daemon.shutting_down` — graceful shutdown, client should reconnect
 - `auth.revoked` — token revoked, client should re-pair
 

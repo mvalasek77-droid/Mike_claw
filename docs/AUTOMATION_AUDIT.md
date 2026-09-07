@@ -19,17 +19,28 @@ requires account ownership or review responsibility.
   listing metadata, screenshots, GitHub readiness, and final Apple
   confirmation before TestFlight.
 - Icon Forge: creates 1024x1024 app icons and strips alpha.
-- Archive and export: the ship stage packages a signed `.ipa` before
-  uploading, using the host's Xcode when the backend runs on macOS and
-  the paired Mac companion when a transport is registered. Signing is
-  automatic (`-allowProvisioningUpdates` with the ASC API key), so the
-  user does not create certificates or profiles by hand. On a host with
-  no Xcode and no paired Mac it refuses and says so, rather than
-  reporting a missing IPA.
-- TestFlight upload: backend validates and uploads via `xcrun altool`
+- Bundle identifier: the phone decides one identifier from the user's
+  own prefix and sends it with the build. The orchestrator pins the
+  generated project to it after the integrator runs, so the app is
+  signed, recorded in App Store Connect, uploaded and polled under the
+  same id. Test targets keep their `.Tests` suffix.
+- Archive, sign and upload (paired Mac): the preferred path. The phone
+  drives the companion to fetch the workspace from the build server,
+  archive and export a signed `.ipa`, then validate and upload it with
+  `xcrun altool`. The App Store Connect key never leaves the user's own
+  devices — it is sent to the Mac for one command, written owner-only,
+  and deleted however the command ends.
+- Archive and export (server): fallback when no Mac is paired. Uses the
+  host's Xcode; signing is automatic (`-allowProvisioningUpdates` with
+  the ASC API key), so the user does not create certificates or
+  profiles by hand. On a host with no Xcode it refuses and says so
+  rather than reporting a missing IPA.
+- TestFlight upload (server): validates and uploads via `xcrun altool`
   when an IPA and Apple credentials are present. Requires the Xcode
   command line tools on the backend host; without them the run reports
-  the missing toolchain instead of failing obscurely.
+  the missing toolchain instead of failing obscurely. Note this path
+  needs a `.p8` on the server, which the phone does not send — so in
+  practice it only works where an operator supplied one.
 - TestFlight processing: ASC API-key polling emits status events after
   upload.
 - GitHub sync: backend can initialize/commit a generated workspace, push
@@ -47,12 +58,12 @@ requires account ownership or review responsibility.
 - App Store Connect fill: companion has a narrow
   `app_store_connect.fill` command, but production use still needs the
   iPhone flow to bind specific metadata fields to companion commands.
-- Archive/export: automated (see above), but it still needs a Mac
-  somewhere — either the backend host or a paired companion — signed
-  into the user's Apple Developer account. The companion implements
-  `xcodebuild.archive_export`; note that nothing currently registers a
-  backend companion transport, so on a non-macOS backend that route is
-  unavailable and packaging must happen on the host.
+- Archive/export/upload: automated (see above), but it needs a Mac
+  signed into the user's Apple Developer account — normally the paired
+  companion, which is also the only path where the signing key stays on
+  the user's devices. Nothing registers a *backend* companion
+  transport, so the server-side route only works when the backend host
+  is itself a Mac with Xcode.
 - Screenshots: companion can capture displays; scripted simulator
   walkthrough and App Store-size screenshot export are partially wired
   but still need production flow binding.

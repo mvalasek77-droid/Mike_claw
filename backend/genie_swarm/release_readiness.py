@@ -93,8 +93,8 @@ def run_release_readiness(
             "ipa",
             "Distribution IPA",
             "needs_setup",
-            "No .ipa or .xcarchive was found.",
-            "Archive and export an App Store Connect IPA.",
+            "Not packaged yet. CodeGenie builds and signs this when you upload.",
+            "Nothing to do — uploading to TestFlight creates it.",
         )
 
     asc_api_ready = bool(
@@ -119,16 +119,25 @@ def run_release_readiness(
         "Add Apple Developer credentials in Settings.",
     )
 
+    # Deliberately does not require an existing IPA. Uploading now
+    # packages the app first — archiving and signing are the opening
+    # steps of that same action — so demanding a finished binary here
+    # deadlocked the flow: the only thing that produces one sat behind
+    # the gate that demanded it. Credentials are the real precondition.
     add(
         "testflight_upload",
         "TestFlight validate/upload",
-        "automated" if ipa and creds_ready else "needs_setup",
+        "automated" if creds_ready else "needs_setup",
         (
-            "Backend can run validate-app, upload-app, and stream progress."
-            if ipa and creds_ready
-            else "Needs both a distribution IPA and Apple upload credentials."
+            (
+                "Ready to validate, upload, and stream progress."
+                if ipa
+                else "Ready — the app will be packaged and signed first, then uploaded."
+            )
+            if creds_ready
+            else "Needs your Apple upload credentials."
         ),
-        "Create the IPA and save Apple credentials.",
+        "Save your Apple credentials in Settings.",
     )
     add(
         "testflight_polling",

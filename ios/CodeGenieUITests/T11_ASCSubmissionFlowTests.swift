@@ -89,8 +89,11 @@ final class T11_ASCSubmissionFlowTests: CodeGenieTestBase {
     func test06_exactValuesAreOfferedAsCopyButtons() {
         openASCGuide()
         jumpToStep(2)
+        // Matches the shape, not the prefix: the prefix comes from the
+        // user's Apple settings now, so pinning it here would assert an
+        // implementation detail rather than the behaviour that matters.
         let copyButton = app.buttons.matching(
-            NSPredicate(format: "label BEGINSWITH 'Copy com.codegenie'")
+            NSPredicate(format: "label BEGINSWITH 'Copy com.'")
         ).firstMatch
         XCTAssertTrue(copyButton.waitForExistence(timeout: 4),
                       "The bundle ID must be copyable, not retyped by hand")

@@ -27,6 +27,8 @@ final class Credentials: ObservableObject {
     @Published var customAgents: [CustomAgent] = []
     /// Apple Developer Program credentials.
     @Published var appleTeamID: String = ""
+    /// Reverse-domain prefix the app's bundle ID is built from.
+    @Published var bundleIDPrefix: String = ""
     @Published var ascKeyID: String = ""
     @Published var ascIssuerID: String = ""
     @Published private(set) var ascP8PEM: String = ""
@@ -100,6 +102,7 @@ final class Credentials: ObservableObject {
             customAgents = decoded
         }
         appleTeamID  = UserDefaults.standard.string(forKey: "apple.teamID") ?? ""
+        bundleIDPrefix = UserDefaults.standard.string(forKey: "apple.bundlePrefix") ?? ""
         ascKeyID     = UserDefaults.standard.string(forKey: "apple.ascKeyID") ?? ""
         ascIssuerID  = UserDefaults.standard.string(forKey: "apple.ascIssuer") ?? ""
         ascP8PEM     = readAppleSecret(account: "asc.p8") ?? ""
@@ -130,6 +133,21 @@ final class Credentials: ObservableObject {
     func setAppleTeamID(_ id: String) {
         appleTeamID = id.trimmingCharacters(in: .whitespacesAndNewlines)
         UserDefaults.standard.set(appleTeamID, forKey: "apple.teamID")
+    }
+
+    /// Reverse-domain prefix for every app you build, e.g. `com.jane`.
+    ///
+    /// Not a secret, so it lives in UserDefaults with the other
+    /// settings rather than the Keychain. It matters because a bundle
+    /// ID has to be unique across the entire App Store: a shared
+    /// `com.codegenie.` prefix means the first person to ship a
+    /// "Tides" app owns that identifier and nobody else can register
+    /// it.
+    func setBundleIDPrefix(_ prefix: String) {
+        bundleIDPrefix = prefix
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "."))
+        UserDefaults.standard.set(bundleIDPrefix, forKey: "apple.bundlePrefix")
     }
 
     func setASCKeyID(_ id: String) {
