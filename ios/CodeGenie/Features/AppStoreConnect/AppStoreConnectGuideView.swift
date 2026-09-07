@@ -1421,8 +1421,8 @@ struct AppStoreConnectGuideView: View {
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
                 }
-                if let build = statusPoller.status, let number = build.buildNumber {
-                    Text("Build \(number)\(build.version.map { " · version \($0)" } ?? "") · \(build.state)")
+                if let line = buildIdentityLine {
+                    Text(line)
                         .font(.system(size: 11, weight: .semibold, design: .monospaced))
                         .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1435,7 +1435,7 @@ struct AppStoreConnectGuideView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 PrimaryButton(
-                    title: statusPoller.isChecking ? "Checking…" : "Check with Apple",
+                    title: statusCheckTitle,
                     systemImage: "arrow.clockwise",
                     style: .filled
                 ) {
@@ -1443,6 +1443,9 @@ struct AppStoreConnectGuideView: View {
                         await statusPoller.check(
                             bundleID: defaultBundleID(for: job.description.title)
                         )
+                        // Only VALID means the build is installable;
+                        // the other finished states mean stop waiting
+                        // and go read Apple's email.
                         if statusPoller.status?.state == "VALID" { advance(step) }
                     }
                 }
@@ -1459,6 +1462,26 @@ struct AppStoreConnectGuideView: View {
                 }
             }
         }
+    }
+
+    /// Once Apple has finished, inviting the user to keep refreshing a
+    /// state that will not change again is just noise.
+    private var statusCheckTitle: String {
+        if statusPoller.isChecking { return "Checking…" }
+        if statusPoller.status?.isFinished == true { return "Check again" }
+        return "Check with Apple"
+    }
+
+    /// Built outside the view body: a closure inside a `Text`
+    /// interpolation is expensive for the type-checker, and this file
+    /// is already large.
+    private var buildIdentityLine: String? {
+        guard let build = statusPoller.status, let number = build.buildNumber else {
+            return nil
+        }
+        var line = "Build \(number)"
+        if let version = build.version { line += " · version \(version)" }
+        return line + " · \(build.state)"
     }
 
     private var statusIcon: String {

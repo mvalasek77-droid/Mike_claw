@@ -39,13 +39,22 @@ enum AppBundleID {
         normalise(prefix: (credentials ?? .shared).bundleIDPrefix) == fallbackPrefix
     }
 
-    /// Apple allows letters, digits, hyphens and dots, and wants at
-    /// least one dot.
-    static func isValid(_ value: String) -> Bool {
-        guard !value.isEmpty, value.count <= 155, value.contains(".") else { return false }
-        let parts = value.split(separator: ".", omittingEmptySubsequences: false)
-        guard parts.count >= 2 else { return false }
+    /// Is what the user actually typed a usable prefix?
+    ///
+    /// Checked against the raw input rather than the result of
+    /// `make(prefix:title:)`, because that normalises away every
+    /// disallowed character and falls back to the shared prefix — so
+    /// validating its output always said "fine" and silently turned
+    /// "com bad name!" into "combadname" without telling anyone.
+    ///
+    /// Empty is allowed: it means "use the shared prefix", which the
+    /// settings screen warns about separately.
+    static func isValidPrefix(_ prefix: String) -> Bool {
+        let trimmed = prefix.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { return true }
+        if trimmed.hasPrefix(".") || trimmed.hasSuffix(".") { return false }
         let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-"))
+        let parts = trimmed.split(separator: ".", omittingEmptySubsequences: false)
         return parts.allSatisfy { part in
             !part.isEmpty && part.unicodeScalars.allSatisfy { allowed.contains($0) }
         }

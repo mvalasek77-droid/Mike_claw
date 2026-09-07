@@ -63,7 +63,10 @@ final class ASCStatusPoller: ObservableObject {
     @Published private(set) var lastError: String?
 
     private let session: URLSession
-    private var cachedAppID: String?
+    /// Keyed by bundle ID, not a bare "have we looked yet" flag —
+    /// otherwise checking a second app on the same instance would
+    /// silently report the first app's build.
+    private var appIDCache: [String: String] = [:]
 
     init(session: URLSession = .shared) {
         self.session = session
@@ -99,11 +102,11 @@ final class ASCStatusPoller: ObservableObject {
         // `/v1/builds` has no bundle-ID filter — Apple keys builds off
         // the numeric app id, so that has to be resolved first.
         let appID: String
-        if let cachedAppID {
-            appID = cachedAppID
+        if let known = appIDCache[bundleID] {
+            appID = known
         } else {
             appID = try await resolveAppID(bundleID: bundleID, token: token)
-            cachedAppID = appID
+            appIDCache[bundleID] = appID
         }
 
         let builds = try await get(

@@ -96,8 +96,12 @@ struct AppleDevSetupView: View {
         if bundlePrefix.trimmingCharacters(in: .whitespaces).isEmpty {
             return "Leave this empty and CodeGenie uses a shared prefix. That works until someone else ships an app with the same name — then Apple refuses yours."
         }
-        if !AppBundleID.isValid(previewBundleID) {
-            return "Apple only allows letters, numbers, hyphens and dots here, and it needs at least one dot. Try something like com.yourname."
+        // Checked against what was typed, not against the normalised
+        // result: normalising strips every bad character, so validating
+        // its output always passed and the user never learned their
+        // prefix had been quietly rewritten.
+        if !AppBundleID.isValidPrefix(bundlePrefix) {
+            return "Apple only allows letters, numbers, hyphens and dots here. Try something like com.yourname."
         }
         return nil
     }
@@ -134,7 +138,7 @@ struct AppleDevSetupView: View {
                 .foregroundStyle(LiquidGlass.accent)
                 // Catching a malformed prefix here beats catching it as
                 // an upload rejection twenty minutes later.
-                .disabled(!bundlePrefix.isEmpty && !AppBundleID.isValid(previewBundleID))
+                .disabled(!AppBundleID.isValidPrefix(bundlePrefix))
             }
         }
     }
