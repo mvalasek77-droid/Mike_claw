@@ -1,12 +1,16 @@
 import SwiftUI
 
 /// Live progress strip for the TestFlight ship-stage. Shows the
-/// current phase (validate / upload), the latest altool line,
-/// and how many lines have streamed so far.
+/// current phase, the latest line from Apple's toolchain, and how many
+/// lines have streamed so far.
 ///
-/// Hidden when no `testflight.upload.progress` event has fired yet
-/// for the bound `SwarmClient` — the orchestrator doesn't ship on
-/// every build, so the absence is normal.
+/// It covers packaging as well as upload, because the archive is the
+/// long half of shipping and a strip that only appeared for the upload
+/// would leave the slowest minutes looking like a hang.
+///
+/// Hidden until the ship stage actually starts for the bound
+/// `SwarmClient` — the orchestrator doesn't ship on every build, so
+/// the absence is normal.
 struct UploadProgressStrip: View {
     @ObservedObject var tracker: UploadProgressTracker
 
@@ -51,13 +55,24 @@ struct UploadProgressStrip: View {
                     .font(.system(size: 22, weight: .bold))
                     .foregroundStyle(tracker.ok ? LiquidGlass.success : LiquidGlass.error.opacity(0.85))
             } else {
-                Image(systemName: "icloud.and.arrow.up.fill")
+                Image(systemName: workingSymbol)
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(LiquidGlass.accent)
                     .symbolEffect(.variableColor.iterative, options: .repeating)
             }
         }
         .accessibilityHidden(true)
+    }
+
+    /// A cloud icon during a local archive would be a lie about what
+    /// the machine is doing.
+    private var workingSymbol: String {
+        switch tracker.phase {
+        case .archive:       "hammer.fill"
+        case .export:        "signature"
+        case .validate:      "checkmark.shield.fill"
+        case .upload, .none: "icloud.and.arrow.up.fill"
+        }
     }
 
     @ViewBuilder
@@ -74,9 +89,9 @@ struct UploadProgressStrip: View {
 
     private var label: String {
         if tracker.finished {
-            return tracker.ok ? "Upload complete" : "Upload failed"
+            return tracker.ok ? "It's on TestFlight" : "It didn't go through"
         }
-        return tracker.phase == .upload ? "Uploading to TestFlight" : "Validating archive"
+        return tracker.phase?.title ?? "Getting your app ready"
     }
 
     private var tint: Color {

@@ -81,6 +81,8 @@ private struct TranscriptRow: View {
         case "review.finding":    "exclamationmark.bubble.fill"
         case "retry.attempt":     "arrow.clockwise.circle.fill"
         case "memory.briefing":   "brain.head.profile"
+        case "testflight.package": "archivebox.fill"
+        case "testflight.package.progress": "hammer.fill"
         case "testflight.upload": "icloud.and.arrow.up.fill"
         case "testflight.upload.progress": "dot.radiowaves.up.forward"
         case "testflight.status": "shippingbox.fill"
@@ -103,7 +105,9 @@ private struct TranscriptRow: View {
         case "test.result":       LiquidGlass.accentSecondary
         case "retry.attempt":     LiquidGlass.warning
         case "memory.briefing":   LiquidGlass.accentSecondary
-        case "testflight.upload", "testflight.upload.progress", "testflight.status": LiquidGlass.accent
+        case "testflight.package", "testflight.package.progress",
+             "testflight.upload", "testflight.upload.progress",
+             "testflight.status": LiquidGlass.accent
         case "error":             LiquidGlass.error
         case "job.state":         LiquidGlass.accent
         case "done":              LiquidGlass.success
@@ -113,7 +117,8 @@ private struct TranscriptRow: View {
 
     private var eventBodyDesign: Font.Design {
         switch event.type {
-        case "tool.call", "tool.result", "diff", "testflight.upload.progress": .monospaced
+        case "tool.call", "tool.result", "diff",
+             "testflight.upload.progress", "testflight.package.progress": .monospaced
         default: .rounded
         }
     }
@@ -160,6 +165,19 @@ private struct TranscriptRow: View {
                 .filter { !$0.isEmpty }
             let preview = lines.prefix(3).joined(separator: " · ")
             return "remembers: \(preview)"
+        case "testflight.package":
+            let phase = (event.payload["phase"] as? String) ?? "archive"
+            // `ok` is null while it runs, so no Bool means "started".
+            guard let ok = event.payload["ok"] as? Bool else {
+                return phase == "export" ? "signing your app" : "building your app"
+            }
+            if ok {
+                return "packaged a signed app, ready to upload"
+            }
+            let why = (event.payload["preview"] as? String) ?? "packaging failed"
+            return "couldn't package the app — \(why)"
+        case "testflight.package.progress":
+            return (event.payload["line"] as? String) ?? ""
         case "testflight.upload":
             let bid = (event.payload["build_id"] as? String) ?? "—"
             return "uploaded to TestFlight (build \(bid))"

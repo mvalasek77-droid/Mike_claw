@@ -119,12 +119,13 @@ class ShipConfig:
     poll_timeout_s: float = 60 * 60
     poll_interval_s: float = 30.0
     # Packaging. When the .ipa is absent we archive and export one
-    # first, on the user's Mac, rather than failing with "ipa not
-    # found" and leaving them nothing to act on.
+    # first — on this host when it has Xcode, otherwise on the paired
+    # Mac — rather than failing with "ipa not found" and leaving the
+    # user nothing to act on.
     auto_archive: bool = True
     team_id: str = ""
-    scheme: str = ""                      # blank = detect on the Mac
-    workspace_or_project: str = ""        # blank = detect on the Mac
+    scheme: str = ""                      # blank = detect it
+    workspace_or_project: str = ""        # blank = detect it
     configuration: str = "Release"
     export_method: str = "app-store-connect"
 
@@ -767,7 +768,7 @@ class SwarmOrchestrator:
             await events.emit("testflight.package.progress", line=line)
 
         result = await CompanionRunner().archive_export(
-            workspace_root=str(session.sandbox.root),
+            workspace_root=str(session.sandbox.policy.workspace),
             team_id=ship.team_id,
             scheme=ship.scheme,
             workspace_or_project=ship.workspace_or_project,
@@ -825,11 +826,21 @@ class SwarmOrchestrator:
         `tail` is the last 4 KB of combined output for the surrounding
         `testflight.upload` summary."""
         import asyncio as _asyncio
-        proc = await _asyncio.create_subprocess_exec(
-            *argv,
-            stdout=_asyncio.subprocess.PIPE,
-            stderr=_asyncio.subprocess.STDOUT,
-        )
+        try:
+            proc = await _asyncio.create_subprocess_exec(
+                *argv,
+                stdout=_asyncio.subprocess.PIPE,
+                stderr=_asyncio.subprocess.STDOUT,
+            )
+        except (FileNotFoundError, NotADirectoryError, PermissionError) as exc:
+            # `xcrun` only exists on macOS with the Xcode command line
+            # tools. Letting this propagate aborted the whole run with a
+            # bare OSError; the user needs to know it is the server that
+            # is missing a toolchain, not their app that is broken.
+            return False, (
+                "Uploading to TestFlight needs Apple's command line tools "
+                f"(xcrun), which are not installed on this build server: {exc}"
+            )
         assert proc.stdout is not None
 
         captured: list[str] = []

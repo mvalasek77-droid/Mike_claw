@@ -582,53 +582,7 @@ struct BuildScreen: View {
                                 .multilineTextAlignment(.center)
                                 .accessibilityLabel("Perfection Mode failed: \(perfectionError)")
                         }
-                        PrimaryButton(title: "Open simulator preview", systemImage: "play.rectangle.fill", style: .filled) {
-                            let job = BuildJob(description: initialJob.description, stage: .readyForTest)
-                            session.openPreview(for: job)
-                        }
-                        PrimaryButton(title: "Walk me through submitting", systemImage: "list.number", style: .filled) {
-                            // Keep the original id — ASCSubmissionStore keys
-                            // its saved progress on it, and Home looks the
-                            // job back up in recentJobs by the same id.
-                            session.openAppStoreConnect(
-                                for: BuildJob(id: initialJob.id,
-                                              description: initialJob.description,
-                                              stage: .readyForTest)
-                            )
-                        }
-                        .accessibilityHint("Opens the ten-step App Store Connect guide. Your progress is saved.")
-                        PrimaryButton(title: "Upload build to TestFlight", systemImage: "paperplane.fill", style: .glass) {
-                            Task { await submitToAppStore() }
-                        }
-                        PrimaryButton(
-                            title: githubSyncing ? "Pushing to GitHub..." : "Back up to GitHub",
-                            systemImage: "chevron.left.forwardslash.chevron.right",
-                            style: .glass
-                        ) {
-                            Task { await backupToGitHub() }
-                        }
-                        .disabled(githubSyncing)
-                        if let url = swarm.jobID.flatMap({ swarm.exportURL(jobID: $0) }) {
-                            ShareLink(item: url, preview: SharePreview("\(initialJob.description.title).zip", image: Image(systemName: "shippingbox.fill"))) {
-                                HStack(spacing: 8) {
-                                    Image(systemName: "square.and.arrow.down")
-                                    Text("Download workspace")
-                                }
-                                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .padding(.horizontal, 16).padding(.vertical, 10)
-                                .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
-                                .background(.white.opacity(0.06), in: Capsule())
-                                .overlay(Capsule().strokeBorder(.white.opacity(0.15)))
-                            }
-                            .accessibilityLabel("Download workspace zip")
-                        }
-                        if let banner = shipBanner {
-                            Text(banner)
-                                .font(.system(size: 12, weight: .medium, design: .rounded))
-                                .foregroundStyle(LiquidGlass.success)
-                                .multilineTextAlignment(.center)
-                                .transition(.opacity)
-                        }
+                        successActions
                     }
                     .padding(24)
                 }
@@ -638,6 +592,61 @@ struct BuildScreen: View {
             .padding(.horizontal, 28)
         }
         .transition(.opacity)
+    }
+
+    /// Everything the user can do once the build is green.
+    ///
+    /// Split out of `successOverlay` because a ViewBuilder block takes
+    /// at most ten children and that stack had grown to fourteen.
+    @ViewBuilder
+    private var successActions: some View {
+        PrimaryButton(title: "Open simulator preview", systemImage: "play.rectangle.fill", style: .filled) {
+            let job = BuildJob(description: initialJob.description, stage: .readyForTest)
+            session.openPreview(for: job)
+        }
+        PrimaryButton(title: "Walk me through submitting", systemImage: "list.number", style: .filled) {
+            // Keep the original id — ASCSubmissionStore keys its saved
+            // progress on it, and Home looks the job back up in
+            // recentJobs by the same id.
+            session.openAppStoreConnect(
+                for: BuildJob(id: initialJob.id,
+                              description: initialJob.description,
+                              stage: .readyForTest)
+            )
+        }
+        .accessibilityHint("Opens the ten-step App Store Connect guide. Your progress is saved.")
+        PrimaryButton(title: "Upload build to TestFlight", systemImage: "paperplane.fill", style: .glass) {
+            Task { await submitToAppStore() }
+        }
+        PrimaryButton(
+            title: githubSyncing ? "Pushing to GitHub..." : "Back up to GitHub",
+            systemImage: "chevron.left.forwardslash.chevron.right",
+            style: .glass
+        ) {
+            Task { await backupToGitHub() }
+        }
+        .disabled(githubSyncing)
+        if let url = swarm.jobID.flatMap({ swarm.exportURL(jobID: $0) }) {
+            ShareLink(item: url, preview: SharePreview("\(initialJob.description.title).zip", image: Image(systemName: "shippingbox.fill"))) {
+                HStack(spacing: 8) {
+                    Image(systemName: "square.and.arrow.down")
+                    Text("Download workspace")
+                }
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .padding(.horizontal, 16).padding(.vertical, 10)
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
+                .background(.white.opacity(0.06), in: Capsule())
+                .overlay(Capsule().strokeBorder(.white.opacity(0.15)))
+            }
+            .accessibilityLabel("Download workspace zip")
+        }
+        if let banner = shipBanner {
+            Text(banner)
+                .font(.system(size: 12, weight: .medium, design: .rounded))
+                .foregroundStyle(LiquidGlass.success)
+                .multilineTextAlignment(.center)
+                .transition(.opacity)
+        }
     }
 
     private var appLocationCard: some View {

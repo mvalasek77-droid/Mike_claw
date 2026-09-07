@@ -51,8 +51,9 @@ class ShipRequest(BaseModel):
     asc_api_issuer_id: str | None = None
     asc_api_key_path: str | None = None
     poll_after_upload: bool = True
-    # Packaging. Blank scheme/project means "detect it on the Mac" —
-    # only that machine can see what the generated project actually is.
+    # Packaging. Blank scheme/project means "detect it where the build
+    # happens" — only that machine can see what the generated project
+    # actually is, so the phone should not try to guess.
     auto_archive: bool = True
     team_id: str = Field(default="", max_length=64)
     scheme: str = Field(default="", max_length=200)

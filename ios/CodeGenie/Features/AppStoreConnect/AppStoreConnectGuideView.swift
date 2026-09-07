@@ -1689,12 +1689,16 @@ private struct ASCMetadataEditor: View {
                         multilineField("Promotional text", text: $metadata.promotionalText,
                                        limit: ASCCoach.Limit.promotionalText,
                                        hint: "Changeable any time without a new review.")
-                        field("Support URL", text: $metadata.supportURL, limit: nil,
-                              hint: "Required. A page where users can reach you.")
-                        field("Marketing URL", text: $metadata.marketingURL, limit: nil,
-                              hint: "Optional. Leave empty rather than fake.")
-                        field("Category", text: $metadata.primaryCategory, limit: nil, hint: nil)
-                        field("Price", text: $metadata.price, limit: nil, hint: nil)
+                        // Grouped because a ViewBuilder block takes at
+                        // most ten children, and this stack was at eleven.
+                        Group {
+                            field("Support URL", text: $metadata.supportURL, limit: nil,
+                                  hint: "Required. A page where users can reach you.")
+                            field("Marketing URL", text: $metadata.marketingURL, limit: nil,
+                                  hint: "Optional. Leave empty rather than fake.")
+                            field("Category", text: $metadata.primaryCategory, limit: nil, hint: nil)
+                            field("Price", text: $metadata.price, limit: nil, hint: nil)
+                        }
                         Color.clear.frame(height: 40)
                     }
                     .padding(.horizontal, 18)

@@ -19,8 +19,17 @@ requires account ownership or review responsibility.
   listing metadata, screenshots, GitHub readiness, and final Apple
   confirmation before TestFlight.
 - Icon Forge: creates 1024x1024 app icons and strips alpha.
+- Archive and export: the ship stage packages a signed `.ipa` before
+  uploading, using the host's Xcode when the backend runs on macOS and
+  the paired Mac companion when a transport is registered. Signing is
+  automatic (`-allowProvisioningUpdates` with the ASC API key), so the
+  user does not create certificates or profiles by hand. On a host with
+  no Xcode and no paired Mac it refuses and says so, rather than
+  reporting a missing IPA.
 - TestFlight upload: backend validates and uploads via `xcrun altool`
-  when an IPA and Apple credentials are present.
+  when an IPA and Apple credentials are present. Requires the Xcode
+  command line tools on the backend host; without them the run reports
+  the missing toolchain instead of failing obscurely.
 - TestFlight processing: ASC API-key polling emits status events after
   upload.
 - GitHub sync: backend can initialize/commit a generated workspace, push
@@ -38,8 +47,12 @@ requires account ownership or review responsibility.
 - App Store Connect fill: companion has a narrow
   `app_store_connect.fill` command, but production use still needs the
   iPhone flow to bind specific metadata fields to companion commands.
-- Archive/export: Xcode signing and IPA export remain Mac-assisted until
-  the paired Mac is signed into the user's Apple Developer account.
+- Archive/export: automated (see above), but it still needs a Mac
+  somewhere — either the backend host or a paired companion — signed
+  into the user's Apple Developer account. The companion implements
+  `xcodebuild.archive_export`; note that nothing currently registers a
+  backend companion transport, so on a non-macOS backend that route is
+  unavailable and packaging must happen on the host.
 - Screenshots: companion can capture displays; scripted simulator
   walkthrough and App Store-size screenshot export are partially wired
   but still need production flow binding.
