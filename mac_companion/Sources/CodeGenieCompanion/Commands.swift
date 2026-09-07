@@ -145,7 +145,7 @@ final class Commands {
         guard archiveResult.code == 0 else {
             return [
                 "ok": false, "phase": "archive",
-                "exit_code": archiveResult.code,
+                "exit_code": Int(archiveResult.code),
                 "log_tail": archiveResult.tail,
                 "scheme": scheme, "project": proj,
             ]
@@ -170,7 +170,7 @@ final class Commands {
         guard exportResult.code == 0 else {
             return [
                 "ok": false, "phase": "export",
-                "exit_code": exportResult.code,
+                "exit_code": Int(exportResult.code),
                 "log_tail": exportResult.tail,
             ]
         }
@@ -253,7 +253,7 @@ final class Commands {
         guard validate.code == 0 else {
             return [
                 "ok": false, "phase": "validate",
-                "exit_code": validate.code,
+                "exit_code": Int(validate.code),
                 "log_tail": validate.tail,
                 "detail": "Apple rejected the build before upload.",
             ]
@@ -270,7 +270,7 @@ final class Commands {
         return [
             "ok": upload.code == 0,
             "phase": "upload",
-            "exit_code": upload.code,
+            "exit_code": Int(upload.code),
             "log_tail": upload.tail,
             "detail": upload.code == 0
                 ? "Uploaded. Apple is processing the build."
@@ -316,6 +316,9 @@ final class Commands {
         ])
 
         let (tempFile, response) = try await URLSession.shared.download(for: request)
+        // `download(for:)` hands us a file we own on every path, so it
+        // has to be cleaned up on the failure branches too.
+        defer { try? FileManager.default.removeItem(at: tempFile) }
         if let http = response as? HTTPURLResponse, http.statusCode != 200 {
             return [
                 "ok": false,
@@ -343,7 +346,6 @@ final class Commands {
         unzip.arguments = ["-x", "-k", tempFile.path, dest.path]
         try unzip.run()
         unzip.waitUntilExit()
-        try? FileManager.default.removeItem(at: tempFile)
 
         guard unzip.terminationStatus == 0 else {
             return ["ok": false, "detail": "Could not unpack the workspace zip."]

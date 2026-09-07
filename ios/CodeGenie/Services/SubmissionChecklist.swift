@@ -103,7 +103,11 @@ enum SubmissionChecklist {
             group: .content,
             title: "App icon is 1024×1024, no transparency, corners not pre-rounded",
             why: "Apple rejects a wrong icon automatically, before a human sees anything. Icons exported from design tools often carry a hidden alpha channel.",
-            autoKey: "app_icon",
+            // No `autoKey`: the readiness audit has no icon item, so
+            // this pointed at a key that never existed and silently
+            // never auto-satisfied. It is a human check, and saying so
+            // is better than looking like one CodeGenie verifies.
+            autoKey: nil,
             appStoreOnly: true
         ),
         .init(

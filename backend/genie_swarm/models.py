@@ -203,6 +203,15 @@ class SwarmEvent(BaseModel):
         "review.finding",
         "retry.attempt",
         "memory.briefing",
+        # Integration steps that pin the project to what the submission
+        # flow expects.
+        "bundle.pinned",
+        "privacy.manifest",
+        # Packaging: turning generated source into a signed .ipa. These
+        # run for minutes, so the progress variant carries each line of
+        # tool output.
+        "testflight.package",
+        "testflight.package.progress",
         "testflight.upload",
         "testflight.upload.progress",
         "testflight.status",

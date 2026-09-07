@@ -171,6 +171,9 @@ struct AppStoreConnectGuideView: View {
     @StateObject private var store = ASCSubmissionStore.shared
     @StateObject private var companion = CompanionBridge.shared
     @StateObject private var swarm = SwarmClient()
+    /// Asks Apple directly, because the key that signs those requests
+    /// stays on this phone and the backend has no copy to poll with.
+    @StateObject private var statusPoller = ASCStatusPoller()
 
     @State private var metadata: AppStoreMetadata = .empty
     @State private var completed: Set<Int> = []
@@ -687,6 +690,12 @@ struct AppStoreConnectGuideView: View {
 
                 if let watchOut = walk.watchOut {
                     watchOutCard(watchOut)
+                }
+
+                // Step 2 is where the bundle ID gets registered with
+                // Apple for good. Saying this afterwards is too late.
+                if step.number == 2, AppBundleID.usesFallbackPrefix() {
+                    watchOutCard("You haven't set your own app ID prefix, so this uses CodeGenie's shared one. Bundle IDs are unique across the entire App Store — if someone else already registered this exact ID, Apple will refuse yours. Set a prefix of your own in Settings, Apple Developer.")
                 }
 
                 actionRow(step)
@@ -1396,13 +1405,48 @@ struct AppStoreConnectGuideView: View {
                 markDoneButton(step, title: "I've got this ready")
 
             case .wait(let detail):
+                // This used to be a spinner that never changed, on a
+                // wait that genuinely runs for hours. Now it asks Apple.
                 HStack(spacing: 10) {
-                    ProgressView().tint(LiquidGlass.primaryText)
-                    Text(detail)
+                    if statusPoller.isChecking {
+                        ProgressView().tint(LiquidGlass.primaryText)
+                    } else {
+                        Image(systemName: statusIcon)
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(statusTint)
+                    }
+                    Text(statusPoller.status?.summary ?? detail)
                         .font(.system(size: 13, weight: .medium, design: .rounded))
                         .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
+                        .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
                 }
+                if let build = statusPoller.status, let number = build.buildNumber {
+                    Text("Build \(number)\(build.version.map { " · version \($0)" } ?? "") · \(build.state)")
+                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                if let problem = statusPoller.lastError {
+                    Text(problem)
+                        .font(.system(size: 11, weight: .regular, design: .rounded))
+                        .foregroundStyle(LiquidGlass.warning)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                PrimaryButton(
+                    title: statusPoller.isChecking ? "Checking…" : "Check with Apple",
+                    systemImage: "arrow.clockwise",
+                    style: .filled
+                ) {
+                    Task {
+                        await statusPoller.check(
+                            bundleID: defaultBundleID(for: job.description.title)
+                        )
+                        if statusPoller.status?.state == "VALID" { advance(step) }
+                    }
+                }
+                .disabled(statusPoller.isChecking)
                 markDoneButton(step, title: "Build finished processing")
 
             case .manual:
@@ -1414,6 +1458,28 @@ struct AppStoreConnectGuideView: View {
                     markDoneButton(step, title: "I did this")
                 }
             }
+        }
+    }
+
+    private var statusIcon: String {
+        guard let state = statusPoller.status?.state else { return "clock.fill" }
+        switch state {
+        case "VALID":                     return "checkmark.seal.fill"
+        case "INVALID", "FAILED":         return "xmark.octagon.fill"
+        case "EXPIRED":                   return "hourglass.bottomhalf.filled"
+        default:                          return "clock.fill"
+        }
+    }
+
+    private var statusTint: Color {
+        guard let state = statusPoller.status?.state else {
+            return LiquidGlass.primaryText.opacity(0.6)
+        }
+        switch state {
+        case "VALID":             return LiquidGlass.success
+        case "INVALID", "FAILED": return LiquidGlass.error
+        case "EXPIRED":           return LiquidGlass.warning
+        default:                  return LiquidGlass.accent
         }
     }
 
@@ -1538,7 +1604,14 @@ struct AppStoreConnectGuideView: View {
         // never reaches CodeGenie's server, which is also the only
         // reason the server has no copy to sign with.
         let creds = Credentials.shared
-        if macPaired && !creds.ascKeyID.isEmpty && !creds.ascP8PEM.isEmpty {
+        // All three parts are needed. With any one missing the Mac
+        // silently archives unsigned and the upload has nothing to
+        // authenticate with, so check them together rather than
+        // discovering it minutes into a build.
+        let hasKey = !creds.ascKeyID.isEmpty
+            && !creds.ascIssuerID.isEmpty
+            && !creds.ascP8PEM.isEmpty
+        if macPaired && hasKey {
             await shipViaMac(step: step, backendID: backendID)
             return
         }

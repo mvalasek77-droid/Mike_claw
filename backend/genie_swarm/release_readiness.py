@@ -70,6 +70,11 @@ def run_release_readiness(
         "Generate the Xcode project before archive/export.",
     )
 
+    # Reported, never required. When shipping runs on the user's paired
+    # Mac — the normal path, since that is where the signing key stays —
+    # the binary is produced there and this workspace never sees one.
+    # Requiring it blocked the final submit permanently for exactly the
+    # users following the recommended setup.
     ipa = _ship_ipa(workspace, ship) or _first_match(workspace, ("*.ipa",))
     archive = _first_match(workspace, ("*.xcarchive",))
     if ipa:
@@ -79,6 +84,7 @@ def run_release_readiness(
             "automated",
             f"Found {ipa.name}; TestFlight upload can use this binary.",
             "Validate and upload with altool.",
+            required=False,
         )
     elif archive:
         add(
@@ -87,6 +93,7 @@ def run_release_readiness(
             "assisted",
             f"Found {archive.name}; exportArchive still needs to create an IPA.",
             "Export the archive, then run TestFlight upload.",
+            required=False,
         )
     else:
         add(
@@ -95,6 +102,7 @@ def run_release_readiness(
             "needs_setup",
             "Not packaged yet. CodeGenie builds and signs this when you upload.",
             "Nothing to do — uploading to TestFlight creates it.",
+            required=False,
         )
 
     asc_api_ready = bool(
@@ -215,6 +223,13 @@ def run_release_readiness(
             else "No listing metadata file was found."
         ),
         "Generate name, subtitle, keywords, description, support URL, and category.",
+        # Not a blocker. The listing is typed into App Store Connect,
+        # not into this workspace, so a missing file here says nothing
+        # about whether the user's store page is filled in. The human
+        # checklist ("the description matches what the app does") is
+        # what actually gates submission. Requiring the file made the
+        # final submit impossible, since nothing ever writes one.
+        required=False,
     )
 
     screenshots = _screenshot_files(workspace)
@@ -228,6 +243,13 @@ def run_release_readiness(
             else "No App Store screenshot assets were found."
         ),
         "Run the screenshot generator for 6.7-inch, 6.1-inch, and iPad sizes.",
+        # Same reasoning as the listing metadata: screenshots are
+        # uploaded to App Store Connect directly, so their absence from
+        # this workspace is not evidence the user lacks them. The human
+        # checklist item ("screenshots show the real app with real
+        # content") is the gate, and it is the only one that can
+        # actually be judged.
+        required=False,
     )
 
     github_status, github_detail, github_action = _github_status(workspace, github)

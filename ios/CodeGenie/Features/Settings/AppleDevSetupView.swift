@@ -86,6 +86,22 @@ struct AppleDevSetupView: View {
         }
     }
 
+    /// A worked example, so the abstract idea of a "prefix" is visible
+    /// as the thing it actually produces.
+    private var previewBundleID: String {
+        AppBundleID.make(prefix: bundlePrefix, title: "Tide Times")
+    }
+
+    private var prefixProblem: String? {
+        if bundlePrefix.trimmingCharacters(in: .whitespaces).isEmpty {
+            return "Leave this empty and CodeGenie uses a shared prefix. That works until someone else ships an app with the same name — then Apple refuses yours."
+        }
+        if !AppBundleID.isValid(previewBundleID) {
+            return "Apple only allows letters, numbers, hyphens and dots here, and it needs at least one dot. Try something like com.yourname."
+        }
+        return nil
+    }
+
     private var bundlePrefixBlock: some View {
         GlassCard(title: "Your app ID prefix", icon: "tag.fill", tint: LiquidGlass.accent) {
             VStack(alignment: .leading, spacing: 8) {
@@ -98,12 +114,12 @@ struct AppleDevSetupView: View {
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                     .fixedSize(horizontal: false, vertical: true)
                 fieldRow("com.janesmith", text: $bundlePrefix, secure: false)
-                Text("Your next app would be: \(AppBundleID.make(prefix: bundlePrefix, title: "Tide Times"))")
+                Text("Your next app would be: \(previewBundleID)")
                     .font(.system(size: 11, weight: .medium, design: .monospaced))
                     .foregroundStyle(LiquidGlass.accent)
                     .fixedSize(horizontal: false, vertical: true)
-                if bundlePrefix.trimmingCharacters(in: .whitespaces).isEmpty {
-                    Text("Leave this empty and CodeGenie uses a shared prefix. That works until someone else ships an app with the same name — then Apple refuses yours.")
+                if let problem = prefixProblem {
+                    Text(problem)
                         .font(.system(size: 11, weight: .regular, design: .rounded))
                         .foregroundStyle(LiquidGlass.warning)
                         .fixedSize(horizontal: false, vertical: true)
@@ -116,6 +132,9 @@ struct AppleDevSetupView: View {
                 .buttonStyle(.plain)
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                 .foregroundStyle(LiquidGlass.accent)
+                // Catching a malformed prefix here beats catching it as
+                // an upload rejection twenty minutes later.
+                .disabled(!bundlePrefix.isEmpty && !AppBundleID.isValid(previewBundleID))
             }
         }
     }

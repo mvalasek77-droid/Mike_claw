@@ -24,9 +24,11 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import os
 import time
 from dataclasses import dataclass
 from typing import Any, Optional
+from urllib.parse import quote
 
 from .streaming import EventStream
 
@@ -69,11 +71,52 @@ async def watch(
     deadline = time.time() + config.timeout_s
     backoff = config.poll_interval_s
     last_state: str | None = None
+    app_id: str | None = None
+
+    # Apple answers an unsigned token with a 401, which surfaced as a
+    # generic POLL_ERROR every thirty seconds and told nobody anything.
+    # Only the built-in transport talks to Apple; a caller that supplies
+    # its own fetcher owns its own authentication.
+    if http_get is None:
+        ok, reason = signing_available(config)
+        if not ok:
+            await events.emit(
+                "testflight.status", state="POLL_UNAVAILABLE", detail=reason,
+            )
+            return {"state": "POLL_UNAVAILABLE", "raw": None}
 
     while time.time() < deadline:
         token = mint_jwt(config)
+
+        # Resolve the numeric app id once. Apple keys builds off it, not
+        # off the bundle ID.
+        if app_id is None:
+            try:
+                found = await fetcher(_apps_endpoint(config.bundle_id), token)
+            except Exception as exc:  # noqa: BLE001
+                await events.emit(
+                    "testflight.status",
+                    state="POLL_ERROR",
+                    detail=f"{type(exc).__name__}: {exc}",
+                )
+                await asyncio.sleep(backoff)
+                continue
+            app_id = _extract_app_id(found)
+            if app_id is None:
+                await events.emit(
+                    "testflight.status",
+                    state="APP_NOT_FOUND",
+                    detail=(
+                        f"No app in App Store Connect uses the bundle ID "
+                        f"{config.bundle_id}. Create the app record first, "
+                        f"and check the bundle ID matches exactly."
+                    ),
+                )
+                await asyncio.sleep(backoff)
+                continue
+
         try:
-            body = await fetcher(_build_endpoint(config), token)
+            body = await fetcher(_builds_endpoint(app_id, config), token)
         except Exception as exc:  # noqa: BLE001
             await events.emit(
                 "testflight.status",
@@ -142,22 +185,41 @@ async def _default_http_get(url: str, jwt: str) -> dict[str, Any]:
     return await asyncio.get_event_loop().run_in_executor(None, _do_request)
 
 
-def _build_endpoint(config: PollerConfig) -> str:
-    # `filter[app]=<bundleId>` doesn't work directly — ASC wants the
-    # numeric app id. The pragmatic workflow is to filter by bundleId
-    # via the `apps` endpoint, then by version. For the test surface we
-    # use the simpler `/v1/builds?filter[preReleaseVersion.app]=...`
-    # placeholder; production code should resolve the app id first.
+_API = "https://api.appstoreconnect.apple.com/v1"
+
+
+def _apps_endpoint(bundle_id: str) -> str:
+    """Resolve a bundle ID to the numeric app id.
+
+    `/v1/builds` has no `filter[app.bundleId]`; it only accepts
+    `filter[app]` with the numeric id. Filtering builds by bundle ID
+    directly returned an error rather than the build, so polling never
+    reported anything — the app looked stuck in Processing forever.
+    """
+    return f"{_API}/apps?filter%5BbundleId%5D={quote(bundle_id, safe='')}&limit=1"
+
+
+def _builds_endpoint(app_id: str, config: PollerConfig) -> str:
     params = [
-        f"filter[app.bundleId]={config.bundle_id}",
+        f"filter%5Bapp%5D={quote(app_id, safe='')}",
         "limit=10",
         "sort=-uploadedDate",
     ]
     if config.version:
-        params.append(f"filter[preReleaseVersion.version]={config.version}")
+        params.append(
+            f"filter%5BpreReleaseVersion.version%5D={quote(config.version, safe='')}"
+        )
     if config.build_number:
-        params.append(f"filter[version]={config.build_number}")
-    return "https://api.appstoreconnect.apple.com/v1/builds?" + "&".join(params)
+        params.append(f"filter%5Bversion%5D={quote(config.build_number, safe='')}")
+    return f"{_API}/builds?" + "&".join(params)
+
+
+def _extract_app_id(body: dict[str, Any]) -> str | None:
+    data = body.get("data") if isinstance(body, dict) else None
+    if not isinstance(data, list) or not data:
+        return None
+    app_id = data[0].get("id")
+    return app_id if isinstance(app_id, str) and app_id else None
 
 
 def _extract_first_build(body: dict[str, Any], config: PollerConfig) -> dict[str, Any] | None:
@@ -175,6 +237,36 @@ def _extract_first_build(body: dict[str, Any], config: PollerConfig) -> dict[str
 # ---------------------------------------------------------------------------
 # Inline JWT signer (ES256, no external deps)
 # ---------------------------------------------------------------------------
+
+def signing_available(config: PollerConfig) -> tuple[bool, str]:
+    """Can we actually sign a token Apple will accept?
+
+    `mint_jwt` falls back to an unsigned placeholder so the rest of the
+    system stays testable, but Apple answers those with a 401. Without
+    this check that surfaced as a generic POLL_ERROR every thirty
+    seconds, which reads like a network problem rather than a missing
+    key or a missing library.
+    """
+    try:
+        from cryptography.hazmat.primitives import serialization  # noqa: F401
+    except BaseException:  # noqa: BLE001 — PyO3 panics aren't Exceptions
+        return False, (
+            "This server can't sign App Store Connect requests: the "
+            "cryptography library isn't installed."
+        )
+    if not config.p8_path or not os.path.exists(config.p8_path):
+        return False, (
+            "Checking your build's status needs your App Store Connect "
+            "key, which isn't on this server."
+        )
+    try:
+        from cryptography.hazmat.primitives import serialization as ser
+        with open(config.p8_path, "rb") as f:
+            ser.load_pem_private_key(f.read(), password=None)
+    except BaseException as exc:  # noqa: BLE001
+        return False, f"Your App Store Connect key couldn't be read: {exc}"
+    return True, ""
+
 
 def mint_jwt(config: PollerConfig) -> str:
     """Sign a minimal App Store Connect API token.

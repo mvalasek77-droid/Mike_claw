@@ -176,6 +176,7 @@ class SwarmOrchestrator:
             await self._run_agent(INTEGRATOR, session, events,
                                    prompt=self._integrator_prompt(job))
             await self._pin_bundle_id(session, events)
+            await self._ensure_privacy_manifest(session, events)
             await self._checkpoint(session, events, "after-integrator")
 
             # ---- TEST LAYER ----
@@ -560,6 +561,7 @@ class SwarmOrchestrator:
                 await self._run_agent(INTEGRATOR, session, events,
                                        prompt=self._integrator_prompt(job))
                 await self._pin_bundle_id(session, events)
+                await self._ensure_privacy_manifest(session, events)
                 await self._checkpoint(session, events, "after-integrator")
 
             if "after-tests" not in done and not self.config.skip_tests:
@@ -772,6 +774,30 @@ class SwarmOrchestrator:
         self.memory.note_decision(
             session.job.id, "integration",
             f"Pinned bundle ID to {wanted} in {', '.join(changed)}.",
+        )
+
+    async def _ensure_privacy_manifest(self, session: Session, events) -> None:
+        """Give the app the privacy manifest Apple requires.
+
+        No agent prompt mentions `PrivacyInfo.xcprivacy`, so nothing ever
+        wrote one, and the readiness audit's privacy check failed for
+        every generated app — closing the App Store submit gate
+        permanently. The default written here is truthful for a
+        self-contained app; the submission checklist still asks the user
+        to confirm it matches what their app actually does.
+        """
+        from .privacy_manifest import ensure_privacy_manifest
+
+        workspace = session.sandbox.policy.workspace
+        written = ensure_privacy_manifest(workspace)
+        if written is None:
+            return
+        relative = written.relative_to(workspace)
+        await events.emit("privacy.manifest", path=str(relative))
+        self.memory.note_decision(
+            session.job.id, "integration",
+            f"Wrote a default privacy manifest at {relative}; the user "
+            f"confirms its accuracy before submitting.",
         )
 
     async def _package_ipa(

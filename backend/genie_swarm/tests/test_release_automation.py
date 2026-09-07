@@ -230,3 +230,59 @@ def test_release_readiness_route_records_memory(tmp_path: Path):
         state.pause_events.update(original_pause_events)
         state.decisions.clear()
         state.decisions.update(original_decisions)
+
+
+def test_a_real_build_can_actually_reach_the_submit_gate(tmp_path: Path):
+    """The end-to-end shape of the bug this locks down.
+
+    Three required items could never be satisfied by a user following
+    the recommended setup: the IPA (built on their Mac, so never in this
+    workspace), the listing metadata and the screenshots (both typed and
+    uploaded into App Store Connect, never written here). Nothing in the
+    pipeline produces any of the three, so the final submit gate was
+    permanently closed no matter what the user did.
+
+    They are still reported. They just do not block, because the human
+    checklist is what actually judges them.
+    """
+    from genie_swarm.orchestrator import ShipConfig
+
+    ws = tmp_path / "job_ready"
+    (ws / "App.xcodeproj").mkdir(parents=True)
+    (ws / "PrivacyInfo.xcprivacy").write_text(
+        "<plist><dict>"
+        "<key>NSPrivacyTracking</key><false/>"
+        "<key>NSPrivacyCollectedDataTypes</key><array/>"
+        "<key>NSPrivacyAccessedAPITypes</key><array/>"
+        "</dict></plist>"
+    )
+    (ws / "PRIVACY.md").write_text("# Privacy\nWe collect nothing.\n")
+
+    result = run_release_readiness(
+        spec=AppSpec(title="Tides", prompt="ship"),
+        workspace=ws,
+        ship=ShipConfig(
+            ipa_path="Build.ipa",
+            bundle_id="com.mike.tides",
+            asc_api_key_id="KEY1",
+            asc_api_issuer_id="ISS1",
+            asc_api_key_path="asc-key.p8",
+        ),
+        github=None,
+    )
+
+    blocking = [
+        item["key"] for item in result["items"]
+        if item["required"] and item["status"] not in
+        {"automated", "assisted", "user_confirmation"}
+    ]
+    assert blocking == [], f"nothing should block this build, but {blocking} does"
+    assert result["release_gate"] == "ready_for_testflight"
+    # This is what the iOS submit gate reads.
+    assert result["score"] == 100
+
+    # Still surfaced, just not as blockers.
+    keys = {item["key"]: item for item in result["items"]}
+    for key in ("ipa", "screenshots", "app_store_metadata"):
+        assert keys[key]["required"] is False
+        assert key in keys

@@ -240,9 +240,14 @@ enum ASCCoach {
     /// with the specific reason — a lapsed membership, a bundle ID
     /// owned by another team, a compile error — which is far more
     /// use than "no .ipa was found".
+    ///
+    /// Also excludes `privacy_manifest`. Apple checks that at App Store
+    /// review, not at TestFlight upload, so blocking a TestFlight build
+    /// on it stopped people from testing their own app over a rule that
+    /// does not apply yet. It stays required for the final submit.
     private static let testFlightUploadKeys: Set<String> = [
         "workspace", "xcode_project", "apple_credentials",
-        "testflight_upload", "privacy_manifest",
+        "testflight_upload",
     ]
 
     private static let doneStatuses: Set<String> = ["automated", "assisted", "user_confirmation"]
@@ -400,12 +405,12 @@ extension ASCCoach {
                 plainTitle: "Wait for Apple to check it",
                 whatThisIs: "Apple scans every upload before it can be installed. Your build shows as \"Processing\" until that finishes. This is Apple's queue, so nothing you do here speeds it up.",
                 doThis: [
-                    .init(text: "In App Store Connect, open your app and click the TestFlight tab."),
-                    .init(text: "Your build appears with a yellow Processing label."),
-                    .init(text: "Close the app and go do something else. Apple emails you when it's done."),
+                    .init(text: "Tap Check with Apple below. CodeGenie asks App Store Connect directly and tells you what state your build is in."),
+                    .init(text: "You can also see it in App Store Connect under your app's TestFlight tab, where it appears with a yellow Processing label."),
+                    .init(text: "Nothing needs to stay open. Apple emails you when it's done."),
                     .init(text: "If Apple asks about export compliance, answer No unless you added your own custom encryption. Using HTTPS does not count as encryption here."),
                 ],
-                watchOut: "If the build disappears instead of turning green, check your email. Apple sends the rejection reason there and never shows it in the TestFlight tab.",
+                watchOut: "If the build disappears instead of turning green, check your email. Apple sends the rejection reason there and never shows it in the TestFlight tab. If Check with Apple says it can't find an app with your ID, the app record in step 2 was created with a different bundle ID.",
                 timeEstimate: "Usually 5 to 30 minutes, occasionally a few hours"
             )
 

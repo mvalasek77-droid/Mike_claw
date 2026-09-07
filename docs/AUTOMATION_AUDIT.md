@@ -14,10 +14,15 @@ requires account ownership or review responsibility.
 - Perfection Mode: deterministic 10,000-probe release matrix blocks
   App Store handoff on critical/error findings and now includes
   App-of-Year DNA checks.
-- Release readiness: backend audits Xcode archive state, IPA presence,
-  Apple upload credentials, privacy manifest, privacy policy, terms/EULA,
-  listing metadata, screenshots, GitHub readiness, and final Apple
-  confirmation before TestFlight.
+- Release readiness: backend audits Xcode project state, Apple upload
+  credentials, privacy manifest, privacy policy, terms/EULA, listing
+  metadata, screenshots, GitHub readiness, and final Apple confirmation.
+  It reports on the IPA, listing metadata and screenshots without
+  blocking on them: the binary is built on the user's Mac, and the
+  listing and screenshots are entered directly into App Store Connect,
+  so their absence from the server workspace says nothing about whether
+  the user has them. The human submission checklist is what judges
+  those, because it is the only thing that can.
 - Icon Forge: creates 1024x1024 app icons and strips alpha.
 - Bundle identifier: the phone decides one identifier from the user's
   own prefix and sends it with the build. The orchestrator pins the
@@ -41,8 +46,11 @@ requires account ownership or review responsibility.
   the missing toolchain instead of failing obscurely. Note this path
   needs a `.p8` on the server, which the phone does not send — so in
   practice it only works where an operator supplied one.
-- TestFlight processing: ASC API-key polling emits status events after
-  upload.
+- TestFlight processing: the phone asks App Store Connect directly,
+  signing its own ES256 token with the key already in its Keychain. It
+  resolves the bundle ID to Apple's numeric app id first, because
+  `/v1/builds` has no bundle-ID filter. The backend has an equivalent
+  poller for the server-side path, but it needs a `.p8` on the server.
 - GitHub sync: backend can initialize/commit a generated workspace, push
   a named branch to a user-provided repository, and open a pull request
   when a GitHub token is provided. It excludes `.codegenie/`, session
