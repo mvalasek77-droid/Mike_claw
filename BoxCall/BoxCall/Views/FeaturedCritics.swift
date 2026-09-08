@@ -242,7 +242,7 @@ struct WriteReviewSheet: View {
     @EnvironmentObject var social: SocialService
     @Environment(\.dismiss) private var dismiss
     @State private var headline: String = ""
-    @State private var body: String = ""
+    @State private var reviewBody: String = ""
     @State private var rating: Int = 3
 
     var body: some View {
@@ -268,13 +268,13 @@ struct WriteReviewSheet: View {
                     TextField("One-line hook", text: $headline)
                 }
                 Section("Review") {
-                    TextField("Say something worth reading…", text: $body, axis: .vertical)
+                    TextField("Say something worth reading…", text: $reviewBody, axis: .vertical)
                         .lineLimit(6...12)
                 }
                 Section {
                     Button {
                         let h = headline.trimmingCharacters(in: .whitespacesAndNewlines)
-                        let b = body.trimmingCharacters(in: .whitespacesAndNewlines)
+                        let b = reviewBody.trimmingCharacters(in: .whitespacesAndNewlines)
                         guard !h.isEmpty, !b.isEmpty else { return }
                         social.submitReview(movie: movie, headline: h, body: b, rating: rating)
                         dismiss()
@@ -285,7 +285,7 @@ struct WriteReviewSheet: View {
                     .buttonStyle(.borderedProminent)
                     .tint(.orange)
                     .disabled(headline.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
-                              body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                              reviewBody.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
             .navigationTitle("Write review")

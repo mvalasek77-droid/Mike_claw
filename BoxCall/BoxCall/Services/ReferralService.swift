@@ -26,8 +26,9 @@ final class ReferralService: ObservableObject {
         if let existing = UserDefaults.standard.string(forKey: myCodeKey) {
             myCode = existing
         } else {
-            myCode = ReferralService.generateCode()
-            UserDefaults.standard.set(myCode, forKey: myCodeKey)
+            let generatedCode = ReferralService.generateCode()
+            myCode = generatedCode
+            UserDefaults.standard.set(generatedCode, forKey: myCodeKey)
         }
         redemptionsMade = UserDefaults.standard.integer(forKey: redemptionsKey)
         didRedeem = UserDefaults.standard.bool(forKey: didRedeemKey)

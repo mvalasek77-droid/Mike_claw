@@ -9,6 +9,7 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.9"
+    GENERATE_INFOPLIST_FILE: YES
     DEVELOPMENT_TEAM: ""
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
@@ -44,6 +45,15 @@ targets:
   BoxCallWidget:
     type: app-extension
     platform: iOS
+    info:
+      path: BoxCallWidget/Info.plist
+      properties:
+        CFBundleDisplayName: BoxCall
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        NSSupportsLiveActivities: true
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
     sources:
       - path: BoxCallWidget
     dependencies:
@@ -79,6 +89,15 @@ targets:
       watchOS: "10.0"
     sources:
       - path: BoxCallWatchComplication
+      - path: BoxCallWatch/WatchBridge.swift
+    info:
+      path: BoxCallWatchComplication/Info.plist
+      properties:
+        CFBundleDisplayName: BoxCall
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
     dependencies:
       - sdk: WidgetKit.framework
       - sdk: SwiftUI.framework

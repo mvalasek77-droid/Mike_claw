@@ -186,7 +186,7 @@ final class MarketService: ObservableObject {
         // First tick immediately so charts have >1 point on first render.
         tick()
         let t = Timer(timeInterval: tickInterval, repeats: true) { [weak self] _ in
-            self?.tick()
+            Task { @MainActor in self?.tick() }
         }
         // Attach to the common run-loop mode so ticks keep firing while
         // the user is dragging a scroll view.

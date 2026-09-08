@@ -1,4 +1,5 @@
 import SwiftUI
+import Foundation
 
 /// Plain-English "here's what this specific trade actually does" —
 /// shown at the top of every TradeSheet, above the order form.
@@ -94,7 +95,7 @@ struct ScenarioPrimer: View {
             body: contract.side == .call
                 ? "\(movie.title) opens **above $\(Int(contract.strikeMillions))M** this weekend. Every $1M above the strike pays you \(Int(payoutPerDollar)) RC."
                 : "\(movie.title) opens **below $\(Int(contract.strikeMillions))M** this weekend. Every $1M below the strike pays you \(Int(payoutPerDollar)) RC.",
-            highlight: "Break-even at $\(breakEven, specifier: "%.1f")M — above/below that is pure profit."
+            highlight: "Break-even at $\(String(format: "%.1f", breakEven))M — above/below that is pure profit."
         )
     }
 
@@ -105,8 +106,8 @@ struct ScenarioPrimer: View {
             color: .red,
             head: "You LOSE if…",
             body: contract.side == .call
-                ? "\(movie.title) opens **at or below $\(Int(contract.strikeMillions))M**. The contract expires worthless and you lose the full \(totalCost, specifier: "%.2f") RC premium."
-                : "\(movie.title) opens **at or above $\(Int(contract.strikeMillions))M**. The contract expires worthless and you lose the full \(totalCost, specifier: "%.2f") RC premium.",
+                ? "\(movie.title) opens **at or below $\(Int(contract.strikeMillions))M**. The contract expires worthless and you lose the full \(String(format: "%.2f", totalCost)) RC premium."
+                : "\(movie.title) opens **at or above $\(Int(contract.strikeMillions))M**. The contract expires worthless and you lose the full \(String(format: "%.2f", totalCost)) RC premium.",
             highlight: "Max loss is the premium — nothing more, no matter how far it misses."
         )
     }

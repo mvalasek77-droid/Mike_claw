@@ -55,7 +55,7 @@ enum Theme {
     }
 
     // MARK: - Type ramps
-    enum Type {
+    enum Typography {
         /// Serif display for headlines — evokes a repertory theater program.
         static let marqueeTitle  = Font.system(.largeTitle, design: .serif).weight(.bold)
         static let marqueeH1     = Font.system(.title,      design: .serif).weight(.bold)

@@ -25,14 +25,6 @@ struct BoxCallApp: App {
                     OnboardingView(hasCompleted: $hasCompletedOnboarding)
                 }
             }
-            .environmentObject(market)
-            .environmentObject(portfolio)
-            .environmentObject(social)
-            .environmentObject(rewards)
-            .environmentObject(notifications)
-            .environmentObject(coordinator)
-            .environmentObject(store)
-            .environmentObject(auth)
             .preferredColorScheme(.dark)
             .overlay(alignment: .top) { RewardToastOverlay() }
             .task {
@@ -48,6 +40,14 @@ struct BoxCallApp: App {
             .sheet(item: $coordinator.pendingCopy) { intent in
                 TradeSheet(contract: intent.contract, movie: intent.movie)
             }
+            .environmentObject(market)
+            .environmentObject(portfolio)
+            .environmentObject(social)
+            .environmentObject(rewards)
+            .environmentObject(notifications)
+            .environmentObject(coordinator)
+            .environmentObject(store)
+            .environmentObject(auth)
         }
     }
 }

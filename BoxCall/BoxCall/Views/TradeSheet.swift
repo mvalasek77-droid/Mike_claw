@@ -1,4 +1,5 @@
 import SwiftUI
+import Foundation
 
 struct TradeSheet: View {
     let contract: Contract
@@ -53,7 +54,12 @@ struct TradeSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            tradeForm
+        }
+    }
+
+    private var tradeForm: some View {
+        Form {
                 Section {
                     HStack {
                         Text("\(movie.title)")
@@ -177,7 +183,7 @@ struct TradeSheet: View {
                     let hi = mid * 1.5
                     let lo = mid * 0.5
                     payoffRow(label: "If bomb ($\(Int(lo))M)", value: contract.intrinsic(atMillions: lo) * Double(quantity))
-                    payoffRow(label: "If tracks ($\(mid, specifier: "%.1f")M implied)", value: contract.intrinsic(atMillions: mid) * Double(quantity))
+                    payoffRow(label: "If tracks ($\(String(format: "%.1f", mid))M implied)", value: contract.intrinsic(atMillions: mid) * Double(quantity))
                     payoffRow(label: "If blockbuster ($\(Int(hi))M)", value: contract.intrinsic(atMillions: hi) * Double(quantity))
                     DisclosureGroup(isExpanded: $showChart) {
                         PayoffChart(side: contract.side,
@@ -249,7 +255,7 @@ struct TradeSheet: View {
                         }
                     } label: {
                         Text(useLimit
-                             ? "Place buy-limit @ \(limitPrice, specifier: "%.2f") for \(limitPrice * Double(quantity), specifier: "%.2f")"
+                             ? "Place buy-limit @ \(String(format: "%.2f", limitPrice)) for \(String(format: "%.2f", limitPrice * Double(quantity)))"
                              : "Buy \(quantity) \(contract.side.display) for \(cost, format: .number.precision(.fractionLength(2)))")
                             .frame(maxWidth: .infinity)
                             .fontWeight(.semibold)
@@ -314,7 +320,6 @@ struct TradeSheet: View {
                     showTutorial = true
                 }
             }
-        }
     }
 
     private func payoffRow(label: String, value: Double) -> some View {

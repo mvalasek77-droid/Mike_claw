@@ -113,9 +113,9 @@ struct PriceChart: View {
             // Time labels
             let f = Self.timeFormatter
             if let firstPt = points.first, let lastPt = points.last {
-                ctx.draw(Text(f.string(from: firstPt.time)).font(.caption2).foregroundColor(.tertiary),
+                ctx.draw(Text(f.string(from: firstPt.time)).font(.caption2).foregroundStyle(.tertiary),
                          at: CGPoint(x: plot.minX + 20, y: plot.maxY + 12))
-                ctx.draw(Text(f.string(from: lastPt.time)).font(.caption2).foregroundColor(.tertiary),
+                ctx.draw(Text(f.string(from: lastPt.time)).font(.caption2).foregroundStyle(.tertiary),
                          at: CGPoint(x: plot.maxX - 20, y: plot.maxY + 12))
             }
         }

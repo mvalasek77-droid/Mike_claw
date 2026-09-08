@@ -122,7 +122,7 @@ extension AuthService: ASAuthorizationControllerDelegate,
         }
     }
 
-    nonisolated func presentationAnchor(for controller: ASAuthorizationController)
+    func presentationAnchor(for controller: ASAuthorizationController)
         -> ASPresentationAnchor {
         // A window from any connected foreground scene will do.
         for scene in UIApplication.shared.connectedScenes {
