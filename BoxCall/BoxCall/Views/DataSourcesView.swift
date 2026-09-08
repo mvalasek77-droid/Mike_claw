@@ -44,6 +44,7 @@ struct DataSourcesView: View {
             }
             statRow("Provider",
                     Config.tmdbAPIKey.isEmpty ? "Mock (built-in slate)" : "TMDB /movie/upcoming")
+            statRow("Data API", Config.dataAPIBaseURL.host ?? "—")
             statRow("Catalog size", "\(market.movies.count) movies")
             if let last = market.lastRefreshAt {
                 statRow("Last refresh", format(last))
@@ -108,10 +109,18 @@ struct DataSourcesView: View {
                           role: "Trailing-7-day trailer views, estimated from the lifetime count and the video's publish date, plus likes-per-view engagement. YouTube removed public dislike counts in 2021, so engagement rate stands in for a like ratio.",
                           status: youtubeStatus,
                           wired: market.socialDiagnostics?.isHealthy ?? false)
-                SourceRow(name: "X (Twitter) mention velocity + sentiment",
-                          role: "24h mention volume + sentiment score. High velocity + positive sentiment lifts the crowd forecast.",
-                          status: "Backend-only. Paid X API tier proxied through api.boxcall.com/x-signal. Endpoint stubbed — while it is, the signal reports no data rather than zero mentions, so its absence does not bias the crowd read.",
+                SourceRow(name: "Bluesky mention volume + sentiment",
+                          role: "24h public posts mentioning the film, scored with VADER and weighted by engagement so a post nobody saw does not outvote one thousands liked.",
+                          status: "Live via the published BoxCall data set. Bluesky's API is public, keyless, and free at any volume this app reaches.",
+                          wired: true)
+                SourceRow(name: "X (Twitter)",
+                          role: "Originally the mention source for this model.",
+                          status: "Dropped. X ended its free tier in February 2026 and now bills per post read, so an X-backed signal could never be free. Bluesky replaces it.",
                           wired: false)
+                SourceRow(name: "Wikipedia pageview velocity",
+                          role: "Trailing-week article views against the week before. Spikes on trailer drops, casting news, and embargo lifts, and is far harder to game than engagement counts.",
+                          status: "Live via the published data set. Wikimedia's REST API is free and needs no key.",
+                          wired: true)
             }
             Group {
                 Text("Settlement").font(.headline).padding(.top, 4)

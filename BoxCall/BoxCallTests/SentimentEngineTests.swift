@@ -180,12 +180,12 @@ final class SentimentModelTests: XCTestCase {
     func testBaseline_rescalesConsensusAdjustmentToFullRange() {
         let bullish = SocialSignal(youtubeTrailerViews7d: 60_000_000,
                                    youtubeEngagementRate: 0.06,
-                                   xMentions24h: 200_000,
-                                   xSentiment: 0.9)
+                                   socialMentions24h: 200_000,
+                                   socialSentiment: 0.9)
         let bearish = SocialSignal(youtubeTrailerViews7d: 100_000,
                                    youtubeEngagementRate: 0.002,
-                                   xMentions24h: 200,
-                                   xSentiment: -0.9)
+                                   socialMentions24h: 200,
+                                   socialSentiment: -0.9)
         let up = SentimentModel.baseline(from: bullish)
         let down = SentimentModel.baseline(from: bearish)
         XCTAssertGreaterThan(up, 0.5)

@@ -9,8 +9,8 @@ import Foundation
 /// that could not be reached reports `nil`, which is a different claim
 /// from "I looked and the number was zero". Folding an unreachable
 /// source in as zero drags the whole model toward whatever the baseline
-/// treats as pessimistic — with the X endpoint stubbed, that alone put a
-/// permanent bearish tilt on every movie in the catalog.
+/// treats as pessimistic — when the mention feed was stubbed, that alone
+/// put a permanent bearish tilt on every movie in the catalog.
 struct SocialSignal: Hashable, Codable {
     /// Views the trailer picked up in the trailing 7 days. `nil` when no
     /// YouTube data was retrieved.
@@ -24,25 +24,28 @@ struct SocialSignal: Hashable, Codable {
     /// enough to tap the button are the same population a like ratio was
     /// trying to measure.
     var youtubeEngagementRate: Double?
-    /// Number of X (Twitter) mentions in the last 24h. `nil` when the X
-    /// signal was unavailable.
-    var xMentions24h: Int?
+    /// Public social posts mentioning the movie in the last 24h.
+    ///
+    /// Sourced from Bluesky rather than X: X discontinued its free tier
+    /// in February 2026 and now bills per post read, so an X-backed
+    /// signal could never be free. `nil` when the feed was unavailable.
+    var socialMentions24h: Int?
     /// Rough sentiment score −1 (uniformly negative) → +1 (uniformly
     /// positive). `nil` when unavailable — distinct from 0.0, which is a
     /// measured neutral.
-    var xSentiment: Double?
+    var socialSentiment: Double?
     /// When these numbers were captured.
     var capturedAt: Date
 
     init(youtubeTrailerViews7d: Int? = nil,
          youtubeEngagementRate: Double? = nil,
-         xMentions24h: Int? = nil,
-         xSentiment: Double? = nil,
+         socialMentions24h: Int? = nil,
+         socialSentiment: Double? = nil,
          capturedAt: Date = Date()) {
         self.youtubeTrailerViews7d = youtubeTrailerViews7d
         self.youtubeEngagementRate = youtubeEngagementRate
-        self.xMentions24h = xMentions24h
-        self.xSentiment = xSentiment
+        self.socialMentions24h = socialMentions24h
+        self.socialSentiment = socialSentiment
         self.capturedAt = capturedAt
     }
 
@@ -55,7 +58,7 @@ struct SocialSignal: Hashable, Codable {
         static let mentions: Double = 0.30
         static let mood: Double = 0.20
         /// Within the mood term, how much comes from each source.
-        static let moodFromX: Double = 0.70
+        static let moodFromSocial: Double = 0.70
         static let moodFromEngagement: Double = 0.30
     }
 
@@ -67,8 +70,8 @@ struct SocialSignal: Hashable, Codable {
     var coverage: Double {
         var covered = 0.0
         if youtubeTrailerViews7d != nil { covered += Weight.views }
-        if xMentions24h != nil { covered += Weight.mentions }
-        if xSentiment != nil || youtubeEngagementRate != nil { covered += Weight.mood }
+        if socialMentions24h != nil { covered += Weight.mentions }
+        if socialSentiment != nil || youtubeEngagementRate != nil { covered += Weight.mood }
         return covered
     }
 
@@ -93,20 +96,20 @@ struct SocialSignal: Hashable, Codable {
             weighted += Weight.views * (z / 2)
         }
 
-        if let mentions = xMentions24h {
+        if let mentions = socialMentions24h {
             let z = cappedZ(Double(mentions),
                             mean: genreBaseline.mentionsMean,
                             sigma: genreBaseline.mentionsSigma)
             weighted += Weight.mentions * (z / 2)
         }
 
-        // Mood blends explicit X sentiment with trailer engagement.
-        // Whichever of the two is available carries the term.
+        // Mood blends post sentiment with trailer engagement. Whichever
+        // of the two is available carries the term.
         var moodTotal = 0.0
         var moodWeight = 0.0
-        if let sentiment = xSentiment {
-            moodTotal += max(-1, min(1, sentiment)) * Weight.moodFromX
-            moodWeight += Weight.moodFromX
+        if let sentiment = socialSentiment {
+            moodTotal += max(-1, min(1, sentiment)) * Weight.moodFromSocial
+            moodWeight += Weight.moodFromSocial
         }
         if let engagement = youtubeEngagementRate {
             let z = cappedZ(engagement,

@@ -12,8 +12,8 @@ final class SocialSignalTests: XCTestCase {
         let sig = SocialSignal(
             youtubeTrailerViews7d: 500_000_000,
             youtubeEngagementRate: 0.09,
-            xMentions24h: 5_000_000,
-            xSentiment: 1.0
+            socialMentions24h: 5_000_000,
+            socialSentiment: 1.0
         )
         let adj = sig.consensusAdjustment(genreBaseline: base)
         XCTAssertLessThanOrEqual(adj, 0.30 + 1e-6)
@@ -24,8 +24,8 @@ final class SocialSignalTests: XCTestCase {
         let sig = SocialSignal(
             youtubeTrailerViews7d: 0,
             youtubeEngagementRate: 0.001,
-            xMentions24h: 0,
-            xSentiment: -1.0
+            socialMentions24h: 0,
+            socialSentiment: -1.0
         )
         let adj = sig.consensusAdjustment(genreBaseline: base)
         XCTAssertLessThan(adj, 0.0)
@@ -36,8 +36,8 @@ final class SocialSignalTests: XCTestCase {
         let sig = SocialSignal(
             youtubeTrailerViews7d: Int(base.trailerViewsMean),
             youtubeEngagementRate: base.engagementMean,
-            xMentions24h: Int(base.mentionsMean),
-            xSentiment: 0.0
+            socialMentions24h: Int(base.mentionsMean),
+            socialSentiment: 0.0
         )
         let adj = sig.consensusAdjustment(genreBaseline: base)
         XCTAssertLessThan(abs(adj), 0.01)
@@ -53,8 +53,8 @@ final class SocialSignalTests: XCTestCase {
         let youtubeOnly = SocialSignal(
             youtubeTrailerViews7d: Int(base.trailerViewsMean),
             youtubeEngagementRate: base.engagementMean,
-            xMentions24h: nil,
-            xSentiment: nil
+            socialMentions24h: nil,
+            socialSentiment: nil
         )
         let adj = youtubeOnly.consensusAdjustment(genreBaseline: base)
         XCTAssertLessThan(abs(adj), 0.01,
@@ -65,10 +65,10 @@ final class SocialSignalTests: XCTestCase {
     func testMeasuredZeroIsNotTheSameAsMissing() {
         let measured = SocialSignal(youtubeTrailerViews7d: Int(base.trailerViewsMean),
                                     youtubeEngagementRate: base.engagementMean,
-                                    xMentions24h: 0, xSentiment: 0)
+                                    socialMentions24h: 0, socialSentiment: 0)
         let missing = SocialSignal(youtubeTrailerViews7d: Int(base.trailerViewsMean),
                                    youtubeEngagementRate: base.engagementMean,
-                                   xMentions24h: nil, xSentiment: nil)
+                                   socialMentions24h: nil, socialSentiment: nil)
         XCTAssertLessThan(measured.consensusAdjustment(genreBaseline: base),
                           missing.consensusAdjustment(genreBaseline: base))
     }
@@ -97,11 +97,11 @@ final class SocialSignalTests: XCTestCase {
             SocialSignal(youtubeTrailerViews7d: 1, youtubeEngagementRate: 0.02).coverage,
             0.70, accuracy: 0.001)
         XCTAssertEqual(
-            SocialSignal(xMentions24h: 1, xSentiment: 0.5).coverage,
+            SocialSignal(socialMentions24h: 1, socialSentiment: 0.5).coverage,
             0.50, accuracy: 0.001)
         XCTAssertEqual(
             SocialSignal(youtubeTrailerViews7d: 1, youtubeEngagementRate: 0.02,
-                         xMentions24h: 1, xSentiment: 0.5).coverage,
+                         socialMentions24h: 1, socialSentiment: 0.5).coverage,
             1.0, accuracy: 0.001)
     }
 
@@ -124,27 +124,27 @@ final class SocialSignalTests: XCTestCase {
     func testUnionFillsGapsWithoutOverwriting() {
         let yt = SocialSignal(youtubeTrailerViews7d: 5_000_000,
                               youtubeEngagementRate: 0.03)
-        let x  = SocialSignal(xMentions24h: 40_000, xSentiment: 0.5)
+        let x  = SocialSignal(socialMentions24h: 40_000, socialSentiment: 0.5)
         let merged = CompositeSignalSource.union(yt, x)
         XCTAssertEqual(merged.youtubeTrailerViews7d, 5_000_000)
         XCTAssertEqual(merged.youtubeEngagementRate ?? 0, 0.03, accuracy: 1e-9)
-        XCTAssertEqual(merged.xMentions24h, 40_000)
-        XCTAssertEqual(merged.xSentiment ?? 0, 0.5, accuracy: 1e-9)
+        XCTAssertEqual(merged.socialMentions24h, 40_000)
+        XCTAssertEqual(merged.socialSentiment ?? 0, 0.5, accuracy: 1e-9)
         XCTAssertEqual(merged.coverage, 1.0, accuracy: 0.001)
     }
 
     func testUnionPreservesAMeasuredNeutralSentiment() {
         // 0.0 is a real reading. The old merge treated it as "empty" and
         // let a later source clobber it.
-        let first = SocialSignal(xMentions24h: 1_000, xSentiment: 0.0)
-        let second = SocialSignal(xMentions24h: 9_999, xSentiment: 0.9)
+        let first = SocialSignal(socialMentions24h: 1_000, socialSentiment: 0.0)
+        let second = SocialSignal(socialMentions24h: 9_999, socialSentiment: 0.9)
         let merged = CompositeSignalSource.union(first, second)
-        XCTAssertEqual(merged.xSentiment ?? -1, 0.0, accuracy: 1e-9)
-        XCTAssertEqual(merged.xMentions24h, 1_000)
+        XCTAssertEqual(merged.socialSentiment ?? -1, 0.0, accuracy: 1e-9)
+        XCTAssertEqual(merged.socialMentions24h, 1_000)
     }
 
     func testUnionWithNoPriorReturnsTheIncomingSignal() {
-        let x = SocialSignal(xMentions24h: 7, xSentiment: -0.2)
+        let x = SocialSignal(socialMentions24h: 7, socialSentiment: -0.2)
         XCTAssertEqual(CompositeSignalSource.union(nil, x), x)
     }
 }

@@ -307,8 +307,8 @@ actor YouTubeSignalSource: SocialSignalSource {
                 youtubeEngagementRate: engagement,
                 // Left nil on purpose: this source knows nothing about X,
                 // and claiming zero mentions would read as a bearish fact.
-                xMentions24h: nil,
-                xSentiment: nil,
+                socialMentions24h: nil,
+                socialSentiment: nil,
                 capturedAt: now
             )
         }
@@ -476,67 +476,132 @@ private struct YTStatistics: Decodable {
     }
 }
 
-// MARK: - X / Twitter (paid API, proxied through the backend)
+// MARK: - BoxCall published API (static JSON on GitHub Pages)
 
-/// X API v2 recent-tweet counts plus sentiment, proxied by the backend
-/// which holds the paid key. The endpoint is stubbed today, so this
-/// source reports nothing and — crucially — reports it as *nothing*
-/// rather than as zero mentions with neutral sentiment.
-actor XSignalSource: SocialSignalSource {
-    private let backendURL: URL
+/// Crowd chatter for the whole slate, read from the published BoxCall
+/// data set.
+///
+/// The original design proxied X through a server. That can never be
+/// free: X discontinued its free tier in February 2026 and now bills per
+/// post read. This source instead reads a static JSON document that a
+/// scheduled GitHub Action builds from Bluesky's public API — which
+/// needs no key, no account, and no approval — scores with VADER, and
+/// publishes to GitHub Pages. Actions is unmetered on public
+/// repositories and Pages serves from a CDN, so the whole path costs
+/// nothing at any volume this app will reach.
+///
+/// One request covers every movie, so adding titles does not add
+/// requests.
+actor BoxCallAPISource: SocialSignalSource {
+    private let baseURL: URL
     private let session: URLSession
-    private var diag = SocialSourceDiagnostics(name: "X (Twitter) via backend",
+    private var diag = SocialSourceDiagnostics(name: "BoxCall published API",
                                                configured: true)
 
-    init(backendURL: URL = URL(string: "https://api.boxcall.com/x-signal")!,
-         session: URLSession = .shared) {
-        self.backendURL = backendURL
+    /// Cached document plus when it was fetched. The upstream job runs
+    /// every few hours, so re-fetching more often than that is waste.
+    private var cached: [String: Wire]?
+    private var cachedAt: Date?
+    private let freshness: TimeInterval = 30 * 60
+
+    init(baseURL: URL = Config.dataAPIBaseURL, session: URLSession = .shared) {
+        self.baseURL = baseURL
         self.session = session
     }
 
     func diagnostics() async -> SocialSourceDiagnostics { diag }
 
+    func signal(for movie: Movie) async -> SocialSignal? {
+        await signals(for: [movie])[movie.id]
+    }
+
     func signals(for movies: [Movie]) async -> [String: SocialSignal] {
+        guard let document = await document() else { return [:] }
+
         var out: [String: SocialSignal] = [:]
         for movie in movies {
-            if let signal = await signal(for: movie) { out[movie.id] = signal }
+            guard let wire = document[movie.id] ?? matchByTitle(movie, in: document) else {
+                continue
+            }
+            let signal = wire.asSignal()
+            if signal.hasAnyData { out[movie.id] = signal }
         }
         diag.moviesCovered = out.count
         return out
     }
 
-    func signal(for movie: Movie) async -> SocialSignal? {
+    // MARK: - Private
+
+    /// The published catalog is keyed by the id the pipeline assigned.
+    /// A locally-seeded movie will not match, so fall back to title.
+    private func matchByTitle(_ movie: Movie, in document: [String: Wire]) -> Wire? {
+        let wanted = movie.title.lowercased()
+        return document.values.first { $0.title?.lowercased() == wanted }
+    }
+
+    private func document() async -> [String: Wire]? {
+        if let cached, let cachedAt, Date().timeIntervalSince(cachedAt) < freshness {
+            return cached
+        }
         diag.lastAttemptAt = Date()
-        var comps = URLComponents(url: backendURL, resolvingAgainstBaseURL: false)!
-        comps.queryItems = [.init(name: "title", value: movie.title)]
-        guard let url = comps.url else { return nil }
+
+        let url = baseURL.appendingPathComponent("signals.json")
         do {
             var request = URLRequest(url: url)
-            request.timeoutInterval = 8
-            let (data, resp) = try await session.data(for: request)
-            guard let http = resp as? HTTPURLResponse else {
+            request.timeoutInterval = 12
+            // The document is rebuilt on a schedule; let the URL cache
+            // revalidate rather than re-download an unchanged payload.
+            request.cachePolicy = .useProtocolCachePolicy
+            let (data, response) = try await session.data(for: request)
+            guard let http = response as? HTTPURLResponse else {
                 diag.lastError = "Unexpected response type."
-                return nil
+                return cached
             }
-            guard http.statusCode == 200 else {
+            guard (200..<300).contains(http.statusCode) else {
                 diag.lastError = "HTTP \(http.statusCode)."
-                return nil
+                // Serve stale rather than nothing: an old crowd read
+                // beats pretending the crowd went silent.
+                return cached
             }
-            struct Payload: Decodable { let mentions24h: Int; let sentiment: Double }
-            let payload = try JSONDecoder().decode(Payload.self, from: data)
+            let envelope = try JSONDecoder().decode(Envelope.self, from: data)
+            cached = envelope.signals
+            cachedAt = Date()
             diag.lastSuccessAt = Date()
             diag.lastError = nil
-            diag.moviesCovered = 1
-            return SocialSignal(
-                youtubeTrailerViews7d: nil,
-                youtubeEngagementRate: nil,
-                xMentions24h: payload.mentions24h,
-                xSentiment: payload.sentiment,
-                capturedAt: Date()
-            )
+            return envelope.signals
         } catch {
             diag.lastError = error.localizedDescription
-            return nil
+            return cached
+        }
+    }
+
+    // MARK: - Wire format
+
+    struct Envelope: Decodable {
+        let version: Int
+        let generatedAt: String?
+        let signals: [String: Wire]
+    }
+
+    /// Mirrors the pipeline's output. Every field is optional because
+    /// the pipeline publishes null for a source that did not report,
+    /// and null must survive the whole way to `SocialSignal`.
+    struct Wire: Decodable {
+        let title: String?
+        let socialMentions24h: Int?
+        let socialSentiment: Double?
+        let socialDispersion: Double?
+        let youtubeViews7d: Int?
+        let youtubeEngagementRate: Double?
+
+        func asSignal() -> SocialSignal {
+            SocialSignal(
+                youtubeTrailerViews7d: youtubeViews7d,
+                youtubeEngagementRate: youtubeEngagementRate,
+                socialMentions24h: socialMentions24h,
+                socialSentiment: socialSentiment,
+                capturedAt: Date()
+            )
         }
     }
 }
@@ -598,8 +663,8 @@ final class CompositeSignalSource: SocialSignalSource {
         return SocialSignal(
             youtubeTrailerViews7d: lhs.youtubeTrailerViews7d ?? rhs.youtubeTrailerViews7d,
             youtubeEngagementRate: lhs.youtubeEngagementRate ?? rhs.youtubeEngagementRate,
-            xMentions24h: lhs.xMentions24h ?? rhs.xMentions24h,
-            xSentiment: lhs.xSentiment ?? rhs.xSentiment,
+            socialMentions24h: lhs.socialMentions24h ?? rhs.socialMentions24h,
+            socialSentiment: lhs.socialSentiment ?? rhs.socialSentiment,
             capturedAt: max(lhs.capturedAt, rhs.capturedAt)
         )
     }
@@ -647,13 +712,27 @@ extension Config {
         (Bundle.main.object(forInfoDictionaryKey: "YOUTUBE_API_KEY") as? String) ?? ""
     }
 
-    /// Stack of social signal sources. Sources with no key gracefully
-    /// return nothing so they never block the pipeline — and never
-    /// contribute a fabricated zero.
+    /// Where the published data set lives.
+    ///
+    /// Defaults to the GitHub Pages site the repository's scheduled
+    /// Action publishes to. Override with BOXCALL_API_BASE in Info.plist
+    /// to point at a fork, a staging build, or a local server.
+    static var dataAPIBaseURL: URL {
+        let configured = (Bundle.main.object(forInfoDictionaryKey: "BOXCALL_API_BASE") as? String) ?? ""
+        if !configured.isEmpty, let url = URL(string: configured) { return url }
+        return URL(string: "https://mvalasek77-droid.github.io/Mike_claw/api/v1/")!
+    }
+
+    /// Stack of social signal sources.
+    ///
+    /// The published API comes first so its numbers win on any field
+    /// both sources measure, with the client's own YouTube call filling
+    /// gaps when a key is configured. Either source may report nothing;
+    /// neither ever contributes a fabricated zero.
     static var socialSignalSource: SocialSignalSource {
         CompositeSignalSource([
-            YouTubeSignalSource(apiKey: youtubeAPIKey),
-            XSignalSource()
+            BoxCallAPISource(),
+            YouTubeSignalSource(apiKey: youtubeAPIKey)
         ])
     }
 

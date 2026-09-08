@@ -1,0 +1,128 @@
+name: BoxCall Data
+
+# Builds the static BoxCall API and publishes it to GitHub Pages.
+#
+# Cost: zero. Actions minutes are unmetered on public repositories and
+# Pages serves from a CDN on a 100 GB/month soft allowance, which a few
+# hundred KB of JSON refreshed eight times a day does not approach.
+#
+# NOTE: GitHub only fires `schedule` on a repository's DEFAULT branch.
+# Until this file is merged there, the cron will not run and you must
+# trigger it by hand from the Actions tab.
+
+on:
+  schedule:
+    # Every three hours. Social numbers move on the order of hours and
+    # the YouTube quota is a daily budget, so more often buys nothing.
+    - cron: "0 */3 * * *"
+  workflow_dispatch:
+    inputs:
+      max_movies:
+        description: "Titles to collect signals for"
+        required: false
+        default: "40"
+  push:
+    branches: [main, master]
+    paths:
+      - "backend/pipeline/**"
+      - ".github/workflows/boxcall-data.yml"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never let two runs publish at once, but let a running build finish
+# rather than cancelling a half-written data set.
+concurrency:
+  group: boxcall-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pipeline/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r backend/pipeline/requirements.txt
+
+      # Resolving a trailer's video id costs 100 YouTube quota units
+      # against a 10,000/day default; the id never changes. Caching it
+      # is the difference between a sustainable pull and burning the
+      # day's budget on every run.
+      - name: Restore trailer id cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .cache
+          key: boxcall-trailer-ids-${{ github.run_id }}
+          restore-keys: |
+            boxcall-trailer-ids-
+
+      - name: Run unit tests
+        run: python -m pytest backend/pipeline/tests -q
+
+      - name: Build the API
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        run: |
+          python -m boxcall_pipeline.build \
+            --out "$GITHUB_WORKSPACE/site/api/v1" \
+            --seed "$GITHUB_WORKSPACE/backend/pipeline/seed_movies.json" \
+            --cache "$GITHUB_WORKSPACE/.cache/trailer_ids.json" \
+            --max-movies "${{ github.event.inputs.max_movies || 40 }}"
+        working-directory: backend/pipeline
+
+      - name: Save trailer id cache
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: .cache
+          key: boxcall-trailer-ids-${{ github.run_id }}
+
+      - name: Assemble the site
+        run: |
+          # Landing page at the root, API underneath it.
+          cp -r landing/. site/ 2>/dev/null || true
+          # Pages runs Jekyll by default, which strips files and folders
+          # beginning with an underscore. We publish plain JSON.
+          touch site/.nojekyll
+          echo "### Published API" >> "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          cat site/api/v1/index.json >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Fail if the build produced nothing usable
+        run: |
+          python - <<'PY'
+          import json, pathlib, sys
+          manifest = json.loads(pathlib.Path("site/api/v1/index.json").read_text())
+          if manifest.get("movieCount", 0) < 1:
+              sys.exit("Refusing to publish an empty catalog.")
+          signals = json.loads(pathlib.Path("site/api/v1/signals.json").read_text())
+          if not signals.get("signals"):
+              sys.exit("Refusing to publish an empty signal set.")
+          print(f"OK: {manifest['movieCount']} titles, "
+                f"{len(signals['signals'])} signal records.")
+          PY
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -203,7 +203,7 @@ final class SentimentEngine: ObservableObject {
             let engagement = signal.youtubeEngagementRate
                 .map { String(format: " at %.1f%% engagement", $0 * 100) } ?? ""
             text = "Trailer pulling \(compact(views)) views this week\(engagement)."
-        } else if let mentions = signal.xMentions24h {
+        } else if let mentions = signal.socialMentions24h {
             text = "\(compact(mentions)) mentions in the last 24h."
         } else {
             text = "Social capture refreshed, crowd reads \(signed(score))."
