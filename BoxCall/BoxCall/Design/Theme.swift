@@ -21,18 +21,23 @@ enum Theme {
     static let accent      = marqueeGold
     static let accentSoft  = bulbGlow
 
-    // Semantic (kept green/red because charts trump theme for legibility)
-    static let bull        = Color(red: 0.29, green: 0.87, blue: 0.50)
-    static let bear        = Color(red: 0.94, green: 0.27, blue: 0.27)
+    // Semantic. Still green/red — a trading app cannot afford to be
+    // clever about which way is up — but pulled well back from the
+    // stock system colors, which read as neon against the house black
+    // and fought the marquee palette everywhere they appeared.
+    static let bull        = Color(red: 0.24, green: 0.72, blue: 0.45)  // #3DB873
+    static let bear        = Color(red: 0.82, green: 0.28, blue: 0.26)  // #D14742
     static let neutral     = Color(white: 0.55)
 
-    // Tier colors (unchanged — mirrored in Tier.color)
-    static let tierRookie      = Color.gray
-    static let tierAnalyst     = Color.blue
+    // Tier colors, drawn from the front-of-house palette rather than
+    // the system wheel: house lights, usher's silver, marquee gold,
+    // brass, velvet rope, and the bulb itself. No pink, no purple.
+    static let tierRookie      = Color(white: 0.58)
+    static let tierAnalyst     = Color(red: 0.58, green: 0.65, blue: 0.72)  // usher silver
     static let tierInsider     = marqueeGold
-    static let tierProducer    = Color.purple
-    static let tierStudioHead  = Color.pink
-    static let tierOracle      = marqueeGold
+    static let tierProducer    = Color(red: 0.76, green: 0.52, blue: 0.24)  // brass
+    static let tierStudioHead  = Color(red: 0.70, green: 0.22, blue: 0.26)  // velvet rope
+    static let tierOracle      = bulbGlow
 
     // MARK: - Radii (continuous curves — no sharp corners in a movie palace)
     enum Radius {

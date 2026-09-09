@@ -38,7 +38,7 @@ struct FeaturedCritics: View {
 
     private var header: some View {
         HStack(spacing: 6) {
-            Image(systemName: "star.circle.fill").foregroundStyle(.orange)
+            Image(systemName: "star.circle.fill").foregroundStyle(Theme.marqueeGold)
             Text("Featured Critics")
                 .font(.headline)
             Spacer()
@@ -63,7 +63,7 @@ struct WinnerReviewCard: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(review.movieTitle).font(.subheadline.weight(.bold))
                     HStack(spacing: 6) {
-                        Text("@\(review.authorHandle)").font(.caption).foregroundStyle(.orange)
+                        Text("@\(review.authorHandle)").font(.caption).foregroundStyle(Theme.marqueeGold)
                         Text(review.authorTier.name).font(.caption2)
                             .padding(.horizontal, 5).padding(.vertical, 1)
                             .background(RoundedRectangle(cornerRadius: 3).fill(review.authorTier.color.opacity(0.25)))
@@ -71,7 +71,7 @@ struct WinnerReviewCard: View {
                     }
                 }
                 Spacer()
-                Text(review.stars).font(.caption).foregroundStyle(.yellow)
+                Text(review.stars).font(.caption).foregroundStyle(Theme.bulbGlow)
             }
             Text(review.headline)
                 .font(.title3.weight(.bold))
@@ -82,20 +82,21 @@ struct WinnerReviewCard: View {
                 .foregroundStyle(.primary.opacity(0.85))
             HStack {
                 Label("\(review.likes)", systemImage: "heart.fill")
-                    .font(.caption).foregroundStyle(.pink)
+                    .font(.caption).foregroundStyle(Theme.marqueeGold)
                 Spacer()
-                Text("Read more →").font(.caption.weight(.semibold)).foregroundStyle(.orange)
+                Text("Read more →").font(.caption.weight(.semibold)).foregroundStyle(Theme.marqueeGold)
             }
         }
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(LinearGradient(colors: [.orange.opacity(0.18), .orange.opacity(0.04)],
+                .fill(LinearGradient(colors: [Theme.marqueeGold.opacity(0.16),
+                                              Theme.velvetRed.opacity(0.10)],
                                      startPoint: .topLeading, endPoint: .bottomTrailing))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .stroke(.orange.opacity(0.5), lineWidth: 1.5)
+                .stroke(Theme.marqueeGold.opacity(0.55), lineWidth: 1.5)
         )
     }
 }
@@ -111,7 +112,7 @@ struct SupportingReviewCard: View {
             HStack {
                 rankBadge(rank)
                 Spacer()
-                Text(review.stars).font(.caption2).foregroundStyle(.yellow)
+                Text(review.stars).font(.caption2).foregroundStyle(Theme.bulbGlow)
             }
             HStack(spacing: 6) {
                 Text(review.moviePosterEmoji).font(.body)
@@ -134,10 +135,10 @@ struct SupportingReviewCard: View {
 private func rankBadge(_ n: Int) -> some View {
     let (label, color): (String, Color) = {
         switch n {
-        case 1: return ("#1", .orange)
-        case 2: return ("#2", .yellow)
-        case 3: return ("#3", .green)
-        default: return ("#\(n)", .blue)
+        case 1: return ("#1", Theme.marqueeGold)
+        case 2: return ("#2", Theme.bulbGlow)
+        case 3: return ("#3", Theme.tierProducer)
+        default: return ("#\(n)", Theme.tierAnalyst)
         }
     }()
     Text(label)
@@ -171,7 +172,7 @@ struct ReviewDetailSheet: View {
                             .background(RoundedRectangle(cornerRadius: 10).fill(.gray.opacity(0.2)))
                         VStack(alignment: .leading, spacing: 4) {
                             Text(review.movieTitle).font(.title3.bold())
-                            Text(review.stars).font(.subheadline).foregroundStyle(.yellow)
+                            Text(review.stars).font(.subheadline).foregroundStyle(Theme.bulbGlow)
                             HStack(spacing: 6) {
                                 Text("@\(review.authorHandle)")
                                     .font(.subheadline.weight(.semibold))
@@ -197,7 +198,7 @@ struct ReviewDetailSheet: View {
                         Label("\(live.likes)", systemImage: live.isLikedByMe ? "heart.fill" : "heart")
                     }
                     .buttonStyle(.bordered)
-                    .tint(.pink)
+                    .tint(Theme.marqueeGold)
                 }
                 .padding()
             }
@@ -283,7 +284,7 @@ struct WriteReviewSheet: View {
                             .frame(maxWidth: .infinity).fontWeight(.semibold)
                     }
                     .buttonStyle(.borderedProminent)
-                    .tint(.orange)
+                    .tint(Theme.marqueeGold)
                     .disabled(headline.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
                               reviewBody.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }

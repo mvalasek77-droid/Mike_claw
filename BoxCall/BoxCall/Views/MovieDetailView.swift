@@ -168,14 +168,44 @@ struct MovieDetailView: View {
                 }
             }
             Sparkline(points: market.consensusHistoryFor(movieId: movie.id),
-                      color: delta >= 0 ? .green : .red,
+                      color: delta >= 0 ? Theme.bull : Theme.bear,
                       height: 28)
                 .padding(.top, 2)
-            Text("Base tracker: $\(Int(movie.consensusOpeningMillions))M · moves with buys, sells, and news.")
-                .font(.caption2).foregroundStyle(.tertiary)
+            projectionFootnote
         }
         .padding()
-        .background(RoundedRectangle(cornerRadius: 12).fill(.orange.opacity(0.08)))
+        .background(RoundedRectangle(cornerRadius: 12)
+            .fill(Theme.marqueeGold.opacity(0.08)))
+    }
+
+    /// Names where the number came from.
+    ///
+    /// When the trades have published a range, that range is the anchor
+    /// and the live figure above it is that anchor moved by the crowd —
+    /// so the two are shown together, labelled, rather than blurred into
+    /// one unattributed number.
+    @ViewBuilder
+    private var projectionFootnote: some View {
+        if let projection = movie.tradeProjection, projection.isPublished {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 5) {
+                    Image(systemName: "newspaper.fill")
+                        .font(.system(size: 9))
+                        .foregroundStyle(Theme.marqueeGold)
+                    Text(projection.attribution)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+                Text("Anchored on that range, then moved by the crowd read. Wider trade ranges price wider contracts.")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        } else {
+            Text("Base estimate: $\(Int(movie.consensusOpeningMillions))M · no published trade projection yet. Moves with buys, sells, and news.")
+                .font(.caption2).foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     private func deltaTag(_ pct: Double) -> some View {
