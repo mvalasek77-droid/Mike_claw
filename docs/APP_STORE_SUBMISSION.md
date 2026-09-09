@@ -14,6 +14,74 @@ Store Connect and adjust as you go, not as already-submitted truth.
 
 ---
 
+## Actual App Review outcome — Prompt Coach Lite rejected 2026-09-08
+
+Real rejection, not a predicted one. Apple's message, in full:
+
+> **Submission ID** eeace56f-6a13-498f-a626-a370cd9b04c5 · **Review date**
+> September 8, 2026 · **Device** iPad Air 11-inch (M3) · **Version** 1.0 (2)
+>
+> **Guideline 2.3.7 — Performance — Accurate Metadata**
+> The app subtitle include references to the price of the app or the
+> service it provides... Note that references to free or discounted
+> services are considered a price reference and are not appropriate for
+> app metadata. *Next steps: remove any references to pricing from the
+> app's metadata.*
+>
+> **Guideline 4.1(a) — Design — Copycats**
+> The app's metadata contains third-party content... Specifically, the
+> app's subtitle includes references to Claude. *Next steps: revise the
+> app and metadata to remove this third-party content before resubmitting.
+> If you have the necessary rights to distribute an app with this
+> third-party content, attach documentary evidence and reply to this
+> message.*
+
+**Cause, exactly:** the Lite subtitle drafted in this doc's §2 was `Free
+Claude Prompt Coaching` — it contains both the flagged words, "Free" (a
+price reference, however casually used) and "Claude" (the third-party
+trademark). Both guidelines cite the **subtitle specifically**, not the
+Name, description, or keywords fields.
+
+**We don't hold documentary rights to use "Claude" as trademark content**
+(Prompt Coach is an independent app, not an Anthropic product), so the
+4.1(a) "attach evidence" branch doesn't apply — the only real path is
+compliance: remove the flagged words from the subtitle and resubmit. This
+supersedes the speculative "trademark reply" template in §7 below for this
+specific field; that template is for a description/keywords-level dispute,
+not a subtitle Apple has already told us plainly to change.
+
+**The fix — already applied in §2 below:**
+
+| | Old (rejected) | New |
+|---|---|---|
+| Lite subtitle | `Free Claude Prompt Coaching` | `Rewrite Prompts, Learn Why` |
+
+**The paid app's live subtitle has the identical pattern** (`Prompt
+Coaching for Claude` — no price word, but it does contain "Claude") and
+apparently wasn't flagged when it was reviewed. That's inconsistent
+enforcement, not a green light — the same reviewer team just told us in
+writing that a subtitle referencing Claude is a 4.1(a) problem. Recommend
+proactively fixing the paid subtitle too, on the next update, rather than
+waiting for it to get flagged on its own (also updated in §1 below, marked
+as precautionary since Apple hasn't required it there yet).
+
+**Resubmission steps (App Store Connect, web only — I can't do this part):**
+
+1. App Store Connect → **Prompt Coach Lite** → the 1.0 version (status
+   should read *Rejected* or *Metadata Rejected*).
+2. Edit the **Subtitle** field to `Rewrite Prompts, Learn Why`.
+3. This is metadata-only — no new build/binary is required, so there's
+   nothing to re-archive in Xcode for this fix alone.
+4. **Submit for Review** again.
+5. Optional: reply to the original message in the Resolution Center
+   acknowledging the fix — Apple doesn't require a reply for a metadata-only
+   correction, submitting the corrected version is sufficient on its own.
+6. Separately, on Prompt Coach's *next* version update, apply the same
+   subtitle change there (`5 Models, Prompted Right`) — not urgent, no
+   rejection forcing it, but don't let another update ship on the old one.
+
+---
+
 ## 0. The one thing to fix before anything else
 
 **Do not name the app "Claude Prompt Coach" in App Store Connect.** Several
@@ -42,7 +110,7 @@ all.
 | Field | Value |
 |---|---|
 | **Name** | `Prompt Coach` |
-| **Subtitle** (30 char max) | `Prompt Coaching for Claude` (26 chars) |
+| **Subtitle** (30 char max) | `5 Models, Prompted Right` (24 chars) — changed from `Prompt Coaching for Claude` after Lite was rejected under Guideline 4.1(a) for the identical "Claude in subtitle" pattern; see the Actual App Review outcome section above. Not yet required here by Apple, but the pattern is now a known rejection trigger — apply on the next update. |
 | **Bundle ID** | `com.codegenie.promptcoach` |
 | **SKU** | `PROMPTCOACH-IOS-2026` (any unique internal string works — this is not user-facing) |
 | **Primary category** | Productivity |
@@ -122,6 +190,13 @@ prompt engineering,ai prompt,claude,anthropic,chatgpt,writing,productivity,coach
 ```
 (88 chars)
 
+**Not touched by the 2026-09-08 rejection** — both guidelines cited only
+the *subtitle*, not keywords. Left as-is deliberately rather than
+preemptively stripped: Apple didn't ask for that, and removing accurate
+search terms costs discoverability for no confirmed reason. Worth watching
+on a future review, but not a documented risk the way the subtitle was —
+don't fix what wasn't flagged.
+
 ### What's New (this field doesn't apply to a first submission — ASC only
 shows it starting with version 2. Leave blank for the 1.0.0 initial submission.)
 
@@ -132,7 +207,7 @@ shows it starting with version 2. Leave blank for the 1.0.0 initial submission.)
 | Field | Value |
 |---|---|
 | **Name** | `Prompt Coach Lite` |
-| **Subtitle** (30 char max) | `Free Claude Prompt Coaching` (27 chars) |
+| **Subtitle** (30 char max) | `Rewrite Prompts, Learn Why` (26 chars) — **required fix.** The original `Free Claude Prompt Coaching` was rejected 2026-09-08 under Guideline 2.3.7 ("Free" = price reference) and Guideline 4.1(a) ("Claude" = third-party trademark). See the Actual App Review outcome section above. Paste this value in and resubmit. |
 | **Bundle ID** | `com.codegenie.promptcoach.lite` |
 | **SKU** | `PROMPTCOACHLITE-IOS-2026` |
 | **Primary category** | Productivity |
@@ -186,6 +261,11 @@ Anthropic.
 prompt engineering,ai prompt,claude,anthropic,chatgpt,writing,coach,llm,free,gpt
 ```
 (80 chars)
+
+**Also not touched.** Same reasoning as the paid app's keywords above —
+both rejection guidelines named the subtitle specifically, not this field.
+"free" here is fine; the keyword field isn't the user-visible metadata
+2.3.7 is about, and Apple didn't flag it.
 
 ---
 
@@ -367,6 +447,15 @@ immediately — we'd genuinely like to know if something drifted.
 ### If flagged for trademark / naming concerns around "Claude" or
 ### "Anthropic"
 
+**Superseded for subtitle-level 4.1(a) flags** — see the *Actual App Review
+outcome* section at the top of this doc. When Apple names the subtitle
+specifically and we have no documentary rights to offer, the correct move
+is removing the word and resubmitting, not arguing the point below. Keep
+this template for a different scenario: a future rejection that cites the
+*description* or *keywords* for the same reason, where "functional,
+factually accurate reference, clearly disclaimed" is a real argument worth
+making rather than an easy compliance fix.
+
 ```
 Prompt Coach is an independent app that helps users write better prompts
 for Anthropic's publicly documented Claude models; it is not named after,
@@ -383,18 +472,32 @@ models the app's coaching guidance targets — not a claim of affiliation.
 
 ## 8. Still open — cannot be resolved from this repo alone
 
-1. **`AppTier.paidAppStoreURL` is a placeholder** (`apps.apple.com/app/id0000000000`)
-   in `App/AppTier.swift`. It must point at the real listing before Lite
-   ships, which means the paid app needs to go live (and get a real numeric
-   App ID) before Lite's in-app link is meaningful. Submitting Lite first
-   with the placeholder still live would ship a dead link inside the app —
-   avoid that ordering.
-2. **Archive and upload a signed build.** `DEVELOPMENT_TEAM` is configured in
-   `project.yml`, but archiving still requires a working Apple signing setup in
-   Xcode and an App Store Connect app record.
-3. **Legal entity name for the copyright line** — nothing in the repo states
-   one; fill in `§1`/`§2`'s Copyright field before submitting.
-4. A minor test-infra note, not a submission blocker: the new contract check
+**Resolved since this doc was first written** (confirmed by commits from the
+Mac-side session that actually archived and submitted a build): a real
+`DEVELOPMENT_TEAM` is set in `project.yml`; a distinct Lite app icon exists
+(`AppIconLite.appiconset`); GitHub Pages is live and the hosted legal/support
+URLs were verified HTTP 200 as of 2026-08-06; the paid app was archived,
+uploaded, reviewed, and **is live** (per the user, confirmed by the fact
+that Lite could even be submitted and reviewed against it).
+
+**Still genuinely open:**
+
+1. **`AppTier.paidAppStoreURL` is still the literal placeholder**
+   (`apps.apple.com/app/id0000000000`) in `App/AppTier.swift`, even though
+   the paid app is live. This is now the most urgent item: Lite's "Unlock
+   all 5 models" card and its three locked model-reference rows all link
+   through this constant — if it ships as-is, real users tapping it hit a
+   fake App Store page. **Unlike the subtitle fix, this is a code change,
+   not metadata** — it needs a new build, archive, and upload, not just an
+   App Store Connect edit. **I need the paid app's real numeric App ID**
+   (from App Store Connect → Prompt Coach → App Information → General
+   Information → Apple ID, or the `id`-number segment of its live App Store
+   URL) to patch this — give it to me and I'll fix `AppTier.swift` and
+   re-run the contract tests.
+2. **Legal entity name for the copyright line** — can't confirm from source
+   whether this was filled in on the Mac side; check `§1`/`§2`'s Copyright
+   field in ASC directly.
+3. A minor test-infra note, not a submission blocker: the new contract check
    for the Anthropic disclaimer had to account for Swift's `\` line-
    continuation syntax splitting the phrase across lines in the source file.
    Worth remembering if you hand-edit `LegalText` later — a contract-test
@@ -402,13 +505,9 @@ models the app's coaching guidance targets — not a claim of affiliation.
    normalization, or a phrase that happens to wrap a line reads as absent
    even when it's present.
 
-GitHub Pages is enabled and deployed from this branch; the paid privacy,
-Lite privacy, and support URLs in §1–§2 were verified as HTTP 200 on
-2026-08-06.
-
 Everything above that's checkable from source **is** checked — run
-`python3 ios/PromptCoach/Tests/validate_pack.py` (571 checks as of this
-writing) before acting on any of this. It won't catch a dead Pages URL; it
-will catch the hosted legal pages drifting out of sync with
-what the app actually does, which is the failure mode most likely to sink
-an actual review.
+`python3 ios/PromptCoach/Tests/validate_pack.py` before acting on any of
+this. It won't catch a dead Pages URL or a placeholder App Store ID that
+merely *looks* like a valid URL; it will catch the hosted legal pages
+drifting out of sync with what the app actually does, and — as of this
+rejection — a subtitle that reintroduces "free" or "claude"/"anthropic".

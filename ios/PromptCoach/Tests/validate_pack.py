@@ -782,6 +782,35 @@ if DEPLOY_WORKFLOW.exists():
           "(it shipped scoped to a different branch — dead pages otherwise)",
           "claude/prompt-coach-github-search-zxwm0e" in wf)
 
+# ---------------------------------- App Store Connect subtitle safety net
+# Real Apple rejection, 2026-09-08: the drafted Lite subtitle ("Free Claude
+# Prompt Coaching") got hit by both Guideline 2.3.7 (price reference — the
+# word "free") and Guideline 4.1(a) (trademark reference — the word
+# "claude"). Both guidelines named the subtitle specifically. This is the
+# one field that must never again ship either kind of word, for either app.
+
+APP_STORE_SUBMISSION = ROOT / "docs/APP_STORE_SUBMISSION.md"
+if APP_STORE_SUBMISSION.exists():
+    asc = APP_STORE_SUBMISSION.read_text()
+    subtitle_lines = [ln for ln in asc.splitlines() if "**Subtitle**" in ln]
+    check("the submission doc still documents a Subtitle field for each app",
+          len(subtitle_lines) >= 2, str(subtitle_lines))
+    # A subtitle line looks like: | **Subtitle** (...) | `The Actual Value` (n chars) ...
+    # Only the backtick-quoted value is the field Apple actually reads — the
+    # surrounding prose (which may itself discuss the word "Claude" while
+    # explaining the fix) must not be mistaken for the field contents.
+    forbidden = ("free", "claude", "anthropic", "discount", "$", "sale", "cheap")
+    for ln in subtitle_lines:
+        m = re.search(r'`([^`]+)`', ln)
+        check(f"a Subtitle field value is backtick-quoted and extractable: {ln[:60]!r}",
+              m is not None)
+        if m:
+            value = m.group(1).lower()
+            hits = [w for w in forbidden if w in value]
+            check(f"Subtitle value {m.group(1)!r} carries no price or "
+                  f"trademark reference (Guideline 2.3.7 / 4.1(a))",
+                  not hits, f"found: {hits}")
+
 # The privacy claim is load-bearing for the Privacy Policy and for App Review.
 networked = [p.name for p in ALL_SWIFT if "URLSession" in p.read_text()]
 check("no network calls anywhere in the app", not networked, str(networked))
