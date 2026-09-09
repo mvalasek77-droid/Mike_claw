@@ -626,8 +626,14 @@ if APP_TIER.exists():
     if fb:
         check("the Lite fallback model is itself one of the unlocked models",
               fb.group(1) in lite_ids, fb.group(1))
-    check("a placeholder App Store URL is flagged for replacement before submission",
-          "paidAppStoreURL" in tier_src and "replace" in tier_src.lower())
+    m_store = re.search(
+        r'paidAppStoreURL\s*=\s*URL\(string:\s*"https://apps\.apple\.com/app/id(\d+)"\)',
+        tier_src)
+    check("the Lite upsell URL points at a real App Store listing "
+          "(numeric id, not the 0000000000 placeholder)",
+          m_store is not None and m_store.group(1) != "0000000000"
+          and len(m_store.group(1)) >= 9,
+          m_store.group(1) if m_store else "no URL found")
 
 if MODELS_SWIFT.exists() and APP_TIER.exists():
     check("ModelPack exposes availableModels so every screen reads the "

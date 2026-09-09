@@ -28,9 +28,7 @@ enum AppTier {
     /// `liteModelIDs` — enforced by a contract test, not just this comment.
     static let liteFallbackModelID = "claude-sonnet-5"
 
-    /// Placeholder — replace with the real App Store listing before
-    /// submission. Pointing this at a live listing is a release blocker,
-    /// not a nice-to-have: an upsell link that 404s is a worse experience
-    /// than no upsell at all.
-    static let paidAppStoreURL = URL(string: "https://apps.apple.com/app/id0000000000")!
+    /// Prompt Coach's App Store listing. This numeric ID is stable before
+    /// release, so Lite can ship with a working App Store destination.
+    static let paidAppStoreURL = URL(string: "https://apps.apple.com/app/id6798885165")!
 }
