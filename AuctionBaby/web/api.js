@@ -57,6 +57,39 @@
       if (data.sessionToken) setToken(data.sessionToken);
       return data; // { userId, sessionToken, isNew, user }
     },
+    // ── auth: email + password ──
+    // The non-Apple way in. Apple's web flow is popup-only here (in redirect
+    // mode Apple POSTs to the redirect URI, and GitHub Pages is static and
+    // can't receive a POST), and Firefox blocks or breaks that popup — which
+    // locked people out of accounts that still existed on the server. This
+    // path talks only to our own Worker, so no browser or third party can
+    // break it.
+    async register(email, password, name) {
+      const data = await auth("/auth/register", {
+        method: "POST", auth: false,
+        body: { email, password, name: name || null },
+      });
+      if (data.sessionToken) setToken(data.sessionToken);
+      return data; // { userId, sessionToken, isNew, user }
+    },
+    async login(email, password) {
+      const data = await auth("/auth/login", {
+        method: "POST", auth: false,
+        body: { email, password },
+      });
+      if (data.sessionToken) setToken(data.sessionToken);
+      return data; // { userId, sessionToken, isNew, user }
+    },
+    // Attach a password to the signed-in account, or change an existing one.
+    // This is how an Apple user makes themselves a fallback: sign in with
+    // Apple once in a browser where the popup works, set a password, then use
+    // email + password anywhere afterwards.
+    async setPassword(password, currentPassword, email) {
+      return auth("/me/password", {
+        method: "POST",
+        body: { password, currentPassword: currentPassword || undefined, email: email || undefined },
+      });
+    },
     // Dev-only: create/login with a synthetic user (no Apple Sign-In needed).
     async devLogin(name) {
       const data = await auth("/auth/dev-login", {

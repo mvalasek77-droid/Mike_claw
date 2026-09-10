@@ -672,6 +672,236 @@ async function handleDevLogin(request: Request, env: Env, ctx?: ExecutionContext
   });
 }
 
+// ── Email + password auth ────────────────────────────────────────────────────
+//
+// Sign in with Apple was the only door in, and on the web it only works as a
+// popup: in redirect mode Apple POSTs to the redirect URI, and GitHub Pages is
+// static, so it can never receive that POST. Firefox blocks or breaks the
+// popup, which left users locked out of accounts that still existed — the row
+// was fine, only the browser's session token was gone.
+//
+// This path depends on no third party and no email provider, so it works even
+// with RESEND_API_KEY unset.
+
+const PASSWORD_MIN = 8;
+const PASSWORD_MAX = 200;
+/** OWASP's 2023 floor for PBKDF2-SHA256. Workers bill CPU time, not wall time,
+ *  and this lands well inside the per-request limit. */
+const PBKDF2_ITERATIONS = 210_000;
+const PASSWORD_LOGIN_MAX_FAILS = 8;
+const PASSWORD_LOGIN_WINDOW_MS = 15 * 60_000;
+
+/** Same per-isolate throttle shape as the admin console: per-colo and reset by
+ *  a cold start, so it isn't a hard ceiling — but it makes online guessing of
+ *  a single account's password impractical. */
+const passwordLoginFailures = new Map<string, { n: number; blockedUntil: number }>();
+
+const toHex = (b: Uint8Array) => [...b].map(x => x.toString(16).padStart(2, "0")).join("");
+const fromHex = (h: string) =>
+  new Uint8Array((h.match(/.{1,2}/g) ?? []).map(x => parseInt(x, 16)));
+
+/** PBKDF2-SHA256 → 256-bit hex digest. Salt is hex in, so a stored salt round
+ *  trips without re-encoding. */
+async function derivePasswordHash(password: string, saltHex: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"],
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", hash: "SHA-256", salt: fromHex(saltHex), iterations: PBKDF2_ITERATIONS },
+    key, 256,
+  );
+  return toHex(new Uint8Array(bits));
+}
+
+/** Lowercased + trimmed, or null when it isn't plausibly an address. Kept
+ *  deliberately loose — the only real proof of an address is delivery, and we
+ *  are not sending mail on this path. */
+function normalizeEmail(raw: unknown): string | null {
+  const s = String(raw ?? "").trim().toLowerCase();
+  if (s.length < 3 || s.length > 254) return null;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)) return null;
+  return s;
+}
+
+/** Shared by register and set-password so the rules can't drift apart. */
+function passwordProblem(password: string): string | null {
+  if (password.length < PASSWORD_MIN) return `Password must be at least ${PASSWORD_MIN} characters`;
+  if (password.length > PASSWORD_MAX) return "Password is too long";
+  return null;
+}
+
+interface PasswordRow extends UserRow {
+  password_hash: string | null;
+  password_salt: string | null;
+}
+
+/** POST /auth/register  { email, password, name? }
+ *
+ * Creates a password account and signs it in. apple_sub gets a synthetic
+ * "pw:<uuid>" because the column is UNIQUE NOT NULL and relaxing it would mean
+ * rebuilding a live table (see migration 016). */
+async function handleRegister(request: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
+  if (!env.SESSION_SECRET) return err("Server misconfigured: SESSION_SECRET unset", 500);
+  if (!env.DB) return err("Server misconfigured: D1 not bound", 500);
+
+  let body: any = {};
+  try { body = await request.json(); } catch { return err("Invalid JSON body"); }
+
+  const email = normalizeEmail(body?.email);
+  if (!email) return err("Enter a valid email address");
+  const password = String(body?.password ?? "");
+  const problem = passwordProblem(password);
+  if (problem) return err(problem);
+  const name = body?.name ? String(body.name).trim().slice(0, 60) || null : null;
+
+  const clash = await env.DB.prepare(
+    "SELECT id FROM users WHERE lower(email) = ? AND password_hash IS NOT NULL",
+  ).bind(email).first<{ id: string }>();
+  if (clash) return err("An account with that email already exists. Try signing in.", 409);
+
+  const id = crypto.randomUUID();
+  const saltHex = toHex(crypto.getRandomValues(new Uint8Array(16)));
+  const hash = await derivePasswordHash(password, saltHex);
+  const now = Date.now();
+
+  try {
+    await env.DB.prepare(
+      "INSERT INTO users (id, apple_sub, email, name, created_at, last_seen_at, " +
+      "password_hash, password_salt, password_set_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    ).bind(id, `pw:${id}`, email, name, now, now, hash, saltHex, now).run();
+  } catch (e: any) {
+    // The partial unique index is the real guard against two registrations
+    // racing past the SELECT above.
+    if (String(e?.message ?? e).includes("UNIQUE")) {
+      return err("An account with that email already exists. Try signing in.", 409);
+    }
+    throw e;
+  }
+
+  const ttl = Number(env.SESSION_TTL_SECONDS ?? 60 * 60 * 24 * 30);
+  const sessionToken = await issueSessionToken(id, ttl, env.SESSION_SECRET);
+  if (ctx) ctx.waitUntil(notifyNewSignup(env, { id, name, email }, "email + password"));
+
+  const user: UserRow = {
+    id, apple_sub: `pw:${id}`, email, name,
+    date_of_birth: null, created_at: now, last_seen_at: now,
+    verified_at: null, verification_vendor: null, verification_ref: null,
+    verification_status: "unstarted", suspended_until: null, is_admin: 0,
+  };
+  return json({ userId: id, sessionToken, expiresInSeconds: ttl, isNew: true, user: publicUser(user) });
+}
+
+/** POST /auth/login  { email, password } */
+async function handlePasswordLogin(request: Request, env: Env): Promise<Response> {
+  if (!env.SESSION_SECRET) return err("Server misconfigured: SESSION_SECRET unset", 500);
+  if (!env.DB) return err("Server misconfigured: D1 not bound", 500);
+
+  let body: any = {};
+  try { body = await request.json(); } catch { return err("Invalid JSON body"); }
+
+  // Throttle before any lookup work, so a blocked caller costs us one Map read.
+  const ip = request.headers.get("cf-connecting-ip") ?? "unknown";
+  const now = Date.now();
+  const entry = passwordLoginFailures.get(ip);
+  if (entry && entry.blockedUntil > now && entry.n >= PASSWORD_LOGIN_MAX_FAILS) {
+    return err("Too many attempts — try again shortly", 429);
+  }
+  if (passwordLoginFailures.size > 5000) {
+    for (const [k, v] of passwordLoginFailures) {
+      if (v.blockedUntil <= now) passwordLoginFailures.delete(k);
+    }
+  }
+  const noteFailure = () => {
+    const rec = passwordLoginFailures.get(ip) ?? { n: 0, blockedUntil: 0 };
+    rec.n += 1;
+    rec.blockedUntil = now + PASSWORD_LOGIN_WINDOW_MS;
+    passwordLoginFailures.set(ip, rec);
+  };
+
+  const email = normalizeEmail(body?.email);
+  const password = String(body?.password ?? "");
+  // One message for "no such account" and "wrong password" alike, so this
+  // endpoint can't be used to enumerate who has an account here. A dating app
+  // leaking that is a real privacy problem, not just a security nicety.
+  const REJECT = "Incorrect email or password";
+  if (!email || !password) { noteFailure(); return err(REJECT, 401); }
+
+  const row = await env.DB.prepare(
+    `SELECT ${USER_COLS}, password_hash, password_salt FROM users ` +
+    "WHERE lower(email) = ? AND password_hash IS NOT NULL",
+  ).bind(email).first<PasswordRow>();
+  if (!row || !row.password_hash || !row.password_salt) { noteFailure(); return err(REJECT, 401); }
+
+  const candidate = await derivePasswordHash(password, row.password_salt);
+  if (!(await constantTimeEqual(candidate, row.password_hash))) {
+    noteFailure();
+    return err(REJECT, 401);
+  }
+
+  if (row.suspended_until != null && row.suspended_until > now) {
+    return err("Your account is suspended. Try again later.", 403);
+  }
+
+  passwordLoginFailures.delete(ip);
+  await env.DB.prepare("UPDATE users SET last_seen_at = ? WHERE id = ?").bind(now, row.id).run();
+
+  const ttl = Number(env.SESSION_TTL_SECONDS ?? 60 * 60 * 24 * 30);
+  const sessionToken = await issueSessionToken(row.id, ttl, env.SESSION_SECRET);
+  return json({
+    userId: row.id, sessionToken, expiresInSeconds: ttl, isNew: false,
+    user: publicUser({ ...row, last_seen_at: now }),
+  });
+}
+
+/** POST /me/password  { password, currentPassword? }  [auth]
+ *
+ * Lets a signed-in user attach a password to an account that has none — the
+ * recovery route for an Apple user who can't complete the popup in their usual
+ * browser. Changing an existing password requires the current one, so a stolen
+ * session token can't quietly lock the owner out. */
+async function handleSetPassword(request: Request, env: Env): Promise<Response> {
+  const userId = await authenticate(request, env);
+  if (!userId) return err("Unauthorized", 401);
+
+  let body: any = {};
+  try { body = await request.json(); } catch { return err("Invalid JSON body"); }
+  const password = String(body?.password ?? "");
+  const problem = passwordProblem(password);
+  if (problem) return err(problem);
+
+  const row = await env.DB.prepare(
+    "SELECT id, email, password_hash, password_salt FROM users WHERE id = ?",
+  ).bind(userId).first<{ id: string; email: string | null; password_hash: string | null; password_salt: string | null }>();
+  if (!row) return err("Unauthorized", 401);
+
+  if (row.password_hash && row.password_salt) {
+    const current = String(body?.currentPassword ?? "");
+    if (!current) return err("Enter your current password", 400);
+    const candidate = await derivePasswordHash(current, row.password_salt);
+    if (!(await constantTimeEqual(candidate, row.password_hash))) {
+      return err("Current password is incorrect", 401);
+    }
+  }
+
+  // Without an email there is nothing to sign in WITH, so refuse rather than
+  // storing a password that can never be used.
+  const email = normalizeEmail(body?.email ?? row.email);
+  if (!email) return err("Add an email address to your account first", 400);
+
+  const clash = await env.DB.prepare(
+    "SELECT id FROM users WHERE lower(email) = ? AND password_hash IS NOT NULL AND id != ?",
+  ).bind(email, userId).first<{ id: string }>();
+  if (clash) return err("That email is already used by another account", 409);
+
+  const saltHex = toHex(crypto.getRandomValues(new Uint8Array(16)));
+  const hash = await derivePasswordHash(password, saltHex);
+  await env.DB.prepare(
+    "UPDATE users SET email = ?, password_hash = ?, password_salt = ?, password_set_at = ? WHERE id = ?",
+  ).bind(email, hash, saltHex, Date.now(), userId).run();
+
+  return json({ ok: true, email });
+}
+
 /** POST /auth/logout  [auth] — client-side hint. Stateless tokens can't be
  *  server-side revoked without a revoked table; today we just refresh the
  *  last-seen. The client is expected to delete the token from Keychain. */
@@ -2342,9 +2572,13 @@ export default {
     if (pathname === "/auth/apple" && m === "POST") return handleAppleAuth(request, env, ctx);
     if (pathname === "/auth/admin-login" && m === "POST") return handleAdminLogin(request, env);
     if (pathname === "/auth/dev-login" && m === "POST") return handleDevLogin(request, env, ctx);
+    // Email + password — the non-Apple way in (migration 016).
+    if (pathname === "/auth/register" && m === "POST") return handleRegister(request, env, ctx);
+    if (pathname === "/auth/login" && m === "POST") return handlePasswordLogin(request, env);
     if (pathname === "/me" && m === "GET") return handleMe(request, env);
     if (pathname === "/me" && m === "DELETE") return handleDeleteMe(request, env);
     if (pathname === "/me/dob" && m === "POST") return handleSetDob(request, env);
+    if (pathname === "/me/password" && m === "POST") return handleSetPassword(request, env);
     if (pathname === "/auth/logout" && m === "POST") return handleLogout(request, env);
 
     // Slice 2 — push

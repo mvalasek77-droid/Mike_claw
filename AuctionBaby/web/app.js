@@ -486,6 +486,16 @@
       </div>
       ${APPLE_ON() ? `<button class="btn ghost" id="ob-apple" style="margin-bottom:16px;width:100%"> Sign in with Apple</button>
         <div class="faint" style="text-align:center;margin-bottom:16px">Optional — keeps your account across devices.</div>` : ""}
+      ${(CONFIGURED() && !SIGNED_IN()) ? `<div class="card" style="padding:16px;margin-bottom:16px">
+        <div class="kicker" style="margin-bottom:10px">${APPLE_ON() ? "Or use an email and password" : "Sign in"}</div>
+        <label class="field"><div class="lbl">Email</div><input class="txt" id="ob-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" value="${esc(S.me.email || "")}"></label>
+        <label class="field" style="margin-top:8px"><div class="lbl">Password</div><input class="txt" id="ob-pass" type="password" autocomplete="current-password" placeholder="At least 8 characters"></label>
+        <div class="row" style="gap:8px;margin-top:12px">
+          <button class="btn" id="ob-signin" style="flex:1">Sign in</button>
+          <button class="btn ghost" id="ob-register" style="flex:1">Create account</button>
+        </div>
+        <div class="faint" id="ob-pw-msg" style="margin-top:10px;text-align:center"></div>
+      </div>` : ""}
       ${(CONFIGURED() && !SIGNED_IN() && !APPLE_ON() && DEBUG_DEV_LOGIN()) ? `<button class="btn ghost" id="ob-dev" style="margin-bottom:16px;width:100%;background:#e8364f;color:#fff;border-color:#e8364f"> Sign in (Dev Test)</button>
         <div class="faint" style="text-align:center;margin-bottom:16px">Dev mode — creates a test account on the server.</div>` : ""}
 
@@ -581,6 +591,50 @@
         onboarding(); // re-render to show filled fields
       } catch (e) { toast("Apple sign-in: " + e.message); }
     };
+    // ── Email + password ──
+    // The door that doesn't depend on Apple's popup. Same harvest-then-render
+    // dance as the Apple button: re-rendering onboarding() wipes anything typed
+    // but not yet submitted.
+    const pwMsg = (t) => { const el = $("#ob-pw-msg"); if (el) el.textContent = t || ""; };
+    const pwCreds = () => ({
+      email: (($("#ob-email") || {}).value || "").trim(),
+      password: ($("#ob-pass") || {}).value || "",
+    });
+    // Both buttons share this: only the API call and the wording differ.
+    const pwSubmit = async (label, run) => {
+      const { email, password } = pwCreds();
+      if (!email) return pwMsg("Enter your email.");
+      if (!password) return pwMsg("Enter your password.");
+      const si = $("#ob-signin"), rg = $("#ob-register");
+      if (si) si.disabled = true;
+      if (rg) rg.disabled = true;
+      pwMsg(label + "…");
+      try {
+        const d = await run(email, password);
+        const u = d && d.user;
+        S.me.email = email;
+        if (u && u.name) S.me.name = u.name;
+        if (u && u.dateOfBirth) S.me.dob = u.dateOfBirth;
+        save();
+        toast(d && d.isNew ? "Account created." : "Signed in.");
+        onboarding();          // re-render so the filled fields show
+      } catch (e) {
+        // The Worker sends one message for a wrong password and an unknown
+        // email alike, on purpose — surface it verbatim rather than guessing
+        // which case it was and leaking the difference.
+        pwMsg(e.message || "That didn't work.");
+        if (si) si.disabled = false;
+        if (rg) rg.disabled = false;
+      }
+    };
+    const siBtn = $("#ob-signin");
+    if (siBtn) siBtn.onclick = () => pwSubmit("Signing in", (e, p) => API.login(e, p));
+    const rgBtn = $("#ob-register");
+    if (rgBtn) rgBtn.onclick = () => pwSubmit("Creating account", (e, p) => {
+      const nm = (($("#ob-name") || {}).value || "").trim();
+      return API.register(e, p, nm || null);
+    });
+
     const dv = $("#ob-dev");
     if (dv) {
       // Server-side gated behind APP_SHARED_SECRET since 2026-08-28; UI kept

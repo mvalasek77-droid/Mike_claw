@@ -61,10 +61,26 @@ CREATE TABLE IF NOT EXISTS users (
   --   matching Worker handlePlaceBid  rejects bids from OR to this user
   -- Existing sessions run to their TTL — this isn't a hard ban. Use
   -- DELETE /admin/users/:id for that. Lift with POST /admin/users/:id/unsuspend.
-  suspended_until        INTEGER
+  suspended_until        INTEGER,
+
+  -- ── Migration 016: email + password login ─────────────────────────────────
+  -- A second way in, so losing a browser session doesn't lock a user out of an
+  -- account that still exists. PBKDF2-SHA256, 210k iterations, per-user random
+  -- 16-byte salt; both stored hex. NULL hash = Apple-only account.
+  --
+  -- apple_sub is UNIQUE NOT NULL and can't be relaxed without rebuilding the
+  -- table, so password accounts carry a synthetic "pw:<uuid>" sentinel there.
+  -- Test that prefix — never assume apple_sub means the account is Apple's.
+  password_hash          TEXT,
+  password_salt          TEXT,
+  password_set_at        INTEGER
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_apple_sub ON users(apple_sub);
+-- One password login per email, case-insensitive. Partial so Apple rows —
+-- which may share a private-relay address or have no email — stay exempt.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_password_email
+  ON users(lower(email)) WHERE password_hash IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_users_verif_pending ON users(verification_status)
   WHERE verification_status = 'pending';
 
