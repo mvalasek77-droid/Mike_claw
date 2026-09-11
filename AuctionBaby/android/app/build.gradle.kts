@@ -14,10 +14,10 @@ android {
         versionCode = 1
         versionName = "1.0.0"
 
-        manifestPlaceholders["hostName"] = "mvalasek77.github.io"
-        manifestPlaceholders["defaultUrl"] = "https://mvalasek77.github.io/auctionbaby/app/"
+        manifestPlaceholders["hostName"] = "mvalasek77-droid.github.io"
+        manifestPlaceholders["defaultUrl"] = "https://mvalasek77-droid.github.io/Mike_claw/auctionbaby/app/"
         manifestPlaceholders["launcherName"] = "Auction Baby"
-        manifestPlaceholders["assetStatements"] = """[{"relation": ["delegate_permission/common.handle_all_urls"], "target": {"namespace": "web", "site": "https://mvalasek77.github.io"}}]"""
+        manifestPlaceholders["assetStatements"] = """[{"relation": ["delegate_permission/common.handle_all_urls"], "target": {"namespace": "web", "site": "https://mvalasek77-droid.github.io"}}]"""
     }
 
     signingConfigs {
