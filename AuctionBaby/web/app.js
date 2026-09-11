@@ -19,6 +19,7 @@
   const DEBUG_DEV_LOGIN = () => new URLSearchParams(location.search).has("devlogin");
   const SIGNED_IN = () => !!(API.hasSession && API.hasSession());  // have a session token
   const APPLE_ON = () => !!(window.AB_CONFIG && window.AB_CONFIG.APPLE_SERVICE_ID);
+  const GOOGLE_ON = () => !!(window.AB_CONFIG && window.AB_CONFIG.GOOGLE_CLIENT_ID);
   const hueFrom = s => { let h = 0; for (const c of (s || "")) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
   const VERIFIED_SVG = `<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`;
   const verifiedBadge = (size) => `<span class="vbadge${size === "sm" ? " sm" : size === "lg" ? " lg" : ""}" title="Verified">${VERIFIED_SVG}</span>`;
@@ -486,8 +487,9 @@
       </div>
       ${APPLE_ON() ? `<button class="btn ghost" id="ob-apple" style="margin-bottom:16px;width:100%"> Sign in with Apple</button>
         <div class="faint" style="text-align:center;margin-bottom:16px">Optional — keeps your account across devices.</div>` : ""}
+      ${(CONFIGURED() && !SIGNED_IN() && GOOGLE_ON()) ? `<div id="ob-google-btn" style="margin-bottom:16px;display:flex;justify-content:center"></div>` : ""}
       ${(CONFIGURED() && !SIGNED_IN()) ? `<div class="card" style="padding:16px;margin-bottom:16px">
-        <div class="kicker" style="margin-bottom:10px">${APPLE_ON() ? "Or use an email and password" : "Sign in"}</div>
+        <div class="kicker" style="margin-bottom:10px">${(APPLE_ON() || GOOGLE_ON()) ? "Or use an email and password" : "Sign in"}</div>
         <label class="field"><div class="lbl">Email</div><input class="txt" id="ob-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" value="${esc(S.me.email || "")}"></label>
         <label class="field" style="margin-top:8px"><div class="lbl">Password</div><input class="txt" id="ob-pass" type="password" autocomplete="current-password" placeholder="At least 8 characters"></label>
         <div class="row" style="gap:8px;margin-top:12px">
@@ -591,6 +593,23 @@
         onboarding(); // re-render to show filled fields
       } catch (e) { toast("Apple sign-in: " + e.message); }
     };
+    // ── Google Sign-In ──
+    if (GOOGLE_ON() && document.getElementById("ob-google-btn")) {
+      API.initGoogleButton("ob-google-btn", async (response) => {
+        try {
+          const d = await API.signInWithGoogle(response.credential);
+          const u = d && d.user;
+          if (u) {
+            if (u.name) S.me.name = u.name;
+            if (u.email) S.me.email = u.email;
+            if (u.dateOfBirth) S.me.dob = u.dateOfBirth;
+            save();
+          }
+          toast("Signed in with Google." + (u && u.name ? " Welcome, " + u.name + "!" : ""));
+          onboarding();
+        } catch (e) { toast("Google sign-in: " + e.message); }
+      });
+    }
     // ── Email + password ──
     // The door that doesn't depend on Apple's popup. Same harvest-then-render
     // dance as the Apple button: re-rendering onboarding() wipes anything typed

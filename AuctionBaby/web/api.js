@@ -57,6 +57,40 @@
       if (data.sessionToken) setToken(data.sessionToken);
       return data; // { userId, sessionToken, isNew, user }
     },
+    // ── auth: Sign in with Google ──
+    // Uses Google Identity Services (GIS). The caller passes the ID token
+    // (credential) obtained from the rendered Google button's callback.
+    async signInWithGoogle(credential) {
+      const data = await auth("/auth/google", {
+        method: "POST", auth: false,
+        body: { credential },
+      });
+      if (data.sessionToken) setToken(data.sessionToken);
+      return data;
+    },
+    // Initialize the GIS library and render the Google button into a container.
+    // Returns a promise that resolves once the button is rendered.
+    async initGoogleButton(containerId, callback) {
+      if (!C.GOOGLE_CLIENT_ID) return;
+      await loadGoogleGSI();
+      window.google.accounts.id.initialize({
+        client_id: C.GOOGLE_CLIENT_ID,
+        callback: callback,
+        auto_select: false,
+      });
+      const el = document.getElementById(containerId);
+      if (el) {
+        window.google.accounts.id.renderButton(el, {
+          type: "standard",
+          theme: "filled_black",
+          size: "large",
+          text: "signin_with",
+          shape: "pill",
+          width: el.offsetWidth || 300,
+        });
+      }
+    },
+
     // ── auth: email + password ──
     // The non-Apple way in. Apple's web flow is popup-only here (in redirect
     // mode Apple POSTs to the redirect URI, and GitHub Pages is static and
@@ -286,6 +320,16 @@
       const s = document.createElement("script");
       s.src = "https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js";
       s.onload = resolve; s.onerror = () => reject(new Error("Apple JS failed to load"));
+      document.head.appendChild(s);
+    });
+  }
+
+  function loadGoogleGSI() {
+    return new Promise((resolve, reject) => {
+      if (window.google && window.google.accounts) return resolve();
+      const s = document.createElement("script");
+      s.src = "https://accounts.google.com/gsi/client";
+      s.onload = resolve; s.onerror = () => reject(new Error("Google GSI failed to load"));
       document.head.appendChild(s);
     });
   }

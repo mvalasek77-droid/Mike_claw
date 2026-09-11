@@ -85,6 +85,7 @@ interface Env {
   ADMIN_LOGIN_HASH_HEX?: string;
   APPLE_CLIENT_ID: string;         // e.g. "com.valasek.auctionbaby" (bundle id)
   WEB_CLIENT_ID?: string;          // Sign-in-with-Apple-for-Web Services ID (e.g. "com.valasek.auctionbaby.web")
+  GOOGLE_CLIENT_ID?: string;       // Google OAuth 2.0 Web client ID (e.g. "123456.apps.googleusercontent.com")
   SESSION_TTL_SECONDS?: string;    // default 30 days
   APP_SHARED_SECRET?: string;      // gates admin endpoints (POST /push/send)
 
@@ -118,8 +119,10 @@ interface Env {
 
 const APPLE_ISSUER = "https://appleid.apple.com";
 const APPLE_JWKS_URL = "https://appleid.apple.com/auth/keys";
-/** Apple rotates their signing keys. Cache the JWKS for 24h — safe because
- *  we look up by `kid` and fall back to a refresh if the key isn't found. */
+const GOOGLE_ISSUER = "https://accounts.google.com";
+const GOOGLE_JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs";
+/** Apple and Google rotate their signing keys. Cache the JWKS for 24h — safe
+ *  because we look up by `kid` and fall back to a refresh if key isn't found. */
 const JWKS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 // ── Response helpers ─────────────────────────────────────────────────────────
@@ -259,6 +262,65 @@ async function verifyAppleIdentityToken(token: string, expectedAudiences: string
   if (claims.iss !== APPLE_ISSUER) throw new Error(`Wrong issuer: ${claims.iss}`);
   // Accept the iOS app bundle id OR the Sign-in-with-Apple-for-Web Services ID.
   if (!expectedAudiences.includes(claims.aud)) throw new Error(`Wrong audience: ${claims.aud}`);
+  const now = Math.floor(Date.now() / 1000);
+  if (typeof claims.exp !== "number" || claims.exp < now) throw new Error("Token expired");
+  if (typeof claims.iat !== "number" || claims.iat > now + 60) throw new Error("Token issued in the future");
+  if (!claims.sub || typeof claims.sub !== "string") throw new Error("Missing sub");
+
+  return claims;
+}
+
+// ── Google Identity (Sign in with Google) ────────────────────────────────────
+
+let googleJwksCache: { jwks: AppleJwks; fetchedAt: number } | null = null;
+
+async function fetchGoogleJwks(force = false): Promise<AppleJwks> {
+  if (!force && googleJwksCache && Date.now() - googleJwksCache.fetchedAt < JWKS_CACHE_TTL_MS) {
+    return googleJwksCache.jwks;
+  }
+  const res = await fetch(GOOGLE_JWKS_URL, { cf: { cacheTtl: 3600, cacheEverything: true } as any });
+  if (!res.ok) throw new Error(`Google JWKS fetch failed: HTTP ${res.status}`);
+  const jwks = (await res.json()) as AppleJwks;
+  googleJwksCache = { jwks, fetchedAt: Date.now() };
+  return jwks;
+}
+
+interface GoogleClaims {
+  iss: string; sub: string; aud: string;
+  iat: number; exp: number;
+  email?: string; email_verified?: boolean;
+  name?: string; picture?: string;
+}
+
+async function verifyGoogleIdToken(token: string, expectedClientId: string): Promise<GoogleClaims> {
+  const parts = token.split(".");
+  if (parts.length !== 3) throw new Error("Malformed JWT");
+  const [headerB64, payloadB64, sigB64] = parts;
+
+  const header = JSON.parse(new TextDecoder().decode(base64UrlDecode(headerB64))) as { alg: string; kid: string };
+  if (header.alg !== "RS256") throw new Error(`Unsupported alg: ${header.alg}`);
+  if (!header.kid) throw new Error("Missing kid");
+
+  let jwks = await fetchGoogleJwks(false);
+  let jwk = jwks.keys.find((k) => k.kid === header.kid);
+  if (!jwk) {
+    jwks = await fetchGoogleJwks(true);
+    jwk = jwks.keys.find((k) => k.kid === header.kid);
+  }
+  if (!jwk) throw new Error(`Unknown Google signing key kid: ${header.kid}`);
+
+  const key = await importAppleKey(jwk);
+  const signature = base64UrlDecode(sigB64);
+  const signingInput = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
+  const ok = await crypto.subtle.verify("RSASSA-PKCS1-v1_5", key, signature, signingInput);
+  if (!ok) throw new Error("Invalid JWT signature");
+
+  const claims = JSON.parse(new TextDecoder().decode(base64UrlDecode(payloadB64))) as GoogleClaims;
+
+  if (claims.iss !== GOOGLE_ISSUER && claims.iss !== "accounts.google.com") {
+    throw new Error(`Wrong issuer: ${claims.iss}`);
+  }
+  if (claims.aud !== expectedClientId) throw new Error(`Wrong audience: ${claims.aud}`);
   const now = Math.floor(Date.now() / 1000);
   if (typeof claims.exp !== "number" || claims.exp < now) throw new Error("Token expired");
   if (typeof claims.iat !== "number" || claims.iat > now + 60) throw new Error("Token issued in the future");
@@ -420,6 +482,48 @@ async function handleAppleAuth(request: Request, env: Env, ctx?: ExecutionContex
 function isNew_seedName(supplied: string | null, _claims: AppleClaims): string | null {
   if (supplied && supplied.length > 0) return supplied;
   return null;
+}
+
+// ── Sign in with Google ─────────────────────────────────────────────────────
+
+async function handleGoogleAuth(request: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
+  let body: any;
+  try { body = await request.json(); } catch { return err("Invalid JSON body"); }
+
+  const credential = String(body?.credential ?? "").trim();
+  if (!credential) return err("credential (Google ID token) is required");
+  if (!env.GOOGLE_CLIENT_ID) return err("Google Sign-In not configured", 500);
+  if (!env.SESSION_SECRET) return err("Server misconfigured: SESSION_SECRET unset", 500);
+  if (!env.DB) return err("Server misconfigured: D1 not bound", 500);
+
+  let claims: GoogleClaims;
+  try {
+    claims = await verifyGoogleIdToken(credential, env.GOOGLE_CLIENT_ID);
+  } catch (e: any) {
+    return err(`Google token rejected: ${e.message}`, 401);
+  }
+
+  const googleSub = `google:${claims.sub}`;
+  const email = claims.email?.trim().toLowerCase() ?? null;
+  const name = body?.name ? String(body.name).trim().slice(0, 80) : (claims.name ?? null);
+
+  const { user, isNew } = await upsertUserByAppleSub(env, googleSub, email, name);
+
+  if (user.suspended_until != null && user.suspended_until > Date.now()) {
+    return err("Your account is suspended. Try again later.", 403);
+  }
+  const ttl = Number(env.SESSION_TTL_SECONDS ?? 60 * 60 * 24 * 30);
+  const sessionToken = await issueSessionToken(user.id, ttl, env.SESSION_SECRET);
+
+  if (isNew && ctx) ctx.waitUntil(notifyNewSignup(env, user, "Sign in with Google"));
+
+  return json({
+    userId: user.id,
+    sessionToken,
+    expiresInSeconds: ttl,
+    isNew,
+    user: publicUser(user),
+  });
 }
 
 // ── Founder signup alerts ────────────────────────────────────────────────────
@@ -2570,6 +2674,7 @@ export default {
 
     if (pathname === "/health" && m === "GET") return handleHealth(env);
     if (pathname === "/auth/apple" && m === "POST") return handleAppleAuth(request, env, ctx);
+    if (pathname === "/auth/google" && m === "POST") return handleGoogleAuth(request, env, ctx);
     if (pathname === "/auth/admin-login" && m === "POST") return handleAdminLogin(request, env);
     if (pathname === "/auth/dev-login" && m === "POST") return handleDevLogin(request, env, ctx);
     // Email + password — the non-Apple way in (migration 016).

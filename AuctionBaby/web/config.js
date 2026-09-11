@@ -37,6 +37,13 @@ window.AB_CONFIG = {
   APPLE_SERVICE_ID: "com.valasek.auctionbaby.web",
   APPLE_REDIRECT_URI: SITE_URL + "index.html",
 
+  // ── Sign in with Google ───────────────────────────────────────────────────
+  // Create an OAuth 2.0 Web client ID at console.cloud.google.com → APIs &
+  // Services → Credentials. Add your web origin (e.g. https://mvalasek77.github.io)
+  // to the "Authorized JavaScript origins". Set the same value as GOOGLE_CLIENT_ID
+  // on the auth Worker so it accepts the token audience.
+  GOOGLE_CLIENT_ID: "",              // e.g. "123456789.apps.googleusercontent.com"
+
   // ── Payments (Stripe, via the consumables Worker) ────────────────────────
   // The consumables Worker holds the Stripe secret; the web only needs the
   // return URLs. Gavel packs use /checkout (one-time); Passes use /subscribe
