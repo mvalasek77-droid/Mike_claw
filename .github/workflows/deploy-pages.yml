@@ -34,6 +34,8 @@ jobs:
              docs/auctionbaby/app/
           cp AuctionBaby/web/icons/* docs/auctionbaby/app/icons/
           cp AuctionBaby/web/photos/* docs/auctionbaby/app/photos/ 2>/dev/null || true
+          mkdir -p docs/.well-known
+          cp AuctionBaby/web/.well-known/assetlinks.json docs/.well-known/ 2>/dev/null || true
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
