@@ -31,52 +31,6 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 type StudioTab = "create" | "trends" | "insights" | "roadmap";
 
-function ConfidenceBar({ value }: { value: number }) {
-  const width = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.timing(width, {
-      toValue: value,
-      duration: 800,
-      useNativeDriver: false,
-    }).start();
-  }, [value]);
-
-  const color =
-    value >= 0.9 ? THEME.success : value >= 0.8 ? THEME.warning : THEME.info;
-
-  return (
-    <View style={confStyles.track}>
-      <Animated.View
-        style={[
-          confStyles.fill,
-          {
-            backgroundColor: color,
-            width: width.interpolate({
-              inputRange: [0, 1],
-              outputRange: ["0%", "100%"],
-            }),
-          },
-        ]}
-      />
-    </View>
-  );
-}
-
-const confStyles = StyleSheet.create({
-  track: {
-    height: 3,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: 2,
-    overflow: "hidden",
-    marginTop: 8,
-  },
-  fill: {
-    height: 3,
-    borderRadius: 2,
-  },
-});
-
 function TrendCard({ topic }: { topic: AITrendingTopic }) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -346,7 +300,7 @@ export default function AIStudioScreen() {
               <View style={styles.loadingContainer}>
                 <View style={styles.loadingDot} />
                 <Text style={styles.loadingText}>
-                  AI is analyzing trending patterns...
+                  Building title options...
                 </Text>
               </View>
             )}
@@ -401,15 +355,6 @@ export default function AIStudioScreen() {
                     <Text style={styles.suggestionReasoning}>
                       {s.reasoning}
                     </Text>
-                    <View style={styles.confidenceRow}>
-                      <Text style={styles.confidenceLabel}>
-                        Confidence
-                      </Text>
-                      <Text style={styles.confidenceValue}>
-                        {Math.round(s.confidence * 100)}%
-                      </Text>
-                    </View>
-                    <ConfidenceBar value={s.confidence} />
                   </GlassCard>
                 ))}
 
@@ -487,45 +432,52 @@ export default function AIStudioScreen() {
             <Text style={styles.sectionTitle}>
               Trending Topics
             </Text>
-            <Text style={styles.sectionSubtitle}>
-              AI-analyzed trends across the platform in real time
-            </Text>
-            {trendingTopics.map((topic) => (
-              <TrendCard key={topic.id} topic={topic} />
-            ))}
+            {trendingTopics.length > 0 ? (
+              trendingTopics.map((topic) => (
+                <TrendCard key={topic.id} topic={topic} />
+              ))
+            ) : (
+              <GlassCard style={styles.emptyStateCard}>
+                <Ionicons
+                  name="analytics-outline"
+                  size={28}
+                  color={THEME.textSecondary}
+                />
+                <Text style={styles.emptyStateTitle}>No trend data yet</Text>
+                <Text style={styles.emptyStateBody}>
+                  Trends are measured from real activity across the platform.
+                  This build stores everything on your device and has no backend
+                  to measure, so there is nothing to report here yet.
+                </Text>
+              </GlassCard>
+            )}
           </View>
         )}
 
         {activeTab === "insights" && (
           <View>
-            <GlassCard style={styles.insightsSummary} accentGlow>
-              <View style={styles.summaryRow}>
-                <View style={styles.summaryItem}>
-                  <Text style={styles.summaryValue}>12.4K</Text>
-                  <Text style={styles.summaryLabel}>Total Views</Text>
-                </View>
-                <View style={styles.summaryDivider} />
-                <View style={styles.summaryItem}>
-                  <Text style={styles.summaryValue}>847</Text>
-                  <Text style={styles.summaryLabel}>New Subs</Text>
-                </View>
-                <View style={styles.summaryDivider} />
-                <View style={styles.summaryItem}>
-                  <Text style={styles.summaryValue}>6.8%</Text>
-                  <Text style={styles.summaryLabel}>Engage</Text>
-                </View>
-              </View>
-            </GlassCard>
-
             <Text style={styles.sectionTitle}>
-              AI-Powered Insights
+              Channel Insights
             </Text>
-            <Text style={styles.sectionSubtitle}>
-              Personalized recommendations based on your channel analytics
-            </Text>
-            {creatorInsights.map((insight) => (
-              <InsightCard key={insight.id} insight={insight} />
-            ))}
+            {creatorInsights.length > 0 ? (
+              creatorInsights.map((insight) => (
+                <InsightCard key={insight.id} insight={insight} />
+              ))
+            ) : (
+              <GlassCard style={styles.emptyStateCard}>
+                <Ionicons
+                  name="bar-chart-outline"
+                  size={28}
+                  color={THEME.textSecondary}
+                />
+                <Text style={styles.emptyStateTitle}>No analytics yet</Text>
+                <Text style={styles.emptyStateBody}>
+                  Watch time, subscriber growth and engagement are all measured
+                  server-side. Once this app is connected to a backend that
+                  records them, your real numbers will appear here.
+                </Text>
+              </GlassCard>
+            )}
           </View>
         )}
 
@@ -720,21 +672,22 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingLeft: 36,
   },
-  confidenceRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  emptyStateCard: {
     alignItems: "center",
-    marginTop: 8,
-    paddingLeft: 36,
+    gap: 10,
+    paddingVertical: 28,
+    paddingHorizontal: 20,
   },
-  confidenceLabel: {
-    color: THEME.textSecondary,
-    fontSize: 11,
-  },
-  confidenceValue: {
+  emptyStateTitle: {
     color: THEME.textPrimary,
-    fontSize: 11,
-    fontWeight: "600",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  emptyStateBody: {
+    color: THEME.textSecondary,
+    fontSize: 13,
+    lineHeight: 19,
+    textAlign: "center",
   },
   moreToolsCard: {
     marginTop: 8,
@@ -866,32 +819,6 @@ const styles = StyleSheet.create({
     color: THEME.info,
     fontSize: 12,
     fontWeight: "500",
-  },
-  insightsSummary: {
-    marginBottom: 20,
-  },
-  summaryRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  summaryItem: {
-    flex: 1,
-    alignItems: "center",
-    gap: 4,
-  },
-  summaryValue: {
-    color: THEME.textPrimary,
-    fontSize: 22,
-    fontWeight: "700",
-  },
-  summaryLabel: {
-    color: THEME.textSecondary,
-    fontSize: 11,
-  },
-  summaryDivider: {
-    width: 1,
-    height: 32,
-    backgroundColor: "rgba(255,255,255,0.08)",
   },
   insightCard: {
     marginBottom: 12,

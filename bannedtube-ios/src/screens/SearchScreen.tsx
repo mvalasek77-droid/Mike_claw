@@ -13,18 +13,16 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import VideoCard from "../components/VideoCard";
 import { useApp } from "../lib/AppContext";
-import { searchVideos, THEME, type Video } from "../lib/data";
+import { searchVideos, videos, THEME, type Video } from "../lib/data";
 
-const TRENDING_SEARCHES = [
-  "documentary",
-  "comedy",
-  "investigation",
-  "independent media",
-  "censorship",
-  "free speech",
-  "wellness",
-  "technology",
-];
+/**
+ * Topics drawn from the tags actually present in the catalog, so every
+ * suggestion returns results. Nothing here is ranked by popularity — this app
+ * has no backend measuring what people search for.
+ */
+const BROWSE_TOPICS = Array.from(
+  new Set(videos.flatMap((v) => v.tags))
+).slice(0, 8);
 
 interface SearchScreenProps {
   onBack: () => void;
@@ -125,22 +123,24 @@ export default function SearchScreen({
               ))}
             </View>
           )}
-          <View style={styles.suggestionSection}>
-            <Text style={styles.suggestionTitle}>Trending searches</Text>
-            {TRENDING_SEARCHES.map((term, i) => (
-              <TouchableOpacity
-                key={i}
-                style={styles.recentItem}
-                onPress={() => quickSearch(term)}
-                accessibilityRole="button"
-                accessibilityLabel={`Search for ${term}`}
-              >
-                <Ionicons name="trending-up" size={18} color={THEME.accent} />
-                <Text style={styles.recentText}>{term}</Text>
-                <Ionicons name="arrow-forward" size={14} color={THEME.bgTertiary} />
-              </TouchableOpacity>
-            ))}
-          </View>
+          {BROWSE_TOPICS.length > 0 && (
+            <View style={styles.suggestionSection}>
+              <Text style={styles.suggestionTitle}>Browse topics</Text>
+              {BROWSE_TOPICS.map((term, i) => (
+                <TouchableOpacity
+                  key={i}
+                  style={styles.recentItem}
+                  onPress={() => quickSearch(term)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Search for ${term}`}
+                >
+                  <Ionicons name="pricetag-outline" size={18} color={THEME.accent} />
+                  <Text style={styles.recentText}>{term}</Text>
+                  <Ionicons name="arrow-forward" size={14} color={THEME.bgTertiary} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </ScrollView>
       ) : (
         <FlatList

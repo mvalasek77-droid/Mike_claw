@@ -167,9 +167,11 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
                       <Ionicons name="checkmark-circle" size={14} color={THEME.textSecondary} />
                     )}
                   </View>
-                  <Text style={styles.channelSubs}>
-                    {(channel.subscribers / 1000).toFixed(0)}K subscribers
-                  </Text>
+                  {channel.subscribers > 0 && (
+                    <Text style={styles.channelSubs}>
+                      {(channel.subscribers / 1000).toFixed(0)}K subscribers
+                    </Text>
+                  )}
                 </View>
                 <View style={[styles.checkbox, selected && styles.checkboxSelected]}>
                   <Ionicons

@@ -17,12 +17,22 @@ import {
 
 describe("data module", () => {
   describe("static data integrity", () => {
-    it("has at least 10 videos", () => {
-      expect(videos.length).toBeGreaterThanOrEqual(10);
+    it("ships a non-empty demo catalog", () => {
+      expect(videos.length).toBeGreaterThan(0);
+      expect(channels.length).toBeGreaterThan(0);
     });
 
-    it("has at least 5 channels", () => {
-      expect(channels.length).toBeGreaterThanOrEqual(5);
+    it("quotes no engagement figures it cannot measure", () => {
+      // There is no backend, so views/likes/subscribers have no real value to
+      // report. They must stay at zero rather than showing invented numbers.
+      for (const v of videos) {
+        expect(v.views).toBe(0);
+        expect(v.likes).toBe(0);
+        expect(v.dislikes).toBe(0);
+      }
+      for (const c of channels) {
+        expect(c.subscribers).toBe(0);
+      }
     });
 
     it("every video has required fields", () => {
@@ -162,10 +172,10 @@ describe("data module", () => {
   });
 
   describe("getComments", () => {
-    it("returns an array of comments", () => {
+    it("ships no pre-written comments", () => {
       const comments = getComments();
       expect(Array.isArray(comments)).toBe(true);
-      expect(comments.length).toBeGreaterThan(0);
+      expect(comments).toHaveLength(0);
     });
 
     it("each comment has required fields", () => {
@@ -180,23 +190,21 @@ describe("data module", () => {
   });
 
   describe("AI functions", () => {
-    it("getAITitleSuggestions returns suggestions", () => {
+    it("getAITitleSuggestions builds titles from the given topic", () => {
       const suggestions = getAITitleSuggestions("technology");
       expect(suggestions.length).toBeGreaterThan(0);
       for (const s of suggestions) {
-        expect(s.confidence).toBeGreaterThan(0);
-        expect(s.confidence).toBeLessThanOrEqual(100);
+        expect(s.content).toContain("technology");
+        expect(s.reasoning).toBeTruthy();
       }
     });
 
-    it("getAITrendingTopics returns topics", () => {
-      const topics = getAITrendingTopics();
-      expect(topics.length).toBeGreaterThan(0);
+    it("getAITrendingTopics reports nothing without a backend", () => {
+      expect(getAITrendingTopics()).toEqual([]);
     });
 
-    it("getCreatorInsights returns insights", () => {
-      const insights = getCreatorInsights();
-      expect(insights.length).toBeGreaterThan(0);
+    it("getCreatorInsights reports nothing without analytics", () => {
+      expect(getCreatorInsights()).toEqual([]);
     });
   });
 });

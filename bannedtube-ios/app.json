@@ -31,7 +31,7 @@
     "android": {
       "package": "com.bannedtube.app",
       "adaptiveIcon": {
-        "backgroundColor": "#0f0f0f",
+        "backgroundColor": "#d42a2a",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"

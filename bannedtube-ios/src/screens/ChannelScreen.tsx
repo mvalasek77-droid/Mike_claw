@@ -20,7 +20,6 @@ import {
   getVideosByChannel,
   formatSubscribers,
   formatViews,
-  formatCompact,
   THEME,
 } from "../lib/data";
 import { avatars } from "../lib/assets";
@@ -268,50 +267,7 @@ export default function ChannelScreen({
 
         {activeTab === 2 && (
           <View style={styles.tabContent}>
-            <GlassCard style={styles.communityPost}>
-              <View style={styles.communityHeader}>
-                <Avatar color={channel.avatarColor} initial={channel.initial} size={32} imageSource={avatars[channel.id]} />
-                <View>
-                  <Text style={styles.communityAuthor}>{channel.name}</Text>
-                  <Text style={styles.communityTime}>2 days ago</Text>
-                </View>
-              </View>
-              <Text style={styles.communityText}>
-                Big things coming this week! Stay tuned for a major announcement. Drop a fire emoji if you're ready.
-              </Text>
-              <View style={styles.communityActions}>
-                <View style={styles.communityAction}>
-                  <Ionicons name="thumbs-up-outline" size={16} color={THEME.textSecondary} />
-                  <Text style={styles.communityActionText}>842</Text>
-                </View>
-                <View style={styles.communityAction}>
-                  <Ionicons name="chatbubble-outline" size={16} color={THEME.textSecondary} />
-                  <Text style={styles.communityActionText}>56</Text>
-                </View>
-              </View>
-            </GlassCard>
-            <GlassCard style={styles.communityPost}>
-              <View style={styles.communityHeader}>
-                <Avatar color={channel.avatarColor} initial={channel.initial} size={32} imageSource={avatars[channel.id]} />
-                <View>
-                  <Text style={styles.communityAuthor}>{channel.name}</Text>
-                  <Text style={styles.communityTime}>1 week ago</Text>
-                </View>
-              </View>
-              <Text style={styles.communityText}>
-                Thank you for {formatCompact(channel.subscribers)} subs! This community is incredible. What content do you want to see next?
-              </Text>
-              <View style={styles.communityActions}>
-                <View style={styles.communityAction}>
-                  <Ionicons name="thumbs-up-outline" size={16} color={THEME.textSecondary} />
-                  <Text style={styles.communityActionText}>1.2K</Text>
-                </View>
-                <View style={styles.communityAction}>
-                  <Ionicons name="chatbubble-outline" size={16} color={THEME.textSecondary} />
-                  <Text style={styles.communityActionText}>203</Text>
-                </View>
-              </View>
-            </GlassCard>
+            <Text style={styles.emptyText}>No community posts yet</Text>
           </View>
         )}
 
@@ -320,7 +276,7 @@ export default function ChannelScreen({
             <GlassCard style={styles.aboutCard}>
               <Text style={styles.aboutLabel}>Description</Text>
               <Text style={styles.aboutText}>
-                {channel.description || `Welcome to ${channel.name}. Follow for the latest content that the mainstream doesn't want you to see.`}
+                {channel.description || "No description yet."}
               </Text>
             </GlassCard>
             <GlassCard style={styles.aboutCard}>
@@ -346,14 +302,12 @@ export default function ChannelScreen({
                 <Ionicons name="globe-outline" size={16} color={THEME.textSecondary} />
                 <Text style={styles.aboutDetailText}>bannedtube.app/{channel.name.toLowerCase().replace(/\s+/g, "")}</Text>
               </View>
-              <View style={styles.aboutDetail}>
-                <Ionicons name="calendar-outline" size={16} color={THEME.textSecondary} />
-                <Text style={styles.aboutDetailText}>Joined Jan 2024</Text>
-              </View>
-              <View style={styles.aboutDetail}>
-                <Ionicons name="location-outline" size={16} color={THEME.textSecondary} />
-                <Text style={styles.aboutDetailText}>United States</Text>
-              </View>
+              {channel.joinedDate && (
+                <View style={styles.aboutDetail}>
+                  <Ionicons name="calendar-outline" size={16} color={THEME.textSecondary} />
+                  <Text style={styles.aboutDetailText}>Joined {channel.joinedDate}</Text>
+                </View>
+              )}
             </GlassCard>
           </View>
         )}

@@ -154,9 +154,8 @@ describe("data integrity — deep checks", () => {
   });
 
   describe("format functions edge cases", () => {
-    it("formatViews handles 0", () => {
-      const result = formatViews(0);
-      expect(result).toContain("0");
+    it("formatViews reports nothing rather than a zero count", () => {
+      expect(formatViews(0)).toBe("No views yet");
     });
 
     it("formatViews handles exact millions", () => {
@@ -258,15 +257,21 @@ describe("data integrity — deep checks", () => {
   });
 
   describe("AI functions", () => {
-    it("title suggestions have valid confidence 0-100", () => {
+    it("title suggestions are well formed and quote no invented metrics", () => {
       const suggestions = getAITitleSuggestions("test");
+      expect(suggestions.length).toBeGreaterThan(0);
       for (const s of suggestions) {
-        expect(s.confidence).toBeGreaterThanOrEqual(0);
-        expect(s.confidence).toBeLessThanOrEqual(100);
         expect(s.type).toBeDefined();
         expect(s.content).toBeTruthy();
         expect(s.reasoning).toBeTruthy();
+        // Reasoning is generic copywriting guidance, not measured performance
+        // data, so it must not cite percentages or multipliers.
+        expect(s.reasoning).not.toMatch(/\d+(\.\d+)?\s*(%|x\b)/i);
       }
+    });
+
+    it("title suggestions are empty for a blank topic", () => {
+      expect(getAITitleSuggestions("   ")).toHaveLength(0);
     });
 
     it("trending topics have growth percentages", () => {
