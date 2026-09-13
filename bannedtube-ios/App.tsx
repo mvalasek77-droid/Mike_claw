@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Animated,
   ActivityIndicator,
+  Image,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -28,6 +29,7 @@ import ShortsScreen from "./src/screens/ShortsScreen";
 import YouScreen from "./src/screens/YouScreen";
 import ErrorBoundary from "./src/components/ErrorBoundary";
 import OnboardingScreen from "./src/screens/OnboardingScreen";
+import BugReportScreen from "./src/screens/BugReportScreen";
 import { THEME, type Video, videos } from "./src/lib/data";
 
 type Tab = "home" | "shorts" | "trending" | "subscriptions" | "studio" | "search" | "library" | "you";
@@ -35,7 +37,8 @@ type Tab = "home" | "shorts" | "trending" | "subscriptions" | "studio" | "search
 type Overlay =
   | { type: "none" }
   | { type: "watch"; video: Video }
-  | { type: "channel"; channelId: string };
+  | { type: "channel"; channelId: string }
+  | { type: "bugReport"; videoId?: string; videoTitle?: string };
 
 const TAB_CONFIG: {
   key: Tab;
@@ -122,9 +125,11 @@ function AppContent() {
   if (!ready) {
     return (
       <View style={styles.loadingScreen}>
-        <View style={styles.loadingLogo}>
-          <Ionicons name="flame" size={32} color="#fff" />
-        </View>
+        <Image
+          source={require("./assets/logo-large.png")}
+          style={styles.loadingLogo}
+          resizeMode="contain"
+        />
         <Text style={styles.loadingText}>
           Banned<Text style={{ color: THEME.accent }}>Tube</Text>
         </Text>
@@ -158,6 +163,8 @@ function AppContent() {
     openOverlay({ type: "watch", video: v });
   const handleChannelPress = (id: string) =>
     openOverlay({ type: "channel", channelId: id });
+  const handleBugReport = (videoId?: string, videoTitle?: string) =>
+    openOverlay({ type: "bugReport", videoId, videoTitle });
 
   function handleTabPress(tab: Tab) {
     Haptics.selectionAsync();
@@ -172,6 +179,7 @@ function AppContent() {
             onVideoPress={handleVideoPress}
             onChannelPress={handleChannelPress}
             onSearchPress={() => handleTabPress("search")}
+            onProfilePress={() => handleTabPress("you")}
           />
         )}
         {activeTab === "shorts" && (
@@ -200,7 +208,11 @@ function AppContent() {
           />
         )}
         {activeTab === "you" && (
-          <YouScreen onChannelPress={handleChannelPress} />
+          <YouScreen
+            onChannelPress={handleChannelPress}
+            onBugReport={() => handleBugReport()}
+            onNavigate={handleTabPress}
+          />
         )}
       </View>
 
@@ -211,6 +223,7 @@ function AppContent() {
             onBack={closeOverlay}
             onVideoPress={handleVideoPress}
             onChannelPress={handleChannelPress}
+            onBugReport={handleBugReport}
           />
         </View>
       )}
@@ -220,6 +233,15 @@ function AppContent() {
             channelId={overlay.channelId}
             onBack={closeOverlay}
             onVideoPress={handleVideoPress}
+          />
+        </View>
+      )}
+      {overlay.type === "bugReport" && (
+        <View style={styles.overlay}>
+          <BugReportScreen
+            onBack={closeOverlay}
+            videoId={overlay.videoId}
+            videoTitle={overlay.videoTitle}
           />
         </View>
       )}
@@ -326,16 +348,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   loadingLogo: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
-    backgroundColor: THEME.accent,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: THEME.accent,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 20,
+    width: 72,
+    height: 72,
   },
   loadingText: {
     color: THEME.textPrimary,

@@ -174,7 +174,9 @@ export const Storage = {
   async addComment(videoId: string, text: string, parentId?: string): Promise<UserComment> {
     const comments = await this.getUserComments();
     const comment: UserComment = {
-      id: `uc_${Date.now()}`,
+      // A bare timestamp collides for comments posted in the same millisecond,
+      // which would break reply threading and duplicate React keys.
+      id: `uc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       videoId,
       text,
       createdAt: new Date().toISOString(),

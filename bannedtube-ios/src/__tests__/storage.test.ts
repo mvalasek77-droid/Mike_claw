@@ -145,6 +145,17 @@ describe("Storage", () => {
       expect(comments[0].text).toBe("Second");
       expect(comments[1].text).toBe("First");
     });
+
+    it("gives every comment a distinct id even in a tight loop", async () => {
+      // Ids double as React keys and as the parentId for replies, so a
+      // same-millisecond collision would break threading.
+      for (let i = 0; i < 25; i++) {
+        await Storage.addComment("v1", `comment ${i}`);
+      }
+      const comments = await Storage.getUserComments();
+      const ids = comments.map((c) => c.id);
+      expect(new Set(ids).size).toBe(ids.length);
+    });
   });
 
   describe("Notification Preferences", () => {

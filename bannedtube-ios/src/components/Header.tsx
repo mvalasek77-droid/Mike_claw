@@ -9,10 +9,10 @@ const logoIcon = require("../../assets/logo-icon.png");
 
 interface HeaderProps {
   onSearch?: () => void;
-  onNotification?: () => void;
+  onProfile?: () => void;
 }
 
-export default function Header({ onSearch, onNotification }: HeaderProps) {
+export default function Header({ onSearch, onProfile }: HeaderProps) {
   return (
     <View style={styles.wrapper}>
       <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
@@ -43,26 +43,14 @@ export default function Header({ onSearch, onNotification }: HeaderProps) {
             <Ionicons name="search" size={22} color={THEME.textPrimary} />
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.actionBtn}
-            onPress={onNotification}
+            style={styles.profileBtn}
+            onPress={onProfile}
             activeOpacity={0.6}
             accessibilityRole="button"
-            accessibilityLabel="Notifications"
-          >
-            <Ionicons
-              name="notifications-outline"
-              size={22}
-              color={THEME.textPrimary}
-            />
-            <View style={styles.notifDot} />
-          </TouchableOpacity>
-          <View
-            style={styles.profileBtn}
-            accessibilityRole="image"
             accessibilityLabel="Profile"
           >
             <Ionicons name="person" size={14} color="#fff" />
-          </View>
+          </TouchableOpacity>
         </View>
       </View>
       <LinearGradient
@@ -119,15 +107,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     position: "relative",
-  },
-  notifDot: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: THEME.accent,
   },
   profileBtn: {
     width: 30,

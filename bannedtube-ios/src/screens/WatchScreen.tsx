@@ -14,7 +14,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import * as Sharing from "expo-sharing";
 import * as Clipboard from "expo-clipboard";
 import { Alert, Share as RNShare } from "react-native";
 import { useVideoPlayer, VideoView } from "expo-video";
@@ -27,6 +26,7 @@ import {
   videos,
   formatViews,
   formatSubscribers,
+  formatCompact,
   getComments,
   THEME,
 } from "../lib/data";
@@ -37,6 +37,7 @@ interface WatchScreenProps {
   onBack: () => void;
   onVideoPress: (video: Video) => void;
   onChannelPress: (channelId: string) => void;
+  onBugReport: (videoId?: string, videoTitle?: string) => void;
 }
 
 function CommentItem({ comment, onReply }: { comment: Comment; onReply?: (parentId: string, text: string) => void }) {
@@ -170,32 +171,61 @@ export default function WatchScreen({
   onBack,
   onVideoPress,
   onChannelPress,
+  onBugReport,
 }: WatchScreenProps) {
   const {
     isLiked, isDisliked, toggleLike, toggleDislike,
     isSubscribed, toggleSubscription,
     isSaved, toggleSaved,
     addWatchHistory, addComment, getVideoComments,
+    notifications,
   } = useApp();
+  const { autoplayMuted, autoplayNext } = notifications;
 
   const [commentText, setCommentText] = useState("");
   const liked = isLiked(video.id);
   const disliked = isDisliked(video.id);
   const subscribed = isSubscribed(video.channel.id);
   const saved = isSaved(video.id);
+  const likeCount = video.likes + (liked ? 1 : 0);
   const relatedVideos = videos.filter((v) => v.id !== video.id).slice(0, 6);
   const builtInComments = getComments();
   const userComments = getVideoComments(video.id);
   const allComments = [...userComments, ...builtInComments];
 
-  const player = useVideoPlayer(video.videoUrl, (player) => {
-    player.loop = true;
-    player.muted = false;
+  const player = useVideoPlayer(video.videoUrl, (p) => {
+    p.loop = false;
+    p.muted = autoplayMuted;
+    p.timeUpdateEventInterval = 5;
+    p.play();
   });
 
   useEffect(() => {
     addWatchHistory(video.id, 0);
   }, [video.id]);
+
+  // Persist playback position so the Vault and card progress bars reflect
+  // where the viewer actually got to, rather than staying pinned at 0%.
+  useEffect(() => {
+    const sub = player.addListener("timeUpdate", ({ currentTime }) => {
+      const duration = player.duration;
+      if (!duration || duration <= 0) return;
+      const pct = Math.min(100, Math.round((currentTime / duration) * 100));
+      if (pct > 0) addWatchHistory(video.id, pct);
+    });
+    return () => sub.remove();
+  }, [player, video.id, addWatchHistory]);
+
+  // Roll on to the next video when the viewer has asked for that.
+  useEffect(() => {
+    if (!autoplayNext) return;
+    const sub = player.addListener("playToEnd", () => {
+      const idx = videos.findIndex((v) => v.id === video.id);
+      const next = videos[(idx + 1) % videos.length];
+      if (next && next.id !== video.id) onVideoPress(next);
+    });
+    return () => sub.remove();
+  }, [player, autoplayNext, video.id, onVideoPress]);
 
   async function handleLike() {
     await toggleLike(video.id);
@@ -220,37 +250,24 @@ export default function WatchScreen({
 
   async function handleShare() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const shareUrl = `https://bannedtube.app/watch/${video.id}`;
+    // expo-sharing's shareAsync takes a local file URI, not a URL, so a link
+    // has to go through React Native's Share sheet.
     try {
-      const shareUrl = `https://bannedtube.app/watch/${video.id}`;
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(shareUrl, {
-          mimeType: "text/plain",
-          dialogTitle: "Share this video",
-        });
-      } else {
-        await RNShare.share({
-          message: `Check out "${video.title}" on BannedTube: ${shareUrl}`,
-          title: "BannedTube",
-        });
-      }
+      await RNShare.share({
+        message: `Check out "${video.title}" on BannedTube: ${shareUrl}`,
+        url: shareUrl,
+        title: "BannedTube",
+      });
     } catch {
-      // Fallback to clipboard
-      await Clipboard.setStringAsync(`https://bannedtube.app/watch/${video.id}`);
+      await Clipboard.setStringAsync(shareUrl);
       Alert.alert("Link copied", "Video link copied to clipboard");
     }
   }
 
   function handleReport() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert(
-      "Report video",
-      "Help keep BannedTube safe. What's wrong with this video?",
-      [
-        { text: "Spam or misleading", onPress: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success) },
-        { text: "Harmful content", onPress: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success) },
-        { text: "Cancel", style: "cancel" },
-      ]
-    );
+    onBugReport(video.id, video.title);
   }
 
   async function handleSubmitComment() {
@@ -364,7 +381,7 @@ export default function WatchScreen({
                   liked && { color: THEME.accent },
                 ]}
               >
-                {((liked ? video.likes + 1 : video.likes) / 1000).toFixed(0)}K
+                {likeCount > 0 ? formatCompact(likeCount) : "Like"}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity

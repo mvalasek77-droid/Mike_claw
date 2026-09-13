@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from "react";
 import {
   View,
+  Text,
   FlatList,
   StyleSheet,
   RefreshControl,
@@ -15,12 +16,14 @@ interface HomeScreenProps {
   onVideoPress: (video: Video) => void;
   onChannelPress: (channelId: string) => void;
   onSearchPress: () => void;
+  onProfilePress: () => void;
 }
 
 export default function HomeScreen({
   onVideoPress,
   onChannelPress,
   onSearchPress,
+  onProfilePress,
 }: HomeScreenProps) {
   const [category, setCategory] = useState("All");
   const [refreshing, setRefreshing] = useState(false);
@@ -33,7 +36,7 @@ export default function HomeScreen({
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <Header onSearch={onSearchPress} />
+      <Header onSearch={onSearchPress} onProfile={onProfilePress} />
       <FlatList
         data={filteredVideos}
         keyExtractor={(item) => item.id}
@@ -49,6 +52,14 @@ export default function HomeScreen({
             />
           </View>
         )}
+        ListEmptyComponent={
+          <View style={styles.empty}>
+            <Text style={styles.emptyTitle}>Nothing in {category} yet</Text>
+            <Text style={styles.emptyBody}>
+              Try another category, or pull down to refresh.
+            </Text>
+          </View>
+        }
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -74,5 +85,21 @@ const styles = StyleSheet.create({
   },
   cardWrapper: {
     paddingHorizontal: 12,
+  },
+  empty: {
+    alignItems: "center",
+    paddingTop: 70,
+    paddingHorizontal: 40,
+    gap: 6,
+  },
+  emptyTitle: {
+    color: THEME.textPrimary,
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  emptyBody: {
+    color: THEME.textSecondary,
+    fontSize: 14,
+    textAlign: "center",
   },
 });

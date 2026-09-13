@@ -27,6 +27,17 @@ jest.mock("@react-native-async-storage/async-storage", () => {
   };
 });
 
+// The suite runs in a plain node environment, so react-native's ESM entry
+// point is never transformed. Only the pieces the library code touches are
+// stubbed here; component rendering is not exercised by these tests.
+jest.mock("react-native", () => ({
+  Platform: {
+    OS: "ios",
+    Version: "18.0",
+    select: (spec) => spec.ios ?? spec.default,
+  },
+}));
+
 jest.mock("expo-haptics", () => ({
   impactAsync: jest.fn(),
   selectionAsync: jest.fn(),

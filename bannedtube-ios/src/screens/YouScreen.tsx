@@ -7,18 +7,38 @@ import {
   ScrollView,
   Switch,
   Alert,
+  Linking,
+  Platform,
+  TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useApp } from "../lib/AppContext";
 import { THEME, formatCompact } from "../lib/data";
+import { APP_VERSION } from "../lib/bugReports";
+
+const PRIVACY_POLICY_URL = "https://bannedtube.app/privacy-policy.html";
+
+async function openLink(url: string, label: string) {
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  try {
+    await Linking.openURL(url);
+  } catch {
+    Alert.alert(`Couldn't open ${label}`, url);
+  }
+}
 
 interface YouScreenProps {
   onChannelPress: (channelId: string) => void;
+  onBugReport: () => void;
+  onNavigate: (tab: "library" | "subscriptions") => void;
 }
 
-export default function YouScreen({ onChannelPress }: YouScreenProps) {
+export default function YouScreen({
+  onBugReport,
+  onNavigate,
+}: YouScreenProps) {
   const {
     profile,
     setProfile,
@@ -31,6 +51,7 @@ export default function YouScreen({ onChannelPress }: YouScreenProps) {
   } = useApp();
 
   const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
 
   const stats = [
     { label: "Watched", value: formatCompact(watchHistory.length) },
@@ -39,41 +60,57 @@ export default function YouScreen({ onChannelPress }: YouScreenProps) {
     { label: "Following", value: formatCompact(subscriptions.size) },
   ];
 
-  const menuItems = [
-    { icon: "time-outline", label: "History", screen: "library" },
-    { icon: "bookmark-outline", label: "Saved", screen: "library" },
-    { icon: "thumbs-up-outline", label: "Liked", screen: "library" },
-    { icon: "download-outline", label: "Offline", screen: "downloads" },
-    { icon: "people-outline", label: "Following", screen: "subs" },
+  const menuItems: {
+    icon: string;
+    label: string;
+    target: "library" | "subscriptions";
+  }[] = [
+    { icon: "time-outline", label: "History", target: "library" },
+    { icon: "bookmark-outline", label: "Saved", target: "library" },
+    { icon: "thumbs-up-outline", label: "Liked", target: "library" },
+    { icon: "people-outline", label: "Following", target: "subscriptions" },
   ];
 
+  // Only settings the app actually honours are shown. Push notifications and a
+  // light theme are not implemented, so toggles for them would do nothing.
   const settingsItems = [
-    { icon: "notifications-outline", label: "Notifications", toggle: true, key: "push" as const },
-    { icon: "moon-outline", label: "Dark mode", toggle: true, key: "darkMode" as const },
-    { icon: "volume-mute-outline", label: "Autoplay muted", toggle: true, key: "autoplayMuted" as const },
-    { icon: "play-circle-outline", label: "Autoplay next", toggle: true, key: "autoplayNext" as const },
+    {
+      icon: "volume-mute-outline",
+      label: "Start videos muted",
+      key: "autoplayMuted" as const,
+    },
+    {
+      icon: "play-circle-outline",
+      label: "Autoplay next video",
+      key: "autoplayNext" as const,
+    },
   ];
 
+  const saveName = (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    setProfile({
+      displayName: trimmed,
+      initial: trimmed[0].toUpperCase(),
+      avatarColor: profile?.avatarColor || THEME.accent,
+      createdAt: profile?.createdAt || new Date().toISOString(),
+    });
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
+  // Alert.prompt is iOS-only, so Android gets an inline editor instead.
   const handleNameEdit = () => {
+    if (Platform.OS !== "ios") {
+      setNameDraft(profile?.displayName || "");
+      setEditingName(true);
+      return;
+    }
     Alert.prompt(
       "Edit display name",
       "Enter your display name",
       [
         { text: "Cancel", style: "cancel" },
-        {
-          text: "Save",
-          onPress: (text?: string) => {
-            if (text && text.trim()) {
-              setProfile({
-                displayName: text.trim(),
-                initial: text.trim()[0].toUpperCase(),
-                avatarColor: profile?.avatarColor || "#ff4444",
-                createdAt: profile?.createdAt || new Date().toISOString(),
-              });
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            }
-          },
-        },
+        { text: "Save", onPress: (text?: string) => saveName(text ?? "") },
       ],
       "plain-text",
       profile?.displayName || ""
@@ -91,9 +128,45 @@ export default function YouScreen({ onChannelPress }: YouScreenProps) {
           <View style={styles.profileInfo}>
             <Text style={styles.profileName}>{profile?.displayName || "Your Name"}</Text>
             <Text style={styles.profileHandle}>@{profile?.displayName?.toLowerCase().replace(/\s+/g, "") || "user"}</Text>
-            <TouchableOpacity style={styles.editBtn} onPress={handleNameEdit}>
-              <Text style={styles.editBtnText}>Edit profile</Text>
-            </TouchableOpacity>
+            {editingName ? (
+              <View style={styles.nameEditRow}>
+                <TextInput
+                  style={styles.nameInput}
+                  value={nameDraft}
+                  onChangeText={setNameDraft}
+                  placeholder="Display name"
+                  placeholderTextColor={THEME.textSecondary}
+                  autoFocus
+                  maxLength={40}
+                  returnKeyType="done"
+                  onSubmitEditing={() => {
+                    saveName(nameDraft);
+                    setEditingName(false);
+                  }}
+                  accessibilityLabel="Display name"
+                />
+                <TouchableOpacity
+                  onPress={() => {
+                    saveName(nameDraft);
+                    setEditingName(false);
+                  }}
+                  style={styles.editBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel="Save display name"
+                >
+                  <Text style={styles.editBtnText}>Save</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.editBtn}
+                onPress={handleNameEdit}
+                accessibilityRole="button"
+                accessibilityLabel="Edit profile"
+              >
+                <Text style={styles.editBtnText}>Edit profile</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -114,7 +187,10 @@ export default function YouScreen({ onChannelPress }: YouScreenProps) {
             <TouchableOpacity
               key={i}
               style={styles.menuItem}
-              onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                onNavigate(item.target);
+              }}
               accessibilityRole="button"
               accessibilityLabel={item.label}
             >
@@ -145,28 +221,36 @@ export default function YouScreen({ onChannelPress }: YouScreenProps) {
           ))}
         </View>
 
-        {/* About */}
+        {/* Support */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>About</Text>
-          <TouchableOpacity style={styles.menuItem} accessibilityLabel="Privacy Policy">
+          <Text style={styles.sectionTitle}>Support</Text>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              onBugReport();
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Report a bug"
+          >
+            <Ionicons name="bug-outline" size={22} color={THEME.textSecondary} />
+            <Text style={styles.menuItemText}>Report a bug</Text>
+            <Ionicons name="chevron-forward" size={18} color={THEME.bgTertiary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => openLink(PRIVACY_POLICY_URL, "Privacy Policy")}
+            accessibilityRole="button"
+            accessibilityLabel="Privacy Policy"
+          >
             <Ionicons name="shield-outline" size={22} color={THEME.textSecondary} />
             <Text style={styles.menuItemText}>Privacy Policy</Text>
-            <Ionicons name="chevron-forward" size={18} color={THEME.bgTertiary} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem} accessibilityLabel="Terms of Service">
-            <Ionicons name="document-text-outline" size={22} color={THEME.textSecondary} />
-            <Text style={styles.menuItemText}>Terms of Service</Text>
-            <Ionicons name="chevron-forward" size={18} color={THEME.bgTertiary} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem} accessibilityLabel="Help and feedback">
-            <Ionicons name="help-circle-outline" size={22} color={THEME.textSecondary} />
-            <Text style={styles.menuItemText}>Help & Feedback</Text>
-            <Ionicons name="chevron-forward" size={18} color={THEME.bgTertiary} />
+            <Ionicons name="open-outline" size={16} color={THEME.bgTertiary} />
           </TouchableOpacity>
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.versionText}>BannedTube v1.0.0</Text>
+          <Text style={styles.versionText}>BannedTube v{APP_VERSION}</Text>
           <Text style={styles.versionSubtext}>Local-first · No account needed</Text>
         </View>
       </ScrollView>
@@ -226,6 +310,23 @@ const styles = StyleSheet.create({
     color: THEME.textPrimary,
     fontSize: 13,
     fontWeight: "600",
+  },
+  nameEditRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 6,
+  },
+  nameInput: {
+    flex: 1,
+    backgroundColor: THEME.bgSecondary,
+    borderWidth: 1,
+    borderColor: THEME.border,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    color: THEME.textPrimary,
+    fontSize: 14,
   },
   statsRow: {
     flexDirection: "row",

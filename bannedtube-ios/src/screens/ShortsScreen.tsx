@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from "react";
+import React, { useRef, useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,14 +8,13 @@ import {
   Dimensions,
   Pressable,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
-import * as Sharing from "expo-sharing";
-import { Alert, Share as RNShare } from "react-native";
+import { Share as RNShare } from "react-native";
+import { useVideoPlayer, VideoView } from "expo-video";
 import { useApp } from "../lib/AppContext";
-import { THEME, type Video } from "../lib/data";
+import { THEME, formatCompact, formatViews, type Video } from "../lib/data";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -32,17 +31,56 @@ export default function ShortsScreen({ videos }: ShortsScreenProps) {
     toggleDislike,
     toggleSaved,
     isSaved,
-    addComment,
-    getVideoComments,
-    profile,
+    isSubscribed,
+    toggleSubscription,
+    notifications,
   } = useApp();
+
+  // One player drives the whole feed; its source follows whichever clip is on
+  // screen. Creating a player per row would hold several decoders open at once.
+  const player = useVideoPlayer(videos[0]?.videoUrl ?? null, (p) => {
+    p.loop = true;
+    p.muted = notifications.autoplayMuted;
+  });
+  const [paused, setPaused] = useState(false);
+
+  useEffect(() => {
+    const current = videos[activeIndex];
+    if (!current) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        await player.replaceAsync(current.videoUrl);
+        if (!cancelled) {
+          setPaused(false);
+          player.play();
+        }
+      } catch {
+        // A source that fails to load leaves the poster art in place.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeIndex, videos, player]);
+
+  const togglePlayback = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (player.playing) {
+      player.pause();
+      setPaused(true);
+    } else {
+      player.play();
+      setPaused(false);
+    }
+  }, [player]);
 
   const viewabilityConfig = useRef({
     itemVisiblePercentThreshold: 60,
   }).current;
 
   const onViewRef = useRef(({ viewableItems }: any) => {
-    if (viewableItems.length > 0) {
+    if (viewableItems.length > 0 && viewableItems[0].index != null) {
       setActiveIndex(viewableItems[0].index);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
@@ -92,13 +130,32 @@ export default function ShortsScreen({ videos }: ShortsScreenProps) {
           style={StyleSheet.absoluteFill}
         />
 
-        {/* Center play icon */}
-        <View style={styles.playContainer}>
-          <View style={styles.playGlow} />
-          <View style={styles.playButton}>
-            <Ionicons name="play" size={40} color="#fff" style={{ marginLeft: 4 }} />
+        {/* The active clip plays in place; the rest keep their poster art. */}
+        {isActive && (
+          <VideoView
+            player={player}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            nativeControls={false}
+          />
+        )}
+
+        {/* Tap anywhere to pause or resume. */}
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={togglePlayback}
+          accessibilityRole="button"
+          accessibilityLabel={paused ? "Resume clip" : "Pause clip"}
+        />
+
+        {isActive && paused && (
+          <View style={styles.playContainer} pointerEvents="none">
+            <View style={styles.playGlow} />
+            <View style={styles.playButton}>
+              <Ionicons name="play" size={40} color="#fff" style={{ marginLeft: 4 }} />
+            </View>
           </View>
-        </View>
+        )}
 
         {/* Right action bar */}
         <View style={styles.actionBar}>
@@ -113,7 +170,9 @@ export default function ShortsScreen({ videos }: ShortsScreenProps) {
               color={liked ? THEME.accent : "#fff"}
             />
             <Text style={styles.actionLabel}>
-              {formatCompact(video.likes + (liked ? 1 : 0))}
+              {video.likes + (liked ? 1 : 0) > 0
+                ? formatCompact(video.likes + (liked ? 1 : 0))
+                : "Like"}
             </Text>
           </TouchableOpacity>
 
@@ -169,15 +228,26 @@ export default function ShortsScreen({ videos }: ShortsScreenProps) {
             {video.channel.verified && (
               <Ionicons name="checkmark-circle" size={14} color="#fff" />
             )}
-            <TouchableOpacity style={styles.subscribeBtn}>
-              <Text style={styles.subscribeText}>Follow</Text>
+            <TouchableOpacity
+              style={styles.subscribeBtn}
+              onPress={() => toggleSubscription(video.channel.id)}
+              accessibilityRole="button"
+              accessibilityLabel={
+                isSubscribed(video.channel.id)
+                  ? `Unfollow ${video.channel.name}`
+                  : `Follow ${video.channel.name}`
+              }
+            >
+              <Text style={styles.subscribeText}>
+                {isSubscribed(video.channel.id) ? "Following" : "Follow"}
+              </Text>
             </TouchableOpacity>
           </View>
           <Text style={styles.shortTitle} numberOfLines={2}>
             {video.title}
           </Text>
           <Text style={styles.shortMeta} numberOfLines={1}>
-            {formatCompact(video.views)} views · {video.uploadedAt}
+            {formatViews(video.views)} · {video.uploadedAt}
           </Text>
         </View>
       </View>
@@ -202,12 +272,6 @@ export default function ShortsScreen({ videos }: ShortsScreenProps) {
       />
     </View>
   );
-}
-
-function formatCompact(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return `${n}`;
 }
 
 const styles = StyleSheet.create({
