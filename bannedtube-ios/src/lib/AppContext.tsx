@@ -18,6 +18,7 @@ interface AppState {
   dislikedVideos: Set<string>;
   subscriptions: Set<string>;
   savedVideos: Set<string>;
+  likedComments: Set<string>;
   watchHistory: WatchHistoryEntry[];
   userComments: UserComment[];
   notifications: {
@@ -35,6 +36,7 @@ interface AppActions {
   toggleDislike: (videoId: string) => Promise<boolean>;
   toggleSubscription: (channelId: string) => Promise<boolean>;
   toggleSaved: (videoId: string) => Promise<boolean>;
+  toggleCommentLike: (commentId: string) => Promise<boolean>;
   addWatchHistory: (videoId: string, progress: number) => Promise<void>;
   addComment: (videoId: string, text: string, parentId?: string) => Promise<UserComment>;
   getVideoComments: (videoId: string) => Comment[];
@@ -42,6 +44,7 @@ interface AppActions {
   isDisliked: (videoId: string) => boolean;
   isSubscribed: (channelId: string) => boolean;
   isSaved: (videoId: string) => boolean;
+  isCommentLiked: (commentId: string) => boolean;
   getWatchProgress: (videoId: string) => number;
   setNotifications: (prefs: { push: boolean; darkMode: boolean; autoplayMuted: boolean; autoplayNext: boolean }) => void;
   addRecentSearch: (query: string) => void;
@@ -66,6 +69,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dislikedVideos: new Set(),
     subscriptions: new Set(),
     savedVideos: new Set(),
+    likedComments: new Set(),
     watchHistory: [],
     userComments: [],
     notifications: { push: true, darkMode: true, autoplayMuted: true, autoplayNext: false },
@@ -74,7 +78,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      const [profile, liked, disliked, subs, saved, history, comments, notifPrefs, recentSearches] =
+      const [profile, liked, disliked, subs, saved, history, comments, notifPrefs, recentSearches, likedComments] =
         await Promise.all([
           Storage.getUserProfile(),
           Storage.getLikedVideos(),
@@ -85,6 +89,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           Storage.getUserComments(),
           Storage.getNotificationPrefs(),
           Storage.getRecentSearches(),
+          Storage.getLikedComments(),
         ]);
 
       setState({
@@ -94,6 +99,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dislikedVideos: new Set(disliked),
         subscriptions: new Set(subs),
         savedVideos: new Set(saved),
+        likedComments: new Set(likedComments),
         watchHistory: history,
         userComments: comments,
       notifications: notifPrefs,
@@ -166,6 +172,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return { ...s, savedVideos: saved };
     });
     return nowSaved;
+  }, []);
+
+  const toggleCommentLike = useCallback(async (commentId: string) => {
+    const nowLiked = await Storage.toggleCommentLike(commentId);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setState((s) => {
+      const next = new Set(s.likedComments);
+      if (nowLiked) next.add(commentId);
+      else next.delete(commentId);
+      return { ...s, likedComments: next };
+    });
+    return nowLiked;
   }, []);
 
   const addWatchHistory = useCallback(
@@ -254,6 +272,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [state.savedVideos]
   );
 
+  const isCommentLiked = useCallback(
+    (commentId: string) => state.likedComments.has(commentId),
+    [state.likedComments]
+  );
+
   const getWatchProgress = useCallback(
     (videoId: string) => {
       const entry = state.watchHistory.find((h) => h.videoId === videoId);
@@ -293,6 +316,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     toggleDislike,
     toggleSubscription,
     toggleSaved,
+    toggleCommentLike,
     addWatchHistory,
     addComment,
     getVideoComments,
@@ -300,6 +324,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     isDisliked,
     isSubscribed,
     isSaved,
+    isCommentLiked,
     getWatchProgress,
     setNotifications,
     addRecentSearch,

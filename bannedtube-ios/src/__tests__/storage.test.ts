@@ -146,6 +146,26 @@ describe("Storage", () => {
       expect(comments[1].text).toBe("First");
     });
 
+    it("persists comment likes across reads", async () => {
+      expect(await Storage.getLikedComments()).toEqual([]);
+
+      const on = await Storage.toggleCommentLike("uc_1");
+      expect(on).toBe(true);
+      expect(await Storage.getLikedComments()).toContain("uc_1");
+
+      const off = await Storage.toggleCommentLike("uc_1");
+      expect(off).toBe(false);
+      expect(await Storage.getLikedComments()).not.toContain("uc_1");
+    });
+
+    it("tracks liked comments independently", async () => {
+      await Storage.toggleCommentLike("uc_a");
+      await Storage.toggleCommentLike("uc_b");
+      await Storage.toggleCommentLike("uc_a");
+      const liked = await Storage.getLikedComments();
+      expect(liked).toEqual(["uc_b"]);
+    });
+
     it("gives every comment a distinct id even in a tight loop", async () => {
       // Ids double as React keys and as the parentId for replies, so a
       // same-millisecond collision would break threading.

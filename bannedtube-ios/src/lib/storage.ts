@@ -8,6 +8,7 @@ const KEYS = {
   WATCH_HISTORY: "bt_watch_history",
   SAVED_VIDEOS: "bt_saved_videos",
   USER_COMMENTS: "bt_user_comments",
+  LIKED_COMMENTS: "bt_liked_comments",
   NOTIFICATION_PREFS: "bt_notif_prefs",
   ONBOARDED: "bt_onboarded",
   RECENT_SEARCHES: "bt_recent_searches",
@@ -185,6 +186,23 @@ export const Storage = {
     comments.unshift(comment);
     await setJSON(KEYS.USER_COMMENTS, comments);
     return comment;
+  },
+
+  async getLikedComments(): Promise<string[]> {
+    return getJSON(KEYS.LIKED_COMMENTS, []);
+  },
+
+  async toggleCommentLike(commentId: string): Promise<boolean> {
+    const liked = await this.getLikedComments();
+    const idx = liked.indexOf(commentId);
+    if (idx >= 0) {
+      liked.splice(idx, 1);
+      await setJSON(KEYS.LIKED_COMMENTS, liked);
+      return false;
+    }
+    liked.push(commentId);
+    await setJSON(KEYS.LIKED_COMMENTS, liked);
+    return true;
   },
 
   async getNotificationPrefs(): Promise<NotificationPrefs> {

@@ -41,14 +41,14 @@ interface WatchScreenProps {
 }
 
 function CommentItem({ comment, onReply }: { comment: Comment; onReply?: (parentId: string, text: string) => void }) {
+  const { isCommentLiked, toggleCommentLike } = useApp();
   const [showReplies, setShowReplies] = useState(false);
-  const [liked, setLiked] = useState(false);
   const [replying, setReplying] = useState(false);
   const [replyText, setReplyText] = useState("");
+  const liked = isCommentLiked(comment.id);
 
   function handleLike() {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setLiked(!liked);
+    toggleCommentLike(comment.id);
   }
 
   return (
