@@ -30,12 +30,14 @@ Test account: Not required — the entire app is usable in guest mode
 without sign-in. Sign in with Apple is optional and only used for
 cross-device sync.
 
-Demo mode notes:
-  - The paywall includes a demo fallback that activates a subscription
-    even when StoreKit hasn't loaded products, so App Review can
-    exercise every tier without configuring StoreKit Configuration.
+Exercising the app:
   - "Simulate opening weekends" button in the Portfolio tab triggers
-    settlement on a random opening within ±IV of the tracking estimate.
+    settlement on a random opening within +/-IV of the tracking estimate,
+    so a reviewer can see the full trade lifecycle without waiting for a
+    real Friday.
+  - Subscriptions are standard StoreKit 2 auto-renewable products in a
+    single subscription group. Restore Purchases is on the paywall, and
+    the paywall links to the in-app Terms of Service and Privacy Policy.
 
 Data sources: TMDB (client-side), plus server-side aggregation of IMDb
 Coming Soon, The Numbers, Deadline, and Box Office Mojo. All references

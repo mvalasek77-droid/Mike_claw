@@ -84,8 +84,20 @@ final class StoreService: ObservableObject {
                 lastError = error.localizedDescription
             }
         } else {
-            // Demo fallback so the flow is testable without StoreKit config.
+            // No product means StoreKit never loaded this tier — no
+            // network, products still "Waiting for Review", a mismatched
+            // bundle id. Those are ordinary runtime conditions, so a
+            // shipped build must fail closed here: granting the tier
+            // anyway would unlock paid functionality outside In-App
+            // Purchase, which is exactly what Guideline 3.1.1 forbids.
+            #if DEBUG
+            // Development only, so the tier flow stays testable without a
+            // StoreKit configuration attached. Never compiled into a
+            // Release build, and so never reachable by App Review.
             PortfolioService.shared.activateMembership(tier)
+            #else
+            lastError = "Subscriptions are unavailable right now. Please check your connection and try again."
+            #endif
         }
     }
 
