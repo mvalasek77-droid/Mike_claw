@@ -7,7 +7,7 @@ import React, {
   type ReactNode,
 } from "react";
 import * as Haptics from "expo-haptics";
-import { Storage, type UserProfile, type WatchHistoryEntry, type UserComment } from "./storage";
+import { Storage, type UserProfile, type WatchHistoryEntry, type UserComment, type Playlist } from "./storage";
 import { type Comment } from "./data";
 import { Analytics } from "./analytics";
 
@@ -19,6 +19,7 @@ interface AppState {
   subscriptions: Set<string>;
   savedVideos: Set<string>;
   likedComments: Set<string>;
+  playlists: Playlist[];
   watchHistory: WatchHistoryEntry[];
   userComments: UserComment[];
   notifications: {
@@ -45,6 +46,11 @@ interface AppActions {
   clearHistory: () => Promise<void>;
   clearSaved: () => Promise<void>;
   clearLiked: () => Promise<void>;
+  createPlaylist: (name: string) => Promise<Playlist | null>;
+  renamePlaylist: (id: string, name: string) => Promise<boolean>;
+  deletePlaylist: (id: string) => Promise<void>;
+  togglePlaylistVideo: (id: string, videoId: string) => Promise<boolean>;
+  clearPlaylist: (id: string) => Promise<void>;
   getVideoComments: (videoId: string) => Comment[];
   isLiked: (videoId: string) => boolean;
   isDisliked: (videoId: string) => boolean;
@@ -76,6 +82,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     subscriptions: new Set(),
     savedVideos: new Set(),
     likedComments: new Set(),
+    playlists: [],
     watchHistory: [],
     userComments: [],
     notifications: { push: true, darkMode: true, autoplayMuted: true, autoplayNext: false },
@@ -84,7 +91,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      const [profile, liked, disliked, subs, saved, history, comments, notifPrefs, recentSearches, likedComments] =
+      const [profile, liked, disliked, subs, saved, history, comments, notifPrefs, recentSearches, likedComments, playlists] =
         await Promise.all([
           Storage.getUserProfile(),
           Storage.getLikedVideos(),
@@ -96,6 +103,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           Storage.getNotificationPrefs(),
           Storage.getRecentSearches(),
           Storage.getLikedComments(),
+          Storage.getPlaylists(),
         ]);
 
       setState({
@@ -106,6 +114,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         subscriptions: new Set(subs),
         savedVideos: new Set(saved),
         likedComments: new Set(likedComments),
+        playlists,
         watchHistory: history,
         userComments: comments,
       notifications: notifPrefs,
@@ -275,6 +284,45 @@ export function AppProvider({ children }: { children: ReactNode }) {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }, []);
 
+  const refreshPlaylists = useCallback(async () => {
+    const playlists = await Storage.getPlaylists();
+    setState((s) => ({ ...s, playlists }));
+  }, []);
+
+  const createPlaylist = useCallback(async (name: string) => {
+    const created = await Storage.createPlaylist(name);
+    if (created) {
+      await refreshPlaylists();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+    return created;
+  }, [refreshPlaylists]);
+
+  const renamePlaylist = useCallback(async (id: string, name: string) => {
+    const ok = await Storage.renamePlaylist(id, name);
+    if (ok) await refreshPlaylists();
+    return ok;
+  }, [refreshPlaylists]);
+
+  const deletePlaylist = useCallback(async (id: string) => {
+    await Storage.deletePlaylist(id);
+    await refreshPlaylists();
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }, [refreshPlaylists]);
+
+  const togglePlaylistVideo = useCallback(async (id: string, videoId: string) => {
+    const nowIn = await Storage.togglePlaylistVideo(id, videoId);
+    await refreshPlaylists();
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    return nowIn;
+  }, [refreshPlaylists]);
+
+  const clearPlaylist = useCallback(async (id: string) => {
+    await Storage.clearPlaylist(id);
+    await refreshPlaylists();
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }, [refreshPlaylists]);
+
   const getVideoComments = useCallback(
     (videoId: string): Comment[] => {
       const topLevel = state.userComments
@@ -384,6 +432,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     clearHistory,
     clearSaved,
     clearLiked,
+    createPlaylist,
+    renamePlaylist,
+    deletePlaylist,
+    togglePlaylistVideo,
+    clearPlaylist,
     getVideoComments,
     isLiked,
     isDisliked,

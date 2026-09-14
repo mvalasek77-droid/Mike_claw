@@ -9,6 +9,7 @@ const KEYS = {
   SAVED_VIDEOS: "bt_saved_videos",
   USER_COMMENTS: "bt_user_comments",
   LIKED_COMMENTS: "bt_liked_comments",
+  PLAYLISTS: "bt_playlists",
   NOTIFICATION_PREFS: "bt_notif_prefs",
   ONBOARDED: "bt_onboarded",
   RECENT_SEARCHES: "bt_recent_searches",
@@ -36,6 +37,17 @@ export interface UserComment {
   /** Set the first time the comment is edited, so the UI can mark it. */
   editedAt?: string;
 }
+
+export interface Playlist {
+  id: string;
+  name: string;
+  /** Ordered newest-first, matching how videos are added. */
+  videoIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const PLAYLIST_NAME_MAX = 60;
 
 export interface NotificationPrefs {
   push: boolean;
@@ -254,6 +266,98 @@ export const Storage = {
     liked.push(commentId);
     await setJSON(KEYS.LIKED_COMMENTS, liked);
     return true;
+  },
+
+  async getPlaylists(): Promise<Playlist[]> {
+    return getJSON(KEYS.PLAYLISTS, []);
+  },
+
+  /** Returns null when the name is blank or already taken. */
+  async createPlaylist(name: string): Promise<Playlist | null> {
+    const trimmed = name.trim().slice(0, PLAYLIST_NAME_MAX);
+    if (!trimmed) return null;
+
+    const playlists = await this.getPlaylists();
+    const taken = playlists.some(
+      (p) => p.name.toLowerCase() === trimmed.toLowerCase()
+    );
+    if (taken) return null;
+
+    const now = new Date().toISOString();
+    const playlist: Playlist = {
+      id: `pl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      name: trimmed,
+      videoIds: [],
+      createdAt: now,
+      updatedAt: now,
+    };
+    playlists.unshift(playlist);
+    await setJSON(KEYS.PLAYLISTS, playlists);
+    return playlist;
+  },
+
+  async renamePlaylist(id: string, name: string): Promise<boolean> {
+    const trimmed = name.trim().slice(0, PLAYLIST_NAME_MAX);
+    if (!trimmed) return false;
+
+    const playlists = await this.getPlaylists();
+    const clash = playlists.some(
+      (p) => p.id !== id && p.name.toLowerCase() === trimmed.toLowerCase()
+    );
+    if (clash) return false;
+
+    const idx = playlists.findIndex((p) => p.id === id);
+    if (idx < 0) return false;
+
+    playlists[idx] = {
+      ...playlists[idx],
+      name: trimmed,
+      updatedAt: new Date().toISOString(),
+    };
+    await setJSON(KEYS.PLAYLISTS, playlists);
+    return true;
+  },
+
+  async deletePlaylist(id: string): Promise<void> {
+    const playlists = await this.getPlaylists();
+    await setJSON(
+      KEYS.PLAYLISTS,
+      playlists.filter((p) => p.id !== id)
+    );
+  },
+
+  /** Adds or removes the video; returns whether it is in the playlist after. */
+  async togglePlaylistVideo(id: string, videoId: string): Promise<boolean> {
+    const playlists = await this.getPlaylists();
+    const idx = playlists.findIndex((p) => p.id === id);
+    if (idx < 0) return false;
+
+    const current = playlists[idx].videoIds;
+    const present = current.includes(videoId);
+    const videoIds = present
+      ? current.filter((v) => v !== videoId)
+      : [videoId, ...current];
+
+    playlists[idx] = {
+      ...playlists[idx],
+      videoIds,
+      updatedAt: new Date().toISOString(),
+    };
+    await setJSON(KEYS.PLAYLISTS, playlists);
+    return !present;
+  },
+
+  /** Empties a playlist in one write, keeping the playlist itself. */
+  async clearPlaylist(id: string): Promise<void> {
+    const playlists = await this.getPlaylists();
+    const idx = playlists.findIndex((p) => p.id === id);
+    if (idx < 0) return;
+    playlists[idx] = {
+      ...playlists[idx],
+      videoIds: [],
+      updatedAt: new Date().toISOString(),
+    };
+    await setJSON(KEYS.PLAYLISTS, playlists);
   },
 
   async getNotificationPrefs(): Promise<NotificationPrefs> {

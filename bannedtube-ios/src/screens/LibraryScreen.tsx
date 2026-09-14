@@ -6,19 +6,22 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  Platform,
+  TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import VideoCard from "../components/VideoCard";
 import { useApp } from "../lib/AppContext";
 import { THEME, type Video, getVideoById } from "../lib/data";
+import { PLAYLIST_NAME_MAX } from "../lib/storage";
 
 interface LibraryScreenProps {
   onVideoPress: (video: Video) => void;
   onChannelPress: (channelId: string) => void;
 }
 
-type Filter = "history" | "saved" | "liked";
+type Filter = "history" | "saved" | "liked" | "playlists";
 
 export default function LibraryScreen({
   onVideoPress,
@@ -34,8 +37,18 @@ export default function LibraryScreen({
     clearLiked,
     toggleSaved,
     toggleLike,
+    playlists,
+    renamePlaylist,
+    deletePlaylist,
+    togglePlaylistVideo,
+    clearPlaylist,
   } = useApp();
   const [filter, setFilter] = useState<Filter>("history");
+  const [openPlaylistId, setOpenPlaylistId] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameText, setRenameText] = useState("");
+
+  const openPlaylist = playlists.find((p) => p.id === openPlaylistId) ?? null;
 
   const historyVideos = watchHistory
     .map((h) => getVideoById(h.videoId))
@@ -49,24 +62,34 @@ export default function LibraryScreen({
     .map((id) => getVideoById(id))
     .filter((v): v is Video => v !== undefined);
 
+  const playlistVideos = openPlaylist
+    ? openPlaylist.videoIds
+        .map((id) => getVideoById(id))
+        .filter((v): v is Video => v !== undefined)
+    : [];
+
   const currentList =
     filter === "history"
       ? historyVideos
       : filter === "saved"
       ? savedVideoList
-      : likedVideoList;
+      : filter === "liked"
+      ? likedVideoList
+      : playlistVideos;
 
   const LIST_NOUN: Record<Filter, string> = {
     history: "watch history",
     saved: "saved videos",
     liked: "liked videos",
+    playlists: openPlaylist?.name ?? "playlist",
   };
 
   /** Takes one video out of whichever list is on screen. */
   function removeOne(video: Video) {
     if (filter === "history") removeFromHistory(video.id);
     else if (filter === "saved") toggleSaved(video.id);
-    else toggleLike(video.id);
+    else if (filter === "liked") toggleLike(video.id);
+    else if (openPlaylist) togglePlaylistVideo(openPlaylist.id, video.id);
   }
 
   function confirmClear() {
@@ -83,7 +106,8 @@ export default function LibraryScreen({
           onPress: () => {
             if (filter === "history") clearHistory();
             else if (filter === "saved") clearSaved();
-            else clearLiked();
+            else if (filter === "liked") clearLiked();
+            else if (openPlaylist) clearPlaylist(openPlaylist.id);
           },
         },
       ]
@@ -94,18 +118,91 @@ export default function LibraryScreen({
     { key: "history", label: "History", icon: "time-outline", count: historyVideos.length },
     { key: "saved", label: "Saved", icon: "bookmark-outline", count: savedVideoList.length },
     { key: "liked", label: "Liked", icon: "thumbs-up-outline", count: likedVideoList.length },
+    { key: "playlists", label: "Playlists", icon: "list-outline", count: playlists.length },
   ];
+
+  // On the playlist index there is no flat list to clear — each playlist has
+  // its own controls instead.
+  const onPlaylistIndex = filter === "playlists" && !openPlaylist;
+  const showClearAll = currentList.length > 0 && !onPlaylistIndex;
+
+  async function submitRename() {
+    if (!renamingId) return;
+    const ok = await renamePlaylist(renamingId, renameText);
+    if (!ok) {
+      Alert.alert(
+        "Couldn't rename",
+        "That name is empty or already used by another playlist."
+      );
+      return;
+    }
+    setRenamingId(null);
+  }
+
+  function confirmRename(id: string, current: string) {
+    if (Platform.OS !== "ios") {
+      setRenamingId(id);
+      setRenameText(current);
+      return;
+    }
+    Alert.prompt(
+      "Rename playlist",
+      undefined,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Save",
+          onPress: async (text?: string) => {
+            const ok = await renamePlaylist(id, text ?? "");
+            if (!ok) {
+              Alert.alert(
+                "Couldn't rename",
+                "That name is empty or already used by another playlist."
+              );
+            }
+          },
+        },
+      ],
+      "plain-text",
+      current
+    );
+  }
+
+  function confirmDeletePlaylist(id: string, name: string) {
+    Alert.alert("Delete playlist?", `"${name}" will be removed from this device.`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => deletePlaylist(id),
+      },
+    ]);
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Vault</Text>
-        {currentList.length > 0 && (
+        {openPlaylist ? (
+          <TouchableOpacity
+            style={styles.headerBack}
+            onPress={() => setOpenPlaylistId(null)}
+            accessibilityRole="button"
+            accessibilityLabel="Back to playlists"
+          >
+            <Ionicons name="chevron-back" size={22} color={THEME.textPrimary} />
+            <Text style={styles.headerTitle} numberOfLines={1}>
+              {openPlaylist.name}
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <Text style={styles.headerTitle}>Vault</Text>
+        )}
+        {showClearAll && (
           <TouchableOpacity
             onPress={confirmClear}
             style={styles.clearBtn}
             accessibilityRole="button"
-            accessibilityLabel={`Clear all ${filter}`}
+            accessibilityLabel={`Clear ${LIST_NOUN[filter]}`}
           >
             <Text style={styles.clearBtnText}>Clear all</Text>
           </TouchableOpacity>
@@ -146,6 +243,91 @@ export default function LibraryScreen({
         ))}
       </View>
 
+      {onPlaylistIndex ? (
+        <FlatList
+          data={playlists}
+          keyExtractor={(p) => p.id}
+          renderItem={({ item }) =>
+            renamingId === item.id ? (
+              <View style={styles.renameRow}>
+                <TextInput
+                  style={styles.renameInput}
+                  value={renameText}
+                  onChangeText={setRenameText}
+                  autoFocus
+                  maxLength={PLAYLIST_NAME_MAX}
+                  returnKeyType="done"
+                  onSubmitEditing={submitRename}
+                  accessibilityLabel="Playlist name"
+                />
+                <TouchableOpacity
+                  onPress={() => setRenamingId(null)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancel rename"
+                >
+                  <Text style={styles.renameCancel}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={submitRename}
+                  accessibilityRole="button"
+                  accessibilityLabel="Save playlist name"
+                >
+                  <Text style={styles.renameSave}>Save</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.playlistRow}
+                onPress={() => setOpenPlaylistId(item.id)}
+                accessibilityRole="button"
+                accessibilityLabel={`${item.name}, ${item.videoIds.length} videos`}
+              >
+                <View style={styles.playlistIcon}>
+                  <Ionicons name="list" size={20} color={THEME.accent} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.playlistName} numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                  <Text style={styles.playlistMeta}>
+                    {item.videoIds.length}{" "}
+                    {item.videoIds.length === 1 ? "video" : "videos"}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => confirmRename(item.id, item.name)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  style={styles.playlistAction}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Rename ${item.name}`}
+                >
+                  <Ionicons name="pencil-outline" size={18} color={THEME.textSecondary} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => confirmDeletePlaylist(item.id, item.name)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  style={styles.playlistAction}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Delete ${item.name}`}
+                >
+                  <Ionicons name="trash-outline" size={18} color={THEME.textSecondary} />
+                </TouchableOpacity>
+              </TouchableOpacity>
+            )
+          }
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Ionicons name="list-outline" size={56} color={THEME.bgTertiary} />
+              <Text style={styles.emptyTitle}>No playlists yet</Text>
+              <Text style={styles.emptySubtitle}>
+                Tap Save on any video to start one.
+              </Text>
+            </View>
+          }
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+        />
+      ) : (
       <FlatList
         data={currentList}
         keyExtractor={(item) => item.id}
@@ -202,6 +384,7 @@ export default function LibraryScreen({
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
       />
+      )}
     </SafeAreaView>
   );
 }
@@ -284,6 +467,73 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 4,
     paddingHorizontal: 12,
+  },
+  headerBack: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    gap: 2,
+  },
+  playlistRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  playlistIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: THEME.bgSecondary,
+    borderWidth: 1,
+    borderColor: THEME.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  playlistName: {
+    color: THEME.textPrimary,
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  playlistMeta: {
+    color: THEME.textSecondary,
+    fontSize: 12,
+    marginTop: 2,
+  },
+  playlistAction: {
+    width: 32,
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  renameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  renameInput: {
+    flex: 1,
+    backgroundColor: THEME.bgSecondary,
+    borderWidth: 1,
+    borderColor: THEME.border,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    color: THEME.textPrimary,
+    fontSize: 14,
+  },
+  renameCancel: {
+    color: THEME.textSecondary,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  renameSave: {
+    color: THEME.accent,
+    fontSize: 13,
+    fontWeight: "700",
   },
   removeBtn: {
     width: 30,

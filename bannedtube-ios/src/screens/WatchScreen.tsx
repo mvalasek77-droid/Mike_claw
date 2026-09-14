@@ -19,6 +19,7 @@ import { Alert, Share as RNShare } from "react-native";
 import { useVideoPlayer, VideoView } from "expo-video";
 import Avatar from "../components/Avatar";
 import VideoCard from "../components/VideoCard";
+import SaveToPlaylistSheet from "../components/SaveToPlaylistSheet";
 import { useApp } from "../lib/AppContext";
 import {
   type Video,
@@ -273,17 +274,23 @@ export default function WatchScreen({
   const {
     isLiked, isDisliked, toggleLike, toggleDislike,
     isSubscribed, toggleSubscription,
-    isSaved, toggleSaved,
+    isSaved,
+    playlists,
     addWatchHistory, addComment, getVideoComments,
     notifications,
   } = useApp();
   const { autoplayMuted, autoplayNext } = notifications;
 
   const [commentText, setCommentText] = useState("");
+  const [saveSheetOpen, setSaveSheetOpen] = useState(false);
   const liked = isLiked(video.id);
   const disliked = isDisliked(video.id);
   const subscribed = isSubscribed(video.channel.id);
-  const saved = isSaved(video.id);
+  // The pill reflects membership of any list, not just the quick one, so a
+  // video filed only in a playlist still reads as saved.
+  const saved =
+    isSaved(video.id) ||
+    playlists.some((p) => p.videoIds.includes(video.id));
   const likeCount = video.likes + (liked ? 1 : 0);
   const relatedVideos = videos.filter((v) => v.id !== video.id).slice(0, 6);
   const builtInComments = getComments();
@@ -336,8 +343,9 @@ export default function WatchScreen({
     await toggleSubscription(video.channel.id);
   }
 
-  async function handleSave() {
-    await toggleSaved(video.id);
+  function handleSave() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSaveSheetOpen(true);
   }
 
   async function handleReply(parentId: string, text: string) {
@@ -606,6 +614,12 @@ export default function WatchScreen({
         </View>
       </ScrollView>
       </KeyboardAvoidingView>
+
+      <SaveToPlaylistSheet
+        visible={saveSheetOpen}
+        videoId={video.id}
+        onClose={() => setSaveSheetOpen(false)}
+      />
     </SafeAreaView>
   );
 }
