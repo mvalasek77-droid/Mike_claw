@@ -112,6 +112,30 @@ describe("Storage", () => {
       const history = await Storage.getWatchHistory();
       expect(history.length).toBeLessThanOrEqual(200);
     });
+
+    it("removes a single entry and leaves the rest", async () => {
+      await Storage.addWatchHistory("v1", 10);
+      await Storage.addWatchHistory("v2", 20);
+
+      await Storage.removeWatchHistory("v1");
+      const history = await Storage.getWatchHistory();
+      expect(history).toHaveLength(1);
+      expect(history[0].videoId).toBe("v2");
+    });
+
+    it("removing an entry that isn't there is harmless", async () => {
+      await Storage.addWatchHistory("v1", 10);
+      await Storage.removeWatchHistory("nope");
+      expect(await Storage.getWatchHistory()).toHaveLength(1);
+    });
+
+    it("clears the whole history", async () => {
+      await Storage.addWatchHistory("v1", 10);
+      await Storage.addWatchHistory("v2", 20);
+
+      await Storage.clearWatchHistory();
+      expect(await Storage.getWatchHistory()).toEqual([]);
+    });
   });
 
   describe("Saved Videos", () => {
@@ -121,6 +145,22 @@ describe("Storage", () => {
 
       const unsaved = await Storage.toggleSaved("v1");
       expect(unsaved).toBe(false);
+    });
+
+    it("clears saved and liked lists in one write", async () => {
+      // Clearing by toggling each id would be a read-modify-write per item,
+      // and concurrent toggles would lose all but the last write.
+      await Storage.toggleSaved("v1");
+      await Storage.toggleSaved("v2");
+      await Storage.toggleLike("v1");
+      await Storage.toggleLike("v2");
+
+      await Storage.clearSavedVideos();
+      expect(await Storage.getSavedVideos()).toEqual([]);
+      expect(await Storage.getLikedVideos()).toHaveLength(2);
+
+      await Storage.clearLikedVideos();
+      expect(await Storage.getLikedVideos()).toEqual([]);
     });
   });
 
@@ -144,6 +184,57 @@ describe("Storage", () => {
       const comments = await Storage.getUserComments();
       expect(comments[0].text).toBe("Second");
       expect(comments[1].text).toBe("First");
+    });
+
+    it("edits a comment and stamps editedAt", async () => {
+      const c = await Storage.addComment("v1", "origianl typo");
+      expect(c.editedAt).toBeUndefined();
+
+      await Storage.editComment(c.id, "original, fixed");
+      const [stored] = await Storage.getUserComments();
+      expect(stored.text).toBe("original, fixed");
+      expect(stored.editedAt).toBeTruthy();
+    });
+
+    it("editing an unknown id is a no-op", async () => {
+      await Storage.addComment("v1", "keep me");
+      await Storage.editComment("nope", "changed");
+      const all = await Storage.getUserComments();
+      expect(all).toHaveLength(1);
+      expect(all[0].text).toBe("keep me");
+    });
+
+    it("deleting a comment takes its replies with it", async () => {
+      const parent = await Storage.addComment("v1", "parent");
+      await Storage.addComment("v1", "reply one", parent.id);
+      await Storage.addComment("v1", "reply two", parent.id);
+      const other = await Storage.addComment("v1", "unrelated");
+
+      await Storage.deleteComment(parent.id);
+      const left = await Storage.getUserComments();
+      expect(left).toHaveLength(1);
+      expect(left[0].id).toBe(other.id);
+    });
+
+    it("deleting a comment drops likes pointing at it", async () => {
+      const parent = await Storage.addComment("v1", "parent");
+      const reply = await Storage.addComment("v1", "reply", parent.id);
+      await Storage.toggleCommentLike(parent.id);
+      await Storage.toggleCommentLike(reply.id);
+      await Storage.toggleCommentLike("uc_unrelated");
+
+      await Storage.deleteComment(parent.id);
+      expect(await Storage.getLikedComments()).toEqual(["uc_unrelated"]);
+    });
+
+    it("deleting a reply leaves its parent alone", async () => {
+      const parent = await Storage.addComment("v1", "parent");
+      const reply = await Storage.addComment("v1", "reply", parent.id);
+
+      await Storage.deleteComment(reply.id);
+      const left = await Storage.getUserComments();
+      expect(left).toHaveLength(1);
+      expect(left[0].id).toBe(parent.id);
     });
 
     it("persists comment likes across reads", async () => {

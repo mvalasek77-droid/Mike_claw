@@ -33,6 +33,8 @@ export interface UserComment {
   text: string;
   createdAt: string;
   parentId?: string;
+  /** Set the first time the comment is edited, so the UI can mark it. */
+  editedAt?: string;
 }
 
 export interface NotificationPrefs {
@@ -151,6 +153,18 @@ export const Storage = {
     await setJSON(KEYS.WATCH_HISTORY, history);
   },
 
+  async removeWatchHistory(videoId: string): Promise<void> {
+    const history = await this.getWatchHistory();
+    await setJSON(
+      KEYS.WATCH_HISTORY,
+      history.filter((h) => h.videoId !== videoId)
+    );
+  },
+
+  async clearWatchHistory(): Promise<void> {
+    await setJSON(KEYS.WATCH_HISTORY, []);
+  },
+
   async getSavedVideos(): Promise<string[]> {
     return getJSON(KEYS.SAVED_VIDEOS, []);
   },
@@ -166,6 +180,18 @@ export const Storage = {
     saved.push(videoId);
     await setJSON(KEYS.SAVED_VIDEOS, saved);
     return true;
+  },
+
+  /**
+   * Bulk clears exist because toggling each id in turn is a read-modify-write
+   * per item; fired concurrently they race and all but the last write is lost.
+   */
+  async clearSavedVideos(): Promise<void> {
+    await setJSON(KEYS.SAVED_VIDEOS, []);
+  },
+
+  async clearLikedVideos(): Promise<void> {
+    await setJSON(KEYS.LIKED_VIDEOS, []);
   },
 
   async getUserComments(): Promise<UserComment[]> {
@@ -186,6 +212,31 @@ export const Storage = {
     comments.unshift(comment);
     await setJSON(KEYS.USER_COMMENTS, comments);
     return comment;
+  },
+
+  async editComment(id: string, text: string): Promise<void> {
+    const comments = await this.getUserComments();
+    const idx = comments.findIndex((c) => c.id === id);
+    if (idx < 0) return;
+    comments[idx] = { ...comments[idx], text, editedAt: new Date().toISOString() };
+    await setJSON(KEYS.USER_COMMENTS, comments);
+  },
+
+  /** Deleting a top-level comment takes its replies with it. */
+  async deleteComment(id: string): Promise<void> {
+    const comments = await this.getUserComments();
+    const remaining = comments.filter((c) => c.id !== id && c.parentId !== id);
+    await setJSON(KEYS.USER_COMMENTS, remaining);
+
+    // Drop any likes pointing at comments that no longer exist.
+    const liked = await this.getLikedComments();
+    const removedIds = new Set(
+      comments.filter((c) => c.id === id || c.parentId === id).map((c) => c.id)
+    );
+    const nextLiked = liked.filter((cid) => !removedIds.has(cid));
+    if (nextLiked.length !== liked.length) {
+      await setJSON(KEYS.LIKED_COMMENTS, nextLiked);
+    }
   },
 
   async getLikedComments(): Promise<string[]> {

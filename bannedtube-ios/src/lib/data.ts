@@ -36,6 +36,9 @@ export interface Comment {
   likes: number;
   timeAgo: string;
   replies?: Comment[];
+  /** True for comments written on this device, which can be edited or deleted. */
+  isOwn?: boolean;
+  edited?: boolean;
 }
 
 export interface AIContentSuggestion {

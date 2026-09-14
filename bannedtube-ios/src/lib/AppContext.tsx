@@ -39,6 +39,12 @@ interface AppActions {
   toggleCommentLike: (commentId: string) => Promise<boolean>;
   addWatchHistory: (videoId: string, progress: number) => Promise<void>;
   addComment: (videoId: string, text: string, parentId?: string) => Promise<UserComment>;
+  editComment: (id: string, text: string) => Promise<void>;
+  deleteComment: (id: string) => Promise<void>;
+  removeFromHistory: (videoId: string) => Promise<void>;
+  clearHistory: () => Promise<void>;
+  clearSaved: () => Promise<void>;
+  clearLiked: () => Promise<void>;
   getVideoComments: (videoId: string) => Comment[];
   isLiked: (videoId: string) => boolean;
   isDisliked: (videoId: string) => boolean;
@@ -220,6 +226,55 @@ export function AppProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  const editComment = useCallback(async (id: string, text: string) => {
+    await Storage.editComment(id, text);
+    setState((s) => ({
+      ...s,
+      userComments: s.userComments.map((c) =>
+        c.id === id ? { ...c, text, editedAt: new Date().toISOString() } : c
+      ),
+    }));
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, []);
+
+  const deleteComment = useCallback(async (id: string) => {
+    await Storage.deleteComment(id);
+    setState((s) => ({
+      ...s,
+      userComments: s.userComments.filter(
+        (c) => c.id !== id && c.parentId !== id
+      ),
+    }));
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }, []);
+
+  const removeFromHistory = useCallback(async (videoId: string) => {
+    await Storage.removeWatchHistory(videoId);
+    setState((s) => ({
+      ...s,
+      watchHistory: s.watchHistory.filter((h) => h.videoId !== videoId),
+    }));
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, []);
+
+  const clearHistory = useCallback(async () => {
+    await Storage.clearWatchHistory();
+    setState((s) => ({ ...s, watchHistory: [] }));
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }, []);
+
+  const clearSaved = useCallback(async () => {
+    await Storage.clearSavedVideos();
+    setState((s) => ({ ...s, savedVideos: new Set() }));
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }, []);
+
+  const clearLiked = useCallback(async () => {
+    await Storage.clearLikedVideos();
+    setState((s) => ({ ...s, likedVideos: new Set() }));
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }, []);
+
   const getVideoComments = useCallback(
     (videoId: string): Comment[] => {
       const topLevel = state.userComments
@@ -235,6 +290,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
               text: r.text,
               likes: 0,
               timeAgo: formatTimeAgo(r.createdAt),
+              isOwn: true,
+              edited: Boolean(r.editedAt),
             }));
           return {
             id: c.id,
@@ -245,6 +302,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             likes: 0,
             timeAgo: formatTimeAgo(c.createdAt),
             replies: replies.length > 0 ? replies : undefined,
+            isOwn: true,
+            edited: Boolean(c.editedAt),
           };
         });
       return topLevel;
@@ -319,6 +378,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     toggleCommentLike,
     addWatchHistory,
     addComment,
+    editComment,
+    deleteComment,
+    removeFromHistory,
+    clearHistory,
+    clearSaved,
+    clearLiked,
     getVideoComments,
     isLiked,
     isDisliked,

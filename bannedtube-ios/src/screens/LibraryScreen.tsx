@@ -5,6 +5,7 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -23,7 +24,17 @@ export default function LibraryScreen({
   onVideoPress,
   onChannelPress,
 }: LibraryScreenProps) {
-  const { watchHistory, savedVideos, likedVideos } = useApp();
+  const {
+    watchHistory,
+    savedVideos,
+    likedVideos,
+    removeFromHistory,
+    clearHistory,
+    clearSaved,
+    clearLiked,
+    toggleSaved,
+    toggleLike,
+  } = useApp();
   const [filter, setFilter] = useState<Filter>("history");
 
   const historyVideos = watchHistory
@@ -45,6 +56,40 @@ export default function LibraryScreen({
       ? savedVideoList
       : likedVideoList;
 
+  const LIST_NOUN: Record<Filter, string> = {
+    history: "watch history",
+    saved: "saved videos",
+    liked: "liked videos",
+  };
+
+  /** Takes one video out of whichever list is on screen. */
+  function removeOne(video: Video) {
+    if (filter === "history") removeFromHistory(video.id);
+    else if (filter === "saved") toggleSaved(video.id);
+    else toggleLike(video.id);
+  }
+
+  function confirmClear() {
+    Alert.alert(
+      `Clear ${LIST_NOUN[filter]}?`,
+      `This removes all ${currentList.length} ${
+        currentList.length === 1 ? "entry" : "entries"
+      } from this device. It cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Clear",
+          style: "destructive",
+          onPress: () => {
+            if (filter === "history") clearHistory();
+            else if (filter === "saved") clearSaved();
+            else clearLiked();
+          },
+        },
+      ]
+    );
+  }
+
   const filters: { key: Filter; label: string; icon: string; count: number }[] = [
     { key: "history", label: "History", icon: "time-outline", count: historyVideos.length },
     { key: "saved", label: "Saved", icon: "bookmark-outline", count: savedVideoList.length },
@@ -55,6 +100,16 @@ export default function LibraryScreen({
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Vault</Text>
+        {currentList.length > 0 && (
+          <TouchableOpacity
+            onPress={confirmClear}
+            style={styles.clearBtn}
+            accessibilityRole="button"
+            accessibilityLabel={`Clear all ${filter}`}
+          >
+            <Text style={styles.clearBtnText}>Clear all</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.filterRow}>
@@ -96,12 +151,23 @@ export default function LibraryScreen({
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <View style={styles.cardWrapper}>
-            <VideoCard
-              video={item}
-              onPress={onVideoPress}
-              onChannelPress={onChannelPress}
-              layout="list"
-            />
+            <View style={{ flex: 1 }}>
+              <VideoCard
+                video={item}
+                onPress={onVideoPress}
+                onChannelPress={onChannelPress}
+                layout="list"
+              />
+            </View>
+            <TouchableOpacity
+              onPress={() => removeOne(item)}
+              style={styles.removeBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel={`Remove ${item.title} from ${LIST_NOUN[filter]}`}
+            >
+              <Ionicons name="close" size={18} color={THEME.textSecondary} />
+            </TouchableOpacity>
           </View>
         )}
         ListEmptyComponent={
@@ -148,9 +214,19 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingTop: 14,
     paddingBottom: 10,
+  },
+  clearBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+  },
+  clearBtnText: {
+    color: THEME.accent,
+    fontSize: 14,
+    fontWeight: "600",
   },
   headerTitle: {
     color: THEME.textPrimary,
@@ -204,7 +280,17 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   cardWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
     paddingHorizontal: 12,
+  },
+  removeBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
   },
   empty: {
     alignItems: "center",

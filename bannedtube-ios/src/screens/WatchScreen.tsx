@@ -41,14 +41,42 @@ interface WatchScreenProps {
 }
 
 function CommentItem({ comment, onReply }: { comment: Comment; onReply?: (parentId: string, text: string) => void }) {
-  const { isCommentLiked, toggleCommentLike } = useApp();
+  const { isCommentLiked, toggleCommentLike, editComment, deleteComment } = useApp();
   const [showReplies, setShowReplies] = useState(false);
   const [replying, setReplying] = useState(false);
   const [replyText, setReplyText] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState(comment.text);
   const liked = isCommentLiked(comment.id);
 
   function handleLike() {
     toggleCommentLike(comment.id);
+  }
+
+  function saveEdit() {
+    const trimmed = editText.trim();
+    if (trimmed && trimmed !== comment.text) editComment(comment.id, trimmed);
+    setEditing(false);
+  }
+
+  function confirmDelete() {
+    const hasReplies = (comment.replies?.length ?? 0) > 0;
+    Alert.alert(
+      "Delete comment?",
+      hasReplies
+        ? `This also deletes ${comment.replies!.length} ${
+            comment.replies!.length === 1 ? "reply" : "replies"
+          }.`
+        : undefined,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => deleteComment(comment.id),
+        },
+      ]
+    );
   }
 
   return (
@@ -57,9 +85,52 @@ function CommentItem({ comment, onReply }: { comment: Comment; onReply?: (parent
       <View style={styles.commentContent}>
         <View style={styles.commentHeader}>
           <Text style={styles.commentAuthor}>{comment.author}</Text>
-          <Text style={styles.commentTime}>{comment.timeAgo}</Text>
+          <Text style={styles.commentTime}>
+            {comment.timeAgo}
+            {comment.edited ? " · edited" : ""}
+          </Text>
         </View>
-        <Text style={styles.commentText}>{comment.text}</Text>
+        {editing ? (
+          <View style={styles.editRow}>
+            <TextInput
+              style={styles.editInput}
+              value={editText}
+              onChangeText={setEditText}
+              multiline
+              autoFocus
+              accessibilityLabel="Edit comment"
+            />
+            <View style={styles.editActions}>
+              <TouchableOpacity
+                onPress={() => {
+                  setEditText(comment.text);
+                  setEditing(false);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel editing"
+              >
+                <Text style={styles.editCancel}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={saveEdit}
+                disabled={!editText.trim()}
+                accessibilityRole="button"
+                accessibilityLabel="Save comment"
+              >
+                <Text
+                  style={[
+                    styles.editSave,
+                    !editText.trim() && { opacity: 0.4 },
+                  ]}
+                >
+                  Save
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <Text style={styles.commentText}>{comment.text}</Text>
+        )}
         <View style={styles.commentActions}>
           <TouchableOpacity
             style={styles.commentAction}
@@ -94,6 +165,32 @@ function CommentItem({ comment, onReply }: { comment: Comment; onReply?: (parent
             <Ionicons name="chatbubble-outline" size={14} color={THEME.textSecondary} />
             <Text style={styles.commentActionText}>Reply</Text>
           </TouchableOpacity>
+          {comment.isOwn && !editing && (
+            <>
+              <TouchableOpacity
+                style={styles.commentAction}
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setEditText(comment.text);
+                  setEditing(true);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Edit your comment"
+              >
+                <Ionicons name="pencil-outline" size={14} color={THEME.textSecondary} />
+                <Text style={styles.commentActionText}>Edit</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.commentAction}
+                onPress={confirmDelete}
+                accessibilityRole="button"
+                accessibilityLabel="Delete your comment"
+              >
+                <Ionicons name="trash-outline" size={14} color={THEME.textSecondary} />
+                <Text style={styles.commentActionText}>Delete</Text>
+              </TouchableOpacity>
+            </>
+          )}
           {comment.replies && comment.replies.length > 0 && (
             <TouchableOpacity
               onPress={() => {
@@ -724,6 +821,37 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
+  },
+  editRow: {
+    gap: 8,
+    marginTop: 2,
+  },
+  editInput: {
+    backgroundColor: THEME.bgSecondary,
+    borderWidth: 1,
+    borderColor: THEME.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    color: THEME.textPrimary,
+    fontSize: 14,
+    minHeight: 62,
+    textAlignVertical: "top",
+  },
+  editActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 18,
+  },
+  editCancel: {
+    color: THEME.textSecondary,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  editSave: {
+    color: THEME.accent,
+    fontSize: 13,
+    fontWeight: "700",
   },
   commentActionText: {
     color: THEME.textSecondary,
