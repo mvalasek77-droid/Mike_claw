@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Sign in with Apple. Without this key the request fails immediately
+	  with AuthorizationError 1000 before any UI appears, which is what a
+	  dead Sign in with Apple button looks like from the outside.
+
+	  This alone is not enough: the App ID in the developer portal must
+	  also have the Sign In with Apple capability enabled, and the build
+	  must be signed with a profile that includes it.
+	-->
+	<key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array>
+
+	<!--
+	  Shared container the widget reads its snapshot from. Without the
+	  entitlement UserDefaults(suiteName:) returns nil and the widget
+	  renders empty with no error anywhere.
+	-->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.boxcall.shared</string>
+	</array>
+</dict>
+</plist>

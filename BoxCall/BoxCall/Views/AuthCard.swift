@@ -7,6 +7,7 @@ import AuthenticationServices
 struct AuthCard: View {
     @EnvironmentObject var portfolio: PortfolioService
     @ObservedObject var auth = AuthService.shared
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -39,16 +40,24 @@ struct AuthCard: View {
             } else {
                 SignInWithAppleButton(.signIn) { request in
                     request.requestedScopes = [.fullName, .email]
+                    AuthService.shared.beginSignIn()
                 } onCompletion: { result in
                     switch result {
-                    case .success(let auth):
-                        AuthService.shared.startSignInFromResult(auth)
+                    case .success(let authorization):
+                        AuthService.shared.startSignInFromResult(authorization)
                     case .failure(let error):
-                        AuthService.shared.recordError(error.localizedDescription)
+                        AuthService.shared.handleSignInFailure(error)
                     }
                 }
-                .signInWithAppleButtonStyle(.white)
+                // The card sits on secondarySystemBackground, which is
+                // near-white in light mode — a white button on it was
+                // effectively invisible. Pick the style that contrasts
+                // with the surface it is actually drawn on.
+                .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
                 .frame(height: 44)
+                .disabled(auth.signInInFlight)
+                .opacity(auth.signInInFlight ? 0.6 : 1)
+                .accessibilityHint("Optional. The app works fully without signing in.")
             }
 
             if let err = auth.lastError {

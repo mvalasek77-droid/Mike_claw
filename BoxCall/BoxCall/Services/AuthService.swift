@@ -32,19 +32,8 @@ final class AuthService: NSObject, ObservableObject {
 
     // MARK: - Sign in with Apple
 
-    func startSignInWithApple() {
-        signInInFlight = true
-        lastError = nil
-        let request = ASAuthorizationAppleIDProvider().createRequest()
-        request.requestedScopes = [.fullName, .email]
-        let controller = ASAuthorizationController(authorizationRequests: [request])
-        controller.delegate = self
-        controller.presentationContextProvider = self
-        controller.performRequests()
-    }
-
-    /// SwiftUI's SignInWithAppleButton returns the credential directly;
-    /// this lets AuthCard hand it back to us without a separate delegate.
+    /// Called by the SwiftUI `SignInWithAppleButton` when the OS hands
+    /// back a credential.
     func startSignInFromResult(_ authorization: ASAuthorization) {
         guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential else {
             recordError("Unknown credential type."); return
@@ -52,20 +41,67 @@ final class AuthService: NSObject, ObservableObject {
         let uid = credential.user
         let email = credential.email
         let display = credential.fullName?.givenName?.lowercased()
-        self.appleUserId = uid
-        self.signedInEmail = email
-        UserDefaults.standard.set(uid, forKey: self.userIdKey)
-        if let email { UserDefaults.standard.set(email, forKey: self.emailKey) }
+        appleUserId = uid
+        signedInEmail = email
+        lastError = nil
+        UserDefaults.standard.set(uid, forKey: userIdKey)
+        // Apple returns the email only on the very first authorization.
+        // Overwriting with nil on a later sign-in would lose it.
+        if let email { UserDefaults.standard.set(email, forKey: emailKey) }
         PortfolioService.shared.mutateUser { u in
             u.appleUserId = uid
             if let display, !display.isEmpty, u.handle == "you" { u.handle = display }
         }
-        self.signInInFlight = false
+        signInInFlight = false
+    }
+
+    /// Turns an authorization failure into something a person can act on.
+    ///
+    /// The raw `localizedDescription` for the most common failure is
+    /// "The operation couldn't be completed. (…AuthorizationError error
+    /// 1000.)", which tells nobody anything. Code 1000 almost always
+    /// means the build is missing the Sign in with Apple entitlement or
+    /// the App ID does not have the capability enabled.
+    func handleSignInFailure(_ error: Error) {
+        signInInFlight = false
+
+        guard let authError = error as? ASAuthorizationError else {
+            lastError = error.localizedDescription
+            return
+        }
+
+        switch authError.code {
+        case .canceled:
+            // Backing out is not a failure. Showing red text for it
+            // makes a working button look broken.
+            lastError = nil
+        case .unknown:
+            lastError = "Sign in with Apple isn't available in this build. "
+                + "Check that the app is signed with the Sign in with Apple "
+                + "entitlement and that you're signed into iCloud on this device."
+        case .notHandled:
+            lastError = "Sign in with Apple couldn't complete. Make sure you're signed into iCloud in Settings."
+        case .invalidResponse:
+            lastError = "Apple returned an unexpected response. Please try again."
+        case .failed:
+            lastError = "Apple couldn't verify that request. Please try again."
+        case .notInteractive:
+            lastError = "Sign in needs the app to be in the foreground."
+        @unknown default:
+            lastError = error.localizedDescription
+        }
     }
 
     func recordError(_ msg: String) {
-        self.lastError = msg
-        self.signInInFlight = false
+        lastError = msg
+        signInInFlight = false
+    }
+
+    /// Set when the button is tapped so the card can show progress and
+    /// stop a second tap racing the first.
+    func beginSignIn() {
+        signInInFlight = true
+        lastError = nil
     }
 
     func signOut() {
@@ -88,53 +124,10 @@ final class AuthService: NSObject, ObservableObject {
     }
 }
 
-// MARK: - ASAuthorizationControllerDelegate
-
-extension AuthService: ASAuthorizationControllerDelegate,
-                       ASAuthorizationControllerPresentationContextProviding {
-    nonisolated func authorizationController(
-        controller: ASAuthorizationController,
-        didCompleteWithAuthorization auth: ASAuthorization
-    ) {
-        guard let credential = auth.credential as? ASAuthorizationAppleIDCredential else { return }
-        let uid = credential.user
-        let email = credential.email
-        let display: String? = credential.fullName?.givenName?.lowercased()
-        Task { @MainActor in
-            self.appleUserId = uid
-            self.signedInEmail = email
-            UserDefaults.standard.set(uid, forKey: self.userIdKey)
-            if let email { UserDefaults.standard.set(email, forKey: self.emailKey) }
-            PortfolioService.shared.mutateUser { u in
-                u.appleUserId = uid
-                if let display, !display.isEmpty, u.handle == "you" { u.handle = display }
-            }
-            self.signInInFlight = false
-            // TODO: sync positions + XP to backend once /me endpoint exists.
-        }
-    }
-
-    nonisolated func authorizationController(controller: ASAuthorizationController,
-                                             didCompleteWithError error: Error) {
-        Task { @MainActor in
-            self.lastError = error.localizedDescription
-            self.signInInFlight = false
-        }
-    }
-
-    func presentationAnchor(for controller: ASAuthorizationController)
-        -> ASPresentationAnchor {
-        // A window from any connected foreground scene will do.
-        for scene in UIApplication.shared.connectedScenes {
-            if let ws = scene as? UIWindowScene,
-               let w = ws.windows.first(where: \.isKeyWindow) ?? ws.windows.first {
-                return w
-            }
-        }
-        return ASPresentationAnchor()
-    }
-}
-
-#if canImport(UIKit)
-import UIKit
-#endif
+// The UIKit delegate path that used to live here has been removed.
+// It was never called — `AuthCard` uses SwiftUI's
+// `SignInWithAppleButton`, which owns the controller and returns the
+// credential through its own completion handler. The old code also built
+// its `ASAuthorizationController` as a local that went out of scope the
+// moment `performRequests()` returned, so it could not reliably have
+// worked had anything called it.

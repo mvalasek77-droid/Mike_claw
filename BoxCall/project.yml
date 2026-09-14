@@ -33,6 +33,12 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.boxcall.app
+        # Sign in with Apple fails with AuthorizationError 1000 without
+        # this, and the widget's shared container returns nil.
+        CODE_SIGN_ENTITLEMENTS: BoxCall/BoxCall.entitlements
+        # Answered up front so every upload stops asking. The app only
+        # talks HTTPS, which is exempt.
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
@@ -63,6 +69,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.boxcall.app.widget
+        CODE_SIGN_ENTITLEMENTS: BoxCallWidget/BoxCallWidget.entitlements
         INFOPLIST_KEY_NSSupportsLiveActivities: YES
         INFOPLIST_KEY_CFBundleDisplayName: "BoxCall"
         INFOPLIST_KEY_NSExtensionPointIdentifier: com.apple.widgetkit-extension
