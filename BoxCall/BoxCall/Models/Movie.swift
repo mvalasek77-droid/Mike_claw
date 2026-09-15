@@ -22,6 +22,10 @@ struct Movie: Identifiable, Codable, Hashable {
     let trailerQuery: String?
     /// Rotten Tomatoes-style critic score 0-100 if known pre-release.
     let criticScore: Int?
+    /// Published opening-weekend projection from the trades, when one
+    /// exists. This is the anchor the chain is priced off; sentiment
+    /// then moves the number up or down from here.
+    let tradeProjection: TradeProjection?
 
     init(
         id: String,
@@ -39,7 +43,8 @@ struct Movie: Identifiable, Codable, Hashable {
         cast: [String] = [],
         synopsis: String? = nil,
         trailerQuery: String? = nil,
-        criticScore: Int? = nil
+        criticScore: Int? = nil,
+        tradeProjection: TradeProjection? = nil
     ) {
         self.id = id
         self.title = title
@@ -57,6 +62,7 @@ struct Movie: Identifiable, Codable, Hashable {
         self.synopsis = synopsis
         self.trailerQuery = trailerQuery
         self.criticScore = criticScore
+        self.tradeProjection = tradeProjection
     }
 
     var daysToRelease: Int {

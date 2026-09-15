@@ -2,6 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!--
+	  The widget reads the snapshot the app writes into this shared
+	  container. Both sides need the same group or the read silently
+	  returns nil and the widget shows placeholder content forever.
+	-->
 	<key>com.apple.security.application-groups</key>
 	<array>
 		<string>group.com.boxcall.shared</string>

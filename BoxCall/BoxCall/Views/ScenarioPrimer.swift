@@ -1,4 +1,5 @@
 import SwiftUI
+import Foundation
 
 /// Plain-English "here's what this specific trade actually does" —
 /// shown at the top of every TradeSheet, above the order form.

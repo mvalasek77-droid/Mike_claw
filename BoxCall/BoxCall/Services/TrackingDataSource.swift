@@ -33,6 +33,46 @@ final class AlgorithmicTrackingSource: TrackingDataSource {
     }
 }
 
+// MARK: - Published trade projections
+
+/// Prices off the opening-weekend range the trades actually published.
+///
+/// This sits at the top of the stack because a number Deadline or
+/// Variety put in print is better evidence than anything the app can
+/// infer from a popularity score. The midpoint becomes the consensus and
+/// the *width* of the published range becomes the implied volatility, so
+/// a title the analysts agree on prices tight and a contested one prices
+/// wide — which is the real information in a forecast range.
+///
+/// A stale projection is handed back toward the algorithmic estimate in
+/// proportion to its age, so a number from three months ago stops
+/// dominating a movie the week it opens.
+final class TradeProjectionTrackingSource: TrackingDataSource {
+    /// Below this confidence the projection is too old to lead, and the
+    /// blend leans on the movie's own estimate instead.
+    private let minimumConfidence = 0.15
+
+    func tracking(for movie: Movie) async -> Tracking? {
+        guard let projection = movie.tradeProjection else { return nil }
+        let confidence = projection.confidence()
+        guard confidence >= minimumConfidence else { return nil }
+
+        // Blend toward the movie's standing estimate as the projection
+        // ages, rather than trusting or discarding it wholesale.
+        let fallback = movie.consensusOpeningMillions
+        let opening = projection.midpointMillions * confidence
+            + fallback * (1 - confidence)
+
+        // Same treatment for vol: an aging range says less about how
+        // uncertain the outcome still is.
+        let iv = projection.impliedVolPct * confidence
+            + movie.impliedVolPct * (1 - confidence)
+
+        return Tracking(openingWeekendMillions: max(0.5, opening),
+                        impliedVolPct: max(15, iv))
+    }
+}
+
 // MARK: - Backend (real tracking)
 
 /// The production path. Calls the BoxCall backend which aggregates
@@ -88,10 +128,16 @@ final class CompositeTrackingSource: TrackingDataSource {
 }
 
 extension Config {
-    /// The tracking source stack: backend if available (currently stubbed
-    /// so it will 404 and fall through), then the algorithmic estimate.
+    /// The tracking source stack, best evidence first: a projection the
+    /// trades actually published, then the backend aggregate (currently
+    /// stubbed so it 404s and falls through), then the app's own
+    /// estimate as a guaranteed floor.
+    ///
+    /// Whatever this returns is then moved up or down by the sentiment
+    /// engine — see `enrichedTrackingSource`.
     static var trackingSource: TrackingDataSource {
         CompositeTrackingSource([
+            TradeProjectionTrackingSource(),
             BoxCallBackendTrackingSource(),
             AlgorithmicTrackingSource()
         ])

@@ -20,6 +20,9 @@ struct FeedView: View {
                         MarqueeBoxOfficeHeader()
                             .padding(.horizontal)
 
+                        NowPlayingBoard()
+                            .padding(.horizontal)
+
                         BoxOfficeForecastBoard()
                             .padding(.horizontal)
 

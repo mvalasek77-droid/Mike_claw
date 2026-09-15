@@ -24,13 +24,13 @@ final class ReferralService: ObservableObject {
 
     private init() {
         let defaults = UserDefaults.standard
-        let existingCode = defaults.string(forKey: "referral.myCode")
+        let existingCode = defaults.string(forKey: myCodeKey)
         let resolvedCode = existingCode ?? ReferralService.generateCode()
         myCode = resolvedCode
-        redemptionsMade = defaults.integer(forKey: "referral.redemptionsMade")
-        didRedeem = defaults.bool(forKey: "referral.didRedeem")
+        redemptionsMade = defaults.integer(forKey: redemptionsKey)
+        didRedeem = defaults.bool(forKey: didRedeemKey)
         if existingCode == nil {
-            defaults.set(resolvedCode, forKey: "referral.myCode")
+            defaults.set(resolvedCode, forKey: myCodeKey)
         }
     }
 

@@ -83,11 +83,27 @@ struct PaywallView: View {
     }
 
     private var fineprint: some View {
-        Text("Subscriptions renew monthly at the price shown. Cancel any time in your App Store settings. Reel Coins are play-money and cannot be redeemed for cash or transferred. All prices are USD.")
-            .font(.caption2)
-            .foregroundStyle(.secondary)
-            .multilineTextAlignment(.center)
-            .padding(.top, 4)
+        VStack(spacing: 8) {
+            Text("Subscriptions renew monthly at the price shown. Cancel any time in your App Store settings. Reel Coins are play-money and cannot be redeemed for cash, transferred between accounts, or exchanged for anything of value. All prices are USD.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            // Apple requires functional links to both documents wherever
+            // an auto-renewing subscription is offered (Guideline 3.1.2).
+            // They have to be in the binary, not only on the website.
+            HStack(spacing: 6) {
+                NavigationLink { LegalView(kind: .terms) } label: {
+                    Text("Terms of Service").font(.caption2.weight(.semibold))
+                }
+                Text("·").font(.caption2).foregroundStyle(.tertiary)
+                NavigationLink { LegalView(kind: .privacy) } label: {
+                    Text("Privacy Policy").font(.caption2.weight(.semibold))
+                }
+            }
+            .tint(Theme.marqueeGold)
+        }
+        .padding(.top, 4)
     }
 }
 

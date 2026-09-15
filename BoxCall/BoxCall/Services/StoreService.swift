@@ -6,9 +6,9 @@ import Combine
 /// prices, drives the purchase flow, and listens for transaction updates
 /// to activate / deactivate memberships.
 ///
-/// Debug builds can fall back to a demo purchase when no StoreKit
-/// Configuration is attached. Release builds never grant paid access
-/// without a verified App Store transaction.
+/// Production builds fail closed when StoreKit products are unavailable.
+/// Debug builds retain a local fallback so the paywall can be exercised
+/// without an App Store Connect product configuration.
 @MainActor
 final class StoreService: ObservableObject {
     static let shared = StoreService()
@@ -83,11 +83,19 @@ final class StoreService: ObservableObject {
                 lastError = error.localizedDescription
             }
         } else {
+            // No product means StoreKit never loaded this tier — no
+            // network, products still "Waiting for Review", a mismatched
+            // bundle id. Those are ordinary runtime conditions, so a
+            // shipped build must fail closed here: granting the tier
+            // anyway would unlock paid functionality outside In-App
+            // Purchase, which is exactly what Guideline 3.1.1 forbids.
             #if DEBUG
-            // Keep local development testable without live App Store products.
+            // Development only, so the tier flow stays testable without a
+            // StoreKit configuration attached. Never compiled into a
+            // Release build, and so never reachable by App Review.
             PortfolioService.shared.activateMembership(tier)
             #else
-            lastError = "Subscriptions are temporarily unavailable. Please try again later."
+            lastError = "Subscriptions are unavailable right now. Please check your connection and try again."
             #endif
         }
     }
