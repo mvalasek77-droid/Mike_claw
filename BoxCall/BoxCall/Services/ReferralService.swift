@@ -23,14 +23,15 @@ final class ReferralService: ObservableObject {
     private let didRedeemKey = "referral.didRedeem"
 
     private init() {
-        if let existing = UserDefaults.standard.string(forKey: myCodeKey) {
-            myCode = existing
-        } else {
-            myCode = ReferralService.generateCode()
-            UserDefaults.standard.set(myCode, forKey: myCodeKey)
+        let defaults = UserDefaults.standard
+        let existingCode = defaults.string(forKey: "referral.myCode")
+        let resolvedCode = existingCode ?? ReferralService.generateCode()
+        myCode = resolvedCode
+        redemptionsMade = defaults.integer(forKey: "referral.redemptionsMade")
+        didRedeem = defaults.bool(forKey: "referral.didRedeem")
+        if existingCode == nil {
+            defaults.set(resolvedCode, forKey: "referral.myCode")
         }
-        redemptionsMade = UserDefaults.standard.integer(forKey: redemptionsKey)
-        didRedeem = UserDefaults.standard.bool(forKey: didRedeemKey)
     }
 
     enum RedeemError: LocalizedError {

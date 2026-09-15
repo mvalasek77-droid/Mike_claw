@@ -80,7 +80,7 @@ enum LiveActivityService {
             if let final {
                 await activity.end(.init(state: final, staleDate: nil), dismissalPolicy: .after(Date().addingTimeInterval(3600)))
             } else {
-                await activity.end(dismissalPolicy: .immediate)
+                await activity.end(nil, dismissalPolicy: .immediate)
             }
             current = nil
         }

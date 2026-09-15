@@ -224,16 +224,16 @@ struct CallSection: View {
             Text("Green area = profit. Red area = loss. Orange dashed line is your strike. Blue dashed line is your break-even.")
                 .font(.caption2).foregroundStyle(.secondary)
             WorkedExample(
-                title: "Example — Neon Requiem (consensus $12M)",
+                title: "Example — Dune: Part Three (consensus $85M)",
                 lines: [
-                    ("You buy",         "10 Calls at $12M strike"),
-                    ("Premium (each)",  "2.80 RC"),
-                    ("Total cost",      "28 RC"),
-                    ("Break-even",      "$14.8M opening"),
-                    ("If it opens at $18M", "payoff = (18−12) × 1 × 10 = 60 RC"),
-                    ("Net profit",      "+32 RC"),
-                    ("If it opens at $10M", "payoff = 0 (strike not hit)"),
-                    ("Net loss",        "-28 RC (premium)")
+                    ("You buy",         "10 Calls at $85M strike"),
+                    ("Premium (each)",  "12 RC"),
+                    ("Total cost",      "120 RC"),
+                    ("Break-even",      "$97M opening"),
+                    ("If it opens at $120M", "payoff = (120−85) × 1 × 10 = 350 RC"),
+                    ("Net profit",      "+230 RC"),
+                    ("If it opens at $80M", "payoff = 0 (strike not hit)"),
+                    ("Net loss",        "-120 RC (premium)")
                 ],
                 verdict: "Max loss is capped at the premium you paid. Upside is uncapped.",
                 verdictPositive: true
@@ -252,15 +252,15 @@ struct PutSection: View {
             PayoffChart(side: .put, strike: 40, premium: 6, multiplier: 1)
                 .padding(.top, 4)
             WorkedExample(
-                title: "Example — Prowl (consensus $21M)",
+                title: "Example — Verity (consensus $24M)",
                 lines: [
-                    ("You buy",         "5 Puts at $18M strike"),
+                    ("You buy",         "5 Puts at $22M strike"),
                     ("Premium (each)",  "3.40 RC"),
                     ("Total cost",      "17 RC"),
-                    ("Break-even",      "$14.6M opening"),
-                    ("If it opens at $9M",  "payoff = (18−9) × 1 × 5 = 45 RC"),
-                    ("Net profit",      "+28 RC"),
-                    ("If it opens at $22M", "payoff = 0 (opened above strike)"),
+                    ("Break-even",      "$18.6M opening"),
+                    ("If it opens at $14M",  "payoff = (22−14) × 1 × 5 = 40 RC"),
+                    ("Net profit",      "+23 RC"),
+                    ("If it opens at $28M", "payoff = 0 (opened above strike)"),
                     ("Net loss",        "-17 RC (premium)")
                 ],
                 verdict: "Bomb Callers get paid. Max loss is your premium.",

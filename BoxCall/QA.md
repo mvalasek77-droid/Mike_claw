@@ -18,7 +18,7 @@ Ship-ready test matrix. Run through this before every App Store submission. Auto
 
 ## 2 · Trading loop
 
-- [ ] Now Showing renders the built-in slate within 200ms cold-launch (or the live TMDB catalog if a key is set). Every film shown must have a release date in the future — if a title that has already opened appears, the `isSettled` filter in `MockMovieProvider` / `loadMockCatalog` has regressed.
+- [ ] Now Showing renders the verified built-in slate within 200ms cold-launch (or the enriched TMDB catalog if a key is set). Every film shown must be a real announced release and must not be settled — if one appears, `VerifiedMovieProvider` / `loadVerifiedCatalog` has regressed.
 - [ ] Opening Night hero shows the film with the soonest release date, and its countdown ticks once per second.
 - [ ] Marquee ticker scrolls continuously without a visible seam at the wrap point.
 - [ ] Pull-to-refresh on Slate triggers a spinner in the nav bar; "Updated Xs ago" text updates on completion.

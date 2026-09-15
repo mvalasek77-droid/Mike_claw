@@ -124,14 +124,17 @@ extension AuthService: ASAuthorizationControllerDelegate,
 
     nonisolated func presentationAnchor(for controller: ASAuthorizationController)
         -> ASPresentationAnchor {
-        // A window from any connected foreground scene will do.
-        for scene in UIApplication.shared.connectedScenes {
-            if let ws = scene as? UIWindowScene,
-               let w = ws.windows.first(where: \.isKeyWindow) ?? ws.windows.first {
-                return w
+        MainActor.assumeIsolated {
+            // Authorization UI is presented on the main actor. Prefer the
+            // active key window and retain a safe fallback for cold launch.
+            for scene in UIApplication.shared.connectedScenes {
+                if let ws = scene as? UIWindowScene,
+                   let w = ws.windows.first(where: \.isKeyWindow) ?? ws.windows.first {
+                    return w
+                }
             }
+            return ASPresentationAnchor()
         }
-        return ASPresentationAnchor()
     }
 }
 

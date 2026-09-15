@@ -149,7 +149,7 @@ struct TradingDeskView: View {
                 Spacer()
                 Text("\(book.activeAgents.count) of \(book.quotes.count) quoting")
                     .font(.caption2)
-                    .foregroundStyle(book.steppedAway.isEmpty ? .secondary : .orange)
+                    .foregroundStyle(book.steppedAway.isEmpty ? Color.secondary : Color.orange)
             }
 
             let maxSize = book.quotes.reduce(1) { max($0, max($1.bidSize, $1.askSize)) }

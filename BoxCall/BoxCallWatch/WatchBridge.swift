@@ -42,6 +42,14 @@ final class WatchBridge: NSObject, ObservableObject, WCSessionDelegate {
                  activationDidCompleteWith activationState: WCSessionActivationState,
                  error: Error?) { /* no-op */ }
 
+#if os(iOS)
+    func sessionDidBecomeInactive(_ session: WCSession) { /* no-op */ }
+
+    func sessionDidDeactivate(_ session: WCSession) {
+        session.activate()
+    }
+#endif
+
     func session(_ session: WCSession, didReceiveApplicationContext ctx: [String: Any]) {
         guard let data = ctx["snapshot"] as? Data,
               let s = try? JSONDecoder().decode(Snapshot.self, from: data) else { return }

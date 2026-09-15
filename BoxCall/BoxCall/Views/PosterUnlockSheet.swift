@@ -62,7 +62,7 @@ struct PosterUnlockSheet: View {
         VStack(alignment: .leading, spacing: 8) {
             MarqueeBulbs(count: 12)
             Text("Turn the lights on.")
-                .font(Theme.Type.marqueeH1)
+                .font(Theme.Typography.marqueeH1)
                 .foregroundStyle(Theme.cream)
             Text("BoxCall ships with the real slate — titles, dates, cast, directors. Add a free TMDB key and every movie gets its actual poster, plus live updates as new releases get dated.")
                 .font(.callout).foregroundStyle(.secondary)

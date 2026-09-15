@@ -49,7 +49,7 @@ struct WeekendRecap: View {
                 .tracking(3)
                 .foregroundStyle(Theme.bulbGlow)
             Text(headline)
-                .font(Theme.Type.marqueeH2)
+                .font(Theme.Typography.marqueeH2)
                 .foregroundStyle(Theme.cream)
             HStack(spacing: 16) {
                 stat("Settled", "\(fresh.count)")

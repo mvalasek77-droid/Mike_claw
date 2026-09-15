@@ -3,10 +3,11 @@ import Foundation
 /// Merge multiple upcoming-movies providers into one deduped stream.
 ///
 /// In production the composite is:
-///   1. TMDB (direct, always on) — titles, posters, dates
-///   2. BoxCall backend (`/upcoming`) — aggregates IMDb Coming Soon,
+///   1. Studio-verified offline slate — trusted cold-start titles/dates
+///   2. TMDB (when configured) — titles, posters, dates
+///   3. BoxCall backend (`/upcoming`) — aggregates IMDb Coming Soon,
 ///      The Numbers, Deadline calendars via server-side scrapers
-///   3. Anything else you plug in later
+///   4. Anything else you plug in later
 ///
 /// Later sources take priority when the same movie appears twice, so
 /// richer metadata from the backend overrides the TMDB baseline.
@@ -82,17 +83,14 @@ final class BoxCallBackendUpcomingProvider: MovieDataProvider {
 }
 
 extension Config {
-    /// Overrides the earlier single-provider setup: builds a composite
-    /// that combines every source the app knows about.
+    /// Builds a composite that always starts with the studio-verified
+    /// offline slate. Live sources enrich or replace matching entries.
     static var compositeProvider: MovieDataProvider {
-        var sources: [MovieDataProvider] = []
+        var sources: [MovieDataProvider] = [VerifiedMovieProvider()]
         if !tmdbAPIKey.isEmpty {
             sources.append(TMDBMovieProvider(apiKey: tmdbAPIKey))
         }
         sources.append(BoxCallBackendUpcomingProvider())
-        if sources.isEmpty {
-            return MockMovieProvider()
-        }
         return CompositeMovieProvider(sources)
     }
 }

@@ -34,7 +34,10 @@ struct BoxCallApp: App {
             .environmentObject(store)
             .environmentObject(auth)
             .preferredColorScheme(.dark)
-            .overlay(alignment: .top) { RewardToastOverlay() }
+            .overlay(alignment: .top) {
+                RewardToastOverlay()
+                    .environmentObject(rewards)
+            }
             .task {
                 AnalyticsService.shared.installCrashHandler()
                 AnalyticsService.shared.track(.appOpen)

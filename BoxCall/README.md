@@ -9,7 +9,7 @@ Open the app and you're standing under a marquee:
 - **A scrolling LED ticker** across the top streams live at-the-money CALL and PUT marks for every film now showing, framed by two rows of flickering theater bulbs.
 - **Opening Night hero** — the next film to open gets a full-bleed card with its poster, director, implied opening, and a ticking `DAYS : HRS : MIN : SEC` countdown.
 - **Weekend Recap** — the Monday after your positions settle, a velvet-red card summarizes wins, losses, net, and your biggest swing. If you came out ahead, confetti.
-- **Real upcoming films.** Fifteen actual announced titles on the fall 2026 → summer 2027 calendar, each with real studio, release date, director, cast, and synopsis: *Clayface*, *Practical Magic 2*, *Resident Evil*, *Verity*, *The Social Reckoning*, *The Cat in the Hat*, *The Hunger Games: Sunrise on the Reaping*, *Focker In-Law*, *Narnia: The Magician's Nephew*, *Jumanji 3*, *Avengers: Doomsday*, *Dune: Part Three*, *Ice Age: Boiling Point*, *Sonic the Hedgehog 4*, *Star Wars: Starfighter*. The built-in provider filters out anything that has already opened, so the slate never shows a settled film on launch.
+- **Real upcoming films.** Fifteen studio-announced titles on the fall 2026 → summer 2027 calendar, each with its announced studio, release date, director, cast, and synopsis: *Practical Magic 2*, *Resident Evil*, *Verity*, *The Social Reckoning*, *Clayface*, *The Cat in the Hat*, *The Hunger Games: Sunrise on the Reaping*, *Focker-In-Law*, *Jumanji: Open World*, *Avengers: Doomsday*, *Dune: Part Three*, *Ice Age: Boiling Point*, *Narnia: The Magician's Nephew*, *Sonic the Hedgehog 4*, and *Star Wars: Starfighter*. The built-in provider filters out settled films on launch.
 - **Trailers in-app.** Every movie page plays the official trailer inline via a YouTube search-embed — no API key required.
 - **Real posters in 30 seconds.** Profile → *Turn on real posters* walks you through pasting a free TMDB key; the catalog re-fetches and every one-sheet blooms in. Key stays on-device.
 - **Haptics everywhere.** Medium tap on buy, rigid tap on close, a rising-into-thump Core Haptics celebration on big wins, error on losses, double-thump on badges.
@@ -54,7 +54,7 @@ BoxCall/
     │   ├── Rewards.swift           # Tier + Badge catalog
     │   └── SocialPost.swift        # posts, comments, outcomes
     ├── Services/
-    │   ├── MarketService.swift     # mock catalog + chain pricing
+    │   ├── MarketService.swift     # verified catalog + chain pricing
     │   ├── PortfolioService.swift  # buy/close/settle
     │   ├── RewardsService.swift    # XP, badges, streaks, follower bumps
     │   └── SocialService.swift     # feed, follow, like, comment
@@ -79,7 +79,7 @@ xcodegen generate
 open BoxCall.xcodeproj
 ```
 
-Or open Xcode → File → New → Project → iOS App named `BoxCall`, then drop `BoxCall/BoxCall/` sources into the target. Deployment target: iOS 17. Runs entirely on mock data — hit "Simulate opening weekends" in the Portfolio tab to trigger settlements, badges, and outcome banners on your feed posts.
+Or open Xcode → File → New → Project → iOS App named `BoxCall`, then drop `BoxCall/BoxCall/` sources into the target. Deployment target: iOS 17. The bundled movie slate contains verified announced releases; market prices and social activity are simulated. Hit "Simulate opening weekends" in the Portfolio tab to trigger settlements, badges, and outcome banners on your feed posts.
 
 ## Monetization (all Apple-compliant)
 
@@ -98,7 +98,7 @@ Two swappable abstractions handle upcoming releases and the initial premium anch
 **Upcoming-movies sources** — `MovieDataProvider` protocol; `CompositeMovieProvider` merges multiple:
 - `TMDBMovieProvider` — free official /movie/upcoming, called directly from the client (titles, posters, dates, studios, genres)
 - `BoxCallBackendUpcomingProvider` — hits `api.boxcall.com/upcoming` which aggregates IMDb Coming Soon, The Numbers release schedule, and Deadline calendars via server-side scrapers. Stubbed today — returns [] until the backend ships — and degrades gracefully so TMDB alone still fills the catalog. Dedup by lowercased title + release-week bucket; later sources win the tie so richer backend metadata beats TMDB baseline.
-- `MockMovieProvider` — hand-curated 8-title seed for offline / demo
+- `VerifiedMovieProvider` — hand-curated studio-announced slate for offline / demo
 
 **Tracking sources** — `TrackingDataSource` protocol; `CompositeTrackingSource` tries in order:
 - `BoxCallBackendTrackingSource` — hits `api.boxcall.com/tracking?movie_id=...` which aggregates Deadline + NRG-style pre-release numbers. Stubbed.
@@ -257,7 +257,7 @@ The `PayoffChart` component is a small SwiftUI `Canvas` renderer that draws the 
 
 ## Next steps
 
-1. **Real data**: swap `MarketService.loadMockCatalog()` for a backend that pulls upcoming releases from TMDB and tracking numbers from Deadline / Box Office Mojo / The Numbers.
+1. **Live data**: enrich `MarketService.loadVerifiedCatalog()` with a backend that pulls upcoming releases from TMDB and tracking numbers from Deadline / Box Office Mojo / The Numbers.
 2. **Server-side settlement**: Monday job fetches Friday–Sunday grosses and pays out positions.
 3. **APNs**: replace local notifications with server-side pushes so settlement / social events fire even when the app is closed for weeks.
 4. **Season resets** every 12 weeks with an Oracle crowning ceremony.

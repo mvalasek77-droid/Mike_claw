@@ -26,7 +26,7 @@ struct OpeningNightHero: View {
                             .tracking(3)
                             .foregroundStyle(Theme.bulbGlow)
                         Text(movie.title)
-                            .font(Theme.Type.marqueeH1)
+                            .font(Theme.Typography.marqueeH1)
                             .foregroundStyle(Theme.cream)
                             .lineLimit(2)
                             .shadow(color: .black.opacity(0.6), radius: 6, y: 2)

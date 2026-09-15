@@ -194,7 +194,7 @@ final class SocialService: ObservableObject {
 
     private func seedFeed() {
         // Adapt to whichever movies the market catalog exposes right
-        // now — real TMDB fetch, mock seed, or something in between.
+        // now — live TMDB fetch, verified offline slate, or a mix.
         let movies = MarketService.shared.movies.prefix(4)
         guard !movies.isEmpty else { return }
         let seeds: [(String, Tier, ContractSide, Double, Int, Double, String?, Int, Bool)] = [

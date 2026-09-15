@@ -277,7 +277,9 @@ struct ContrarianAgent: MarketMakingAgent {
 
     /// |sentiment| below this and the agent stays passive.
     var threshold: Double = 0.35
-    var fadeLean: Double = 0.05
+    // Strong enough to damp an extreme, but not strong enough to make
+    // the consolidated mark move opposite the underlying crowd.
+    var fadeLean: Double = 0.03
     var baseHalfSpread: Double = 0.03
     var baseSize: Int = 8
 

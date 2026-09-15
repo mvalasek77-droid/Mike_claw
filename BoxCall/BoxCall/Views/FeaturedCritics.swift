@@ -11,20 +11,22 @@ struct FeaturedCritics: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            header
             if let winner {
-                WinnerReviewCard(review: winner, rank: 1)
-                    .onTapGesture { expanded = winner }
+                WinnerReviewCard(review: winner, rank: 1) {
+                    expanded = winner
+                }
             } else {
                 Text("No reviews yet — top-5 traders' reviews will appear here.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption)
+                    .foregroundStyle(Theme.cream.opacity(0.6))
             }
             if !supporting.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
                         ForEach(Array(supporting.enumerated()), id: \.element.id) { i, r in
-                            SupportingReviewCard(review: r, rank: i + 2)
-                                .onTapGesture { expanded = r }
+                            SupportingReviewCard(review: r, rank: i + 2) {
+                                expanded = r
+                            }
                         }
                     }
                     .padding(.horizontal, 2)
@@ -35,18 +37,6 @@ struct FeaturedCritics: View {
             ReviewDetailSheet(review: review)
         }
     }
-
-    private var header: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "star.circle.fill").foregroundStyle(.orange)
-            Text("Featured Critics")
-                .font(.headline)
-            Spacer()
-            Text("This week's top traders")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        }
-    }
 }
 
 // MARK: - Winner card (hero)
@@ -54,49 +44,90 @@ struct FeaturedCritics: View {
 struct WinnerReviewCard: View {
     let review: Review
     let rank: Int
+    let onRead: () -> Void
+    @EnvironmentObject var market: MarketService
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
                 rankBadge(rank)
-                Text(review.moviePosterEmoji).font(.title2)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(review.movieTitle).font(.subheadline.weight(.bold))
-                    HStack(spacing: 6) {
-                        Text("@\(review.authorHandle)").font(.caption).foregroundStyle(.orange)
-                        Text(review.authorTier.name).font(.caption2)
-                            .padding(.horizontal, 5).padding(.vertical, 1)
-                            .background(RoundedRectangle(cornerRadius: 3).fill(review.authorTier.color.opacity(0.25)))
-                            .foregroundStyle(review.authorTier.color)
-                    }
-                }
+                movieLink
                 Spacer()
-                Text(review.stars).font(.caption).foregroundStyle(.yellow)
+                Text(review.stars)
+                    .font(.caption)
+                    .foregroundStyle(Theme.marqueeGold)
             }
             Text(review.headline)
-                .font(.title3.weight(.bold))
+                .font(Theme.Typography.marqueeH2)
+                .foregroundStyle(Theme.cream)
                 .lineLimit(2)
             Text(review.body)
                 .font(.callout)
                 .lineLimit(4)
-                .foregroundStyle(.primary.opacity(0.85))
+                .foregroundStyle(Theme.cream.opacity(0.78))
             HStack {
                 Label("\(review.likes)", systemImage: "heart.fill")
-                    .font(.caption).foregroundStyle(.pink)
+                    .font(.caption)
+                    .foregroundStyle(Theme.marqueeGold)
                 Spacer()
-                Text("Read more →").font(.caption.weight(.semibold)).foregroundStyle(.orange)
+                Button(action: onRead) {
+                    Text("Read review  →")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.marqueeGold)
+                }
+                .buttonStyle(.plain)
             }
         }
         .padding(16)
         .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(LinearGradient(colors: [.orange.opacity(0.18), .orange.opacity(0.04)],
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(LinearGradient(colors: [Theme.velvetRed.opacity(0.72),
+                                               Color(red: 0.07, green: 0.055, blue: 0.04)],
                                      startPoint: .topLeading, endPoint: .bottomTrailing))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(.orange.opacity(0.5), lineWidth: 1.5)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Theme.marqueeGold.opacity(0.52), lineWidth: 1.5)
         )
+    }
+
+    @ViewBuilder
+    private var movieLink: some View {
+        if let movie = market.movie(id: review.movieId) {
+            NavigationLink(value: movie) {
+                movieIdentity
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Opens \(movie.title)")
+        } else {
+            movieIdentity
+        }
+    }
+
+    private var movieIdentity: some View {
+        HStack(spacing: 8) {
+            MarqueeMovieMark(title: review.movieTitle, width: 34, height: 42)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 4) {
+                    Text(review.movieTitle)
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(Theme.cream)
+                        .lineLimit(1)
+                    Image(systemName: "chevron.right")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(Theme.marqueeGold)
+                }
+                HStack(spacing: 6) {
+                    Text("@\(review.authorHandle)")
+                        .font(.caption)
+                        .foregroundStyle(Theme.marqueeGold)
+                    Text(review.authorTier.name.uppercased())
+                        .font(.system(size: 8, weight: .bold, design: .monospaced))
+                        .tracking(0.5)
+                        .foregroundStyle(Theme.cream.opacity(0.55))
+                    }
+                }
+        }
     }
 }
 
@@ -105,46 +136,72 @@ struct WinnerReviewCard: View {
 struct SupportingReviewCard: View {
     let review: Review
     let rank: Int
+    let onRead: () -> Void
+    @EnvironmentObject var market: MarketService
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 rankBadge(rank)
                 Spacer()
-                Text(review.stars).font(.caption2).foregroundStyle(.yellow)
+                Text(review.stars).font(.caption2).foregroundStyle(Theme.marqueeGold)
             }
-            HStack(spacing: 6) {
-                Text(review.moviePosterEmoji).font(.body)
-                Text(review.movieTitle).font(.caption.weight(.bold)).lineLimit(1)
-            }
+            movieLink
             Text(review.headline)
                 .font(.caption2.weight(.semibold))
+                .foregroundStyle(Theme.cream)
                 .lineLimit(2)
-            Text("@\(review.authorHandle)")
-                .font(.caption2)
-                .foregroundStyle(review.authorTier.color)
+            HStack {
+                Text("@\(review.authorHandle)")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.marqueeGold)
+                Spacer()
+                Button("Review", action: onRead)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(Theme.cream.opacity(0.7))
+                    .buttonStyle(.plain)
+            }
         }
         .padding(10)
         .frame(width: 180, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color(.secondarySystemBackground)))
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .fill(Color(red: 0.075, green: 0.06, blue: 0.045)))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .stroke(Theme.marqueeGold.opacity(0.3), lineWidth: 1))
+    }
+
+    @ViewBuilder
+    private var movieLink: some View {
+        if let movie = market.movie(id: review.movieId) {
+            NavigationLink(value: movie) { movieIdentity }
+                .buttonStyle(.plain)
+                .accessibilityHint("Opens \(movie.title)")
+        } else {
+            movieIdentity
+        }
+    }
+
+    private var movieIdentity: some View {
+        HStack(spacing: 6) {
+            MarqueeMovieMark(title: review.movieTitle, width: 26, height: 32)
+            Text(review.movieTitle)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(Theme.cream)
+                .lineLimit(1)
+            Image(systemName: "chevron.right")
+                .font(.system(size: 8, weight: .bold))
+                .foregroundStyle(Theme.marqueeGold)
+        }
     }
 }
 
 @ViewBuilder
 private func rankBadge(_ n: Int) -> some View {
-    let (label, color): (String, Color) = {
-        switch n {
-        case 1: return ("#1", .orange)
-        case 2: return ("#2", .yellow)
-        case 3: return ("#3", .green)
-        default: return ("#\(n)", .blue)
-        }
-    }()
-    Text(label)
+    Text("#\(n)")
         .font(.caption2.weight(.heavy))
         .padding(.horizontal, 6).padding(.vertical, 2)
-        .background(RoundedRectangle(cornerRadius: 4).fill(color.opacity(0.25)))
-        .foregroundStyle(color)
+        .background(RoundedRectangle(cornerRadius: 4).fill(Theme.marqueeGold.opacity(0.18)))
+        .foregroundStyle(Theme.marqueeGold)
 }
 
 // MARK: - Detail sheet
@@ -152,6 +209,7 @@ private func rankBadge(_ n: Int) -> some View {
 struct ReviewDetailSheet: View {
     let review: Review
     @EnvironmentObject var social: SocialService
+    @EnvironmentObject var market: MarketService
     @ObservedObject var moderation = ModerationService.shared
     @Environment(\.dismiss) private var dismiss
     @State private var showReport = false
@@ -164,27 +222,13 @@ struct ReviewDetailSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    HStack(spacing: 12) {
-                        Text(review.moviePosterEmoji)
-                            .font(.system(size: 56))
-                            .frame(width: 72, height: 100)
-                            .background(RoundedRectangle(cornerRadius: 10).fill(.gray.opacity(0.2)))
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(review.movieTitle).font(.title3.bold())
-                            Text(review.stars).font(.subheadline).foregroundStyle(.yellow)
-                            HStack(spacing: 6) {
-                                Text("@\(review.authorHandle)")
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(review.authorTier.color)
-                                if review.authorTier >= .analyst {
-                                    Image(systemName: "checkmark.seal.fill")
-                                        .foregroundStyle(review.authorTier.color)
-                                        .font(.caption)
-                                }
-                            }
-                            Text(review.authorTier.name).font(.caption).foregroundStyle(.secondary)
+                    if let movie = market.movie(id: review.movieId) {
+                        NavigationLink(value: movie) {
+                            reviewHeader(movie: movie)
                         }
-                        Spacer()
+                        .buttonStyle(.plain)
+                    } else {
+                        reviewHeader(movie: nil)
                     }
                     Text(review.headline)
                         .font(.title2.bold())
@@ -197,12 +241,15 @@ struct ReviewDetailSheet: View {
                         Label("\(live.likes)", systemImage: live.isLikedByMe ? "heart.fill" : "heart")
                     }
                     .buttonStyle(.bordered)
-                    .tint(.pink)
+                    .tint(Theme.marqueeGold)
                 }
                 .padding()
             }
             .navigationTitle("Review")
             .navigationBarTitleDisplayMode(.inline)
+            .navigationDestination(for: Movie.self) { movie in
+                MovieDetailView(movie: movie)
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
@@ -222,7 +269,7 @@ struct ReviewDetailSheet: View {
                                 Label("Block @\(review.authorHandle)", systemImage: "hand.raised")
                             }
                         } label: {
-                            Image(systemName: "ellipsis.circle")
+                            Image(systemName: "ellipsis")
                         }
                     }
                 }
@@ -233,6 +280,36 @@ struct ReviewDetailSheet: View {
             }
         }
     }
+
+    private func reviewHeader(movie: Movie?) -> some View {
+        HStack(spacing: 12) {
+            MarqueeMovieMark(title: movie?.title ?? review.movieTitle, width: 72, height: 100)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 5) {
+                    Text(review.movieTitle).font(.title3.bold())
+                    if movie != nil {
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(Theme.marqueeGold)
+                    }
+                }
+                Text(review.stars).font(.subheadline).foregroundStyle(Theme.marqueeGold)
+                HStack(spacing: 6) {
+                    Text("@\(review.authorHandle)")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Theme.marqueeGold)
+                    if review.authorTier >= .analyst {
+                        Image(systemName: "checkmark")
+                            .foregroundStyle(Theme.marqueeGold)
+                            .font(.caption)
+                    }
+                }
+                Text(review.authorTier.name).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+        .contentShape(Rectangle())
+    }
 }
 
 // MARK: - Write
@@ -242,7 +319,7 @@ struct WriteReviewSheet: View {
     @EnvironmentObject var social: SocialService
     @Environment(\.dismiss) private var dismiss
     @State private var headline: String = ""
-    @State private var body: String = ""
+    @State private var reviewBody: String = ""
     @State private var rating: Int = 3
 
     var body: some View {
@@ -268,13 +345,13 @@ struct WriteReviewSheet: View {
                     TextField("One-line hook", text: $headline)
                 }
                 Section("Review") {
-                    TextField("Say something worth reading…", text: $body, axis: .vertical)
+                    TextField("Say something worth reading…", text: $reviewBody, axis: .vertical)
                         .lineLimit(6...12)
                 }
                 Section {
                     Button {
                         let h = headline.trimmingCharacters(in: .whitespacesAndNewlines)
-                        let b = body.trimmingCharacters(in: .whitespacesAndNewlines)
+                        let b = reviewBody.trimmingCharacters(in: .whitespacesAndNewlines)
                         guard !h.isEmpty, !b.isEmpty else { return }
                         social.submitReview(movie: movie, headline: h, body: b, rating: rating)
                         dismiss()
@@ -285,7 +362,7 @@ struct WriteReviewSheet: View {
                     .buttonStyle(.borderedProminent)
                     .tint(.orange)
                     .disabled(headline.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
-                              body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                              reviewBody.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
             .navigationTitle("Write review")

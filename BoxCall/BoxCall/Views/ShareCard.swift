@@ -6,7 +6,7 @@ import UIKit
 /// Rendered off-screen via ImageRenderer into a UIImage that
 /// UIActivityViewController hands to the share sheet.
 struct ShareCard: View {
-    let title: String                 // e.g. "Neon Requiem"
+    let title: String                 // e.g. "Dune: Part Three"
     let side: ContractSide
     let strikeMillions: Double
     let quantity: Int

@@ -53,214 +53,7 @@ struct TradeSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    HStack {
-                        Text("\(movie.title)")
-                        Spacer()
-                        Text("\(contract.side.display) $\(Int(contract.strikeMillions))M")
-                            .foregroundStyle(contract.side == .call ? .green : .red)
-                            .fontWeight(.semibold)
-                    }
-                }
-
-                Section {
-                    ScenarioPrimer(contract: contract, movie: movie,
-                                   quantity: quantity, liveMark: askPrice)
-                        .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
-                        .listRowBackground(Color.clear)
-                }
-
-                if let book = liveBook {
-                    Section {
-                        QuoteStrip(book: book)
-                        NavigationLink {
-                            TradingDeskView(contract: contract, movie: movie)
-                        } label: {
-                            Label("See the desk that made this price",
-                                  systemImage: "person.3.sequence.fill")
-                                .font(.callout)
-                        }
-                    } header: {
-                        Text("Market makers")
-                    } footer: {
-                        Text("You buy at the ask and sell at the bid. Five agents quote against live social sentiment — when they agree the spread is tight, when the crowd splits them it widens.")
-                            .font(.caption2)
-                    }
-                }
-
-                Section {
-                    PriceChart(points: market.priceHistory(contractId: contract.id),
-                               color: contract.side == .call ? .green : .red,
-                               sr: market.srLevel(contractId: contract.id))
-                        .padding(.vertical, 4)
-                    if let sr = market.srLevel(contractId: contract.id) {
-                        srReadout(sr: sr, mark: liveContract.premium)
-                    }
-                } header: {
-                    HStack(spacing: 6) {
-                        LivePulse()
-                        Text("Live mark").font(.caption.weight(.semibold))
-                        Spacer()
-                        Text(liveContract.premium, format: .number.precision(.fractionLength(2)))
-                            .font(.caption.monospacedDigit().weight(.bold))
-                            .foregroundStyle(contract.side == .call ? .green : .red)
-                    }
-                } footer: {
-                    Text("Green dashed = support (MMs buy). Red dashed = resistance (MMs sell). Price mean-reverts inside the band.")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-
-                Section {
-                    HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.red)
-                            .font(.title3)
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("You could lose up to \(cost, specifier: "%.0f") RC")
-                                .font(.subheadline.weight(.bold))
-                            Text("If \(movie.title) opens \(contract.side == .call ? "at or below" : "at or above") $\(Int(contract.strikeMillions))M, the contract expires worthless and you lose the full premium. Every account resets every Monday with \(Int(portfolio.user.membership.weeklyAllowance)) RC — next refill in \(RefillClock.countdownString()).")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .padding(.vertical, 4)
-                } header: {
-                    Text("Risk")
-                }
-                .listRowBackground(Color.red.opacity(0.10))
-
-                Section("Order") {
-                    Stepper("Quantity: \(quantity)", value: $quantity, in: 1...100)
-                    HStack {
-                        Text("Premium (each)"); Spacer()
-                        if let book = liveBook, book.nbbo.spread > 0 {
-                            Text("ask ")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
-                        Text(askPrice, format: .number.precision(.fractionLength(2)))
-                            .monospacedDigit()
-                    }
-                    HStack {
-                        Text("Total cost"); Spacer()
-                        Text(cost, format: .number.precision(.fractionLength(2)))
-                            .monospacedDigit()
-                            .fontWeight(.semibold)
-                    }
-                    HStack {
-                        Text("Your Reel Coins"); Spacer()
-                        Text(portfolio.user.reelCoins, format: .number.precision(.fractionLength(0)))
-                            .monospacedDigit()
-                            .foregroundStyle(.secondary)
-                    }
-                    Toggle("Limit order", isOn: $useLimit)
-                    if useLimit {
-                        HStack {
-                            Text("Limit price").frame(width: 100, alignment: .leading)
-                            Slider(value: $limitPrice,
-                                   in: 0.25...max(0.25, liveContract.premium * 1.5),
-                                   step: 0.05)
-                            Text(limitPrice, format: .number.precision(.fractionLength(2)))
-                                .monospacedDigit()
-                                .frame(width: 55, alignment: .trailing)
-                        }
-                        .onAppear { if limitPrice == 0 { limitPrice = max(0.25, liveContract.premium * 0.95) } }
-                        Text("Fills only if mark drops to \(limitPrice, specifier: "%.2f") or better. Coins reserved until filled or cancelled.")
-                            .font(.caption2).foregroundStyle(.secondary)
-                    }
-                }
-
-                Section {
-                    let mid = market.impliedConsensus(for: movie.id)
-                    let hi = mid * 1.5
-                    let lo = mid * 0.5
-                    payoffRow(label: "If bomb ($\(Int(lo))M)", value: contract.intrinsic(atMillions: lo) * Double(quantity))
-                    payoffRow(label: "If tracks ($\(mid, specifier: "%.1f")M implied)", value: contract.intrinsic(atMillions: mid) * Double(quantity))
-                    payoffRow(label: "If blockbuster ($\(Int(hi))M)", value: contract.intrinsic(atMillions: hi) * Double(quantity))
-                    DisclosureGroup(isExpanded: $showChart) {
-                        PayoffChart(side: contract.side,
-                                    strike: contract.strikeMillions,
-                                    premium: liveContract.premium,
-                                    multiplier: contract.multiplier)
-                            .padding(.vertical, 4)
-                        Text("Green = profit zone. Orange dashed = your strike. Blue dashed = break-even.")
-                            .font(.caption2).foregroundStyle(.secondary)
-                    } label: {
-                        Label("Payoff diagram", systemImage: "chart.xyaxis.line")
-                    }
-                } header: {
-                    HStack {
-                        Text("Payoff at settlement")
-                        Spacer()
-                        Button {
-                            showLearn = true
-                        } label: {
-                            Label("Learn", systemImage: "questionmark.circle")
-                                .labelStyle(.iconOnly)
-                        }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(.orange)
-                    }
-                }
-
-                Section("Share this call") {
-                    Toggle("Post to Hot Takes", isOn: $shareAsPost)
-                    if shareAsPost {
-                        TextField("Say why — 280 chars", text: $hotTake, axis: .vertical)
-                            .lineLimit(2...4)
-                        if portfolio.user.tier < .analyst {
-                            Text("Rookies post to their followers only. Reach Analyst to hit the public feed.")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-
-                if let errorMessage {
-                    Section {
-                        Text(errorMessage).foregroundStyle(.red)
-                    }
-                }
-
-                Section {
-                    Button {
-                        do {
-                            // Buy at the desk's offer, not the mid.
-                            let live = executableContract
-                            if useLimit {
-                                _ = try OrderBookService.shared.placeBuyLimit(
-                                    contract: live, quantity: quantity, limitPrice: limitPrice)
-                            } else {
-                                let positionId = try portfolio.buy(contract: live, quantity: quantity)
-                                if shareAsPost {
-                                    social.share(positionId: positionId, contract: live,
-                                                 movie: movie, quantity: quantity, hotTake: hotTake)
-                                }
-                                if let placed = portfolio.positions.first(where: { $0.id == positionId }) {
-                                    NotificationsService.shared.scheduleOpeningReminder(movie: movie, position: placed)
-                                }
-                            }
-                            portfolio.refreshLeaderboard()
-                            dismiss()
-                        } catch {
-                            errorMessage = error.localizedDescription
-                        }
-                    } label: {
-                        Text(useLimit
-                             ? "Place buy-limit @ \(limitPrice, specifier: "%.2f") for \(limitPrice * Double(quantity), specifier: "%.2f")"
-                             : "Buy \(quantity) \(contract.side.display) for \(cost, format: .number.precision(.fractionLength(2)))")
-                            .frame(maxWidth: .infinity)
-                            .fontWeight(.semibold)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.orange)
-                    .accessibilityLabel(useLimit
-                        ? "Place limit order for \(quantity) contracts"
-                        : "Buy \(quantity) \(contract.side.display) contracts for \(String(format: "%.2f", cost)) Reel Coins")
-                }
-            }
+            tradeForm
             .navigationTitle("Place Trade")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -315,6 +108,316 @@ struct TradeSheet: View {
                 }
             }
         }
+    }
+
+    private var tradeForm: some View {
+        Form {
+            contractSection
+            primerSection
+            marketMakersSection
+            liveMarkSection
+            riskSection
+            orderSection
+            payoffSection
+            shareSection
+            errorSection
+            submitSection
+        }
+    }
+
+    private var contractSection: some View {
+        Section {
+            HStack {
+                Text(movie.title)
+                Spacer()
+                Text("\(contract.side.display) $\(Int(contract.strikeMillions))M")
+                    .foregroundStyle(contract.side == .call ? Color.green : Color.red)
+                    .fontWeight(.semibold)
+            }
+        }
+    }
+
+    private var primerSection: some View {
+        Section {
+            ScenarioPrimer(
+                contract: contract,
+                movie: movie,
+                quantity: quantity,
+                liveMark: askPrice
+            )
+            .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+            .listRowBackground(Color.clear)
+        }
+    }
+
+    @ViewBuilder
+    private var marketMakersSection: some View {
+        if let book = liveBook {
+            Section {
+                QuoteStrip(book: book)
+                NavigationLink {
+                    TradingDeskView(contract: contract, movie: movie)
+                } label: {
+                    Label(
+                        "See the desk that made this price",
+                        systemImage: "person.3.sequence.fill"
+                    )
+                    .font(.callout)
+                }
+            } header: {
+                Text("Market makers")
+            } footer: {
+                Text("You buy at the ask and sell at the bid. Five agents quote against live social sentiment — when they agree the spread is tight, when the crowd splits them it widens.")
+                    .font(.caption2)
+            }
+        }
+    }
+
+    private var liveMarkSection: some View {
+        Section {
+            PriceChart(
+                points: market.priceHistory(contractId: contract.id),
+                color: contract.side == .call ? .green : .red,
+                sr: market.srLevel(contractId: contract.id)
+            )
+            .padding(.vertical, 4)
+            if let sr = market.srLevel(contractId: contract.id) {
+                srReadout(sr: sr, mark: liveContract.premium)
+            }
+        } header: {
+            HStack(spacing: 6) {
+                LivePulse()
+                Text("Live mark").font(.caption.weight(.semibold))
+                Spacer()
+                Text(liveContract.premium, format: .number.precision(.fractionLength(2)))
+                    .font(.caption.monospacedDigit().weight(.bold))
+                    .foregroundStyle(contract.side == .call ? Color.green : Color.red)
+            }
+        } footer: {
+            Text("Green dashed = support (MMs buy). Red dashed = resistance (MMs sell). Price mean-reverts inside the band.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var riskSection: some View {
+        Section {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.red)
+                    .font(.title3)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("You could lose up to \(cost, specifier: "%.0f") RC")
+                        .font(.subheadline.weight(.bold))
+                    Text(riskExplanation)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.vertical, 4)
+        } header: {
+            Text("Risk")
+        }
+        .listRowBackground(Color.red.opacity(0.10))
+    }
+
+    private var orderSection: some View {
+        Section("Order") {
+            Stepper("Quantity: \(quantity)", value: $quantity, in: 1...100)
+            HStack {
+                Text("Premium (each)")
+                Spacer()
+                if let book = liveBook, book.nbbo.spread > 0 {
+                    Text("ask ")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                Text(askPrice, format: .number.precision(.fractionLength(2)))
+                    .monospacedDigit()
+            }
+            HStack {
+                Text("Total cost")
+                Spacer()
+                Text(cost, format: .number.precision(.fractionLength(2)))
+                    .monospacedDigit()
+                    .fontWeight(.semibold)
+            }
+            HStack {
+                Text("Your Reel Coins")
+                Spacer()
+                Text(portfolio.user.reelCoins, format: .number.precision(.fractionLength(0)))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
+            Toggle("Limit order", isOn: $useLimit)
+            if useLimit {
+                limitOrderControls
+            }
+        }
+    }
+
+    private var limitOrderControls: some View {
+        Group {
+            HStack {
+                Text("Limit price").frame(width: 100, alignment: .leading)
+                Slider(
+                    value: $limitPrice,
+                    in: 0.25...max(0.25, liveContract.premium * 1.5),
+                    step: 0.05
+                )
+                Text(limitPrice, format: .number.precision(.fractionLength(2)))
+                    .monospacedDigit()
+                    .frame(width: 55, alignment: .trailing)
+            }
+            .onAppear {
+                if limitPrice == 0 {
+                    limitPrice = max(0.25, liveContract.premium * 0.95)
+                }
+            }
+            Text("Fills only if mark drops to \(limitPrice, specifier: "%.2f") or better. Coins reserved until filled or cancelled.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var payoffSection: some View {
+        let mid = market.impliedConsensus(for: movie.id)
+        let hi = mid * 1.5
+        let lo = mid * 0.5
+        return Section {
+            payoffRow(
+                label: "If bomb ($\(Int(lo))M)",
+                value: contract.intrinsic(atMillions: lo) * Double(quantity)
+            )
+            payoffRow(
+                label: "If tracks ($\(String(format: "%.1f", mid))M implied)",
+                value: contract.intrinsic(atMillions: mid) * Double(quantity)
+            )
+            payoffRow(
+                label: "If blockbuster ($\(Int(hi))M)",
+                value: contract.intrinsic(atMillions: hi) * Double(quantity)
+            )
+            DisclosureGroup(isExpanded: $showChart) {
+                PayoffChart(
+                    side: contract.side,
+                    strike: contract.strikeMillions,
+                    premium: liveContract.premium,
+                    multiplier: contract.multiplier
+                )
+                .padding(.vertical, 4)
+                Text("Green = profit zone. Orange dashed = your strike. Blue dashed = break-even.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            } label: {
+                Label("Payoff diagram", systemImage: "chart.xyaxis.line")
+            }
+        } header: {
+            HStack {
+                Text("Payoff at settlement")
+                Spacer()
+                Button {
+                    showLearn = true
+                } label: {
+                    Label("Learn", systemImage: "questionmark.circle")
+                        .labelStyle(.iconOnly)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.orange)
+            }
+        }
+    }
+
+    private var shareSection: some View {
+        Section("Share this call") {
+            Toggle("Post to Hot Takes", isOn: $shareAsPost)
+            if shareAsPost {
+                TextField("Say why — 280 chars", text: $hotTake, axis: .vertical)
+                    .lineLimit(2...4)
+                if portfolio.user.tier < .analyst {
+                    Text("Rookies post to their followers only. Reach Analyst to hit the public feed.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var errorSection: some View {
+        if let errorMessage {
+            Section {
+                Text(errorMessage).foregroundStyle(.red)
+            }
+        }
+    }
+
+    private var submitSection: some View {
+        Section {
+            Button(action: submitOrder) {
+                Text(orderButtonTitle)
+                    .frame(maxWidth: .infinity)
+                    .fontWeight(.semibold)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.orange)
+            .accessibilityLabel(orderAccessibilityLabel)
+        }
+    }
+
+    private var riskExplanation: String {
+        let thresholdDirection = contract.side == .call ? "at or below" : "at or above"
+        let strike = Int(contract.strikeMillions)
+        let allowance = Int(portfolio.user.membership.weeklyAllowance)
+        return "If \(movie.title) opens \(thresholdDirection) $\(strike)M, the contract expires worthless and you lose the full premium. Every account resets every Monday with \(allowance) RC — next refill in \(RefillClock.countdownString())."
+    }
+
+    private func submitOrder() {
+        do {
+            // Buy at the desk's offer, not the mid.
+            let live = executableContract
+            if useLimit {
+                _ = try OrderBookService.shared.placeBuyLimit(
+                    contract: live,
+                    quantity: quantity,
+                    limitPrice: limitPrice
+                )
+            } else {
+                let positionId = try portfolio.buy(contract: live, quantity: quantity)
+                if shareAsPost {
+                    social.share(
+                        positionId: positionId,
+                        contract: live,
+                        movie: movie,
+                        quantity: quantity,
+                        hotTake: hotTake
+                    )
+                }
+                if let placed = portfolio.positions.first(where: { $0.id == positionId }) {
+                    NotificationsService.shared.scheduleOpeningReminder(
+                        movie: movie,
+                        position: placed
+                    )
+                }
+            }
+            portfolio.refreshLeaderboard()
+            dismiss()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private var orderButtonTitle: String {
+        if useLimit {
+            return "Place buy-limit @ \(String(format: "%.2f", limitPrice)) for \(String(format: "%.2f", limitPrice * Double(quantity)))"
+        }
+        return "Buy \(quantity) \(contract.side.display) for \(String(format: "%.2f", cost))"
+    }
+
+    private var orderAccessibilityLabel: String {
+        if useLimit {
+            return "Place limit order for \(quantity) contracts"
+        }
+        return "Buy \(quantity) \(contract.side.display) contracts for \(String(format: "%.2f", cost)) Reel Coins"
     }
 
     private func payoffRow(label: String, value: Double) -> some View {

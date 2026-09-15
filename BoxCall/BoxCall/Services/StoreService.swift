@@ -6,10 +6,9 @@ import Combine
 /// prices, drives the purchase flow, and listens for transaction updates
 /// to activate / deactivate memberships.
 ///
-/// If StoreKit can't load products (running in a plain simulator with no
-/// StoreKit Configuration file attached, or before you've set up
-/// App Store Connect), the service falls back to a demo purchase that
-/// still activates the membership so the paywall stays functional.
+/// Debug builds can fall back to a demo purchase when no StoreKit
+/// Configuration is attached. Release builds never grant paid access
+/// without a verified App Store transaction.
 @MainActor
 final class StoreService: ObservableObject {
     static let shared = StoreService()
@@ -84,8 +83,12 @@ final class StoreService: ObservableObject {
                 lastError = error.localizedDescription
             }
         } else {
-            // Demo fallback so the flow is testable without StoreKit config.
+            #if DEBUG
+            // Keep local development testable without live App Store products.
             PortfolioService.shared.activateMembership(tier)
+            #else
+            lastError = "Subscriptions are temporarily unavailable. Please try again later."
+            #endif
         }
     }
 

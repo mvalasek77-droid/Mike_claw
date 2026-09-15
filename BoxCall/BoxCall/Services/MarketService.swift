@@ -74,7 +74,7 @@ final class MarketService: ObservableObject {
     private let tickInterval: TimeInterval = 3.0
 
     private init() {
-        loadMockCatalog()
+        loadVerifiedCatalog()
     }
 
     // MARK: - Catalog refresh
@@ -107,7 +107,7 @@ final class MarketService: ObservableObject {
     /// - Existing movie ids get their metadata refreshed (poster, tagline, etc)
     ///   without touching the chain or history.
     /// - New ids get freshly generated chains and are marked as NEW.
-    /// - Local-only movies (mock seeds not in remote) are kept as long as
+    /// - Local-only movies (verified offline seeds not in remote) are kept as long as
     ///   they haven't opened yet OR the user has an open position on them.
     @discardableResult
     private func merge(remote: [Movie]) -> Set<String> {
@@ -186,7 +186,7 @@ final class MarketService: ObservableObject {
         // First tick immediately so charts have >1 point on first render.
         tick()
         let t = Timer(timeInterval: tickInterval, repeats: true) { [weak self] _ in
-            self?.tick()
+            Task { @MainActor [weak self] in self?.tick() }
         }
         // Attach to the common run-loop mode so ticks keep firing while
         // the user is dragging a scroll view.
@@ -497,12 +497,14 @@ final class MarketService: ObservableObject {
         min(max(x, lo), hi)
     }
 
-    // MARK: - Mock catalog + chain generation
+    // MARK: - Verified catalog + chain generation
 
-    private func loadMockCatalog() {
+    private func loadVerifiedCatalog() {
         // Same filter fetchUpcoming applies: never surface a film that
         // has already opened on cold launch.
-        let seeds = MockMovieProvider.builtInSeed().filter { !$0.isSettled }
+        let seeds = VerifiedMovieProvider.builtInSeed()
+            .filter { !$0.isSettled }
+            .sorted { $0.releaseDate < $1.releaseDate }
         movies = seeds
         var built: [String: [Contract]] = [:]
         for m in seeds {

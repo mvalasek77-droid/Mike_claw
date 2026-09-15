@@ -56,7 +56,7 @@ struct MovieDetailView: View {
                         Label("How this works", systemImage: "questionmark.circle")
                     }
                 } label: {
-                    Image(systemName: "ellipsis.circle")
+                    Image(systemName: "ellipsis")
                 }
             }
         }
@@ -106,10 +106,10 @@ struct MovieDetailView: View {
                             HStack(spacing: 6) {
                                 Text("@\(r.authorHandle)")
                                     .font(.caption.weight(.semibold))
-                                    .foregroundStyle(r.authorTier.color)
-                                Text(r.stars).font(.caption).foregroundStyle(.yellow)
+                                    .foregroundStyle(Theme.marqueeGold)
+                                Text(r.stars).font(.caption).foregroundStyle(Theme.marqueeGold)
                                 Spacer()
-                                Text("\(r.likes) ♥").font(.caption2).foregroundStyle(.pink)
+                                Text("\(r.likes) ♥").font(.caption2).foregroundStyle(Theme.cream.opacity(0.65))
                             }
                             Text(r.headline).font(.subheadline.weight(.semibold)).multilineTextAlignment(.leading)
                             Text(r.body).font(.caption).lineLimit(2)
@@ -168,7 +168,7 @@ struct MovieDetailView: View {
                 }
             }
             Sparkline(points: market.consensusHistoryFor(movieId: movie.id),
-                      color: delta >= 0 ? .green : .red,
+                      color: delta >= 0 ? Theme.marqueeGold : Theme.bear,
                       height: 28)
                 .padding(.top, 2)
             Text("Base tracker: $\(Int(movie.consensusOpeningMillions))M · moves with buys, sells, and news.")
@@ -187,8 +187,8 @@ struct MovieDetailView: View {
         }
         .font(.caption.weight(.bold))
         .padding(.horizontal, 6).padding(.vertical, 2)
-        .background(RoundedRectangle(cornerRadius: 4).fill((up ? Color.green : .red).opacity(0.2)))
-        .foregroundStyle(up ? .green : .red)
+        .background(RoundedRectangle(cornerRadius: 4).fill((up ? Theme.marqueeGold : Theme.bear).opacity(0.2)))
+        .foregroundStyle(up ? Theme.marqueeGold : Theme.bear)
     }
 
     @ViewBuilder
@@ -276,7 +276,7 @@ struct MovieDetailView: View {
             ForEach(events.prefix(3)) { event in
                 HStack(alignment: .top, spacing: 6) {
                     Image(systemName: event.isBullish ? "arrow.up.right" : "arrow.down.right")
-                        .foregroundStyle(event.isBullish ? .green : .red)
+                        .foregroundStyle(event.isBullish ? Theme.marqueeGold : Theme.bear)
                         .font(.caption2.weight(.bold))
                     Text(event.headline)
                         .font(.caption)
@@ -343,9 +343,9 @@ struct MovieDetailView: View {
                         Text(contract.premium, format: .number.precision(.fractionLength(2)))
                             .frame(width: 60, alignment: .trailing)
                             .monospacedDigit()
-                            .foregroundStyle(contract.side == .call ? .green : .red)
+                            .foregroundStyle(contract.side == .call ? Theme.marqueeGold : Theme.bear)
                         Sparkline(points: market.priceHistory(contractId: contract.id),
-                                  color: contract.side == .call ? .green : .red)
+                                  color: contract.side == .call ? Theme.marqueeGold : Theme.bear)
                             .frame(maxWidth: .infinity)
                         Text("\(contract.openInterest)")
                             .frame(width: 50, alignment: .trailing)
@@ -377,9 +377,9 @@ struct MovieDetailView: View {
 struct LivePulse: View {
     @State private var on = false
     var body: some View {
-        Circle()
-            .fill(.green)
-            .frame(width: 8, height: 8)
+        Rectangle()
+            .fill(Theme.marqueeGold)
+            .frame(width: 10, height: 3)
             .opacity(on ? 1.0 : 0.35)
             .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: on)
             .onAppear { on = true }

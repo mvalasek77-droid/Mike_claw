@@ -17,7 +17,7 @@ struct Movie: Identifiable, Codable, Hashable {
     let director: String?
     let cast: [String]
     let synopsis: String?
-    /// Search query used for the in-app YouTube trailer embed.
+    /// Search query used by the YouTube trailer link.
     /// Defaults to "<title> official trailer".
     let trailerQuery: String?
     /// Rotten Tomatoes-style critic score 0-100 if known pre-release.

@@ -1,7 +1,8 @@
 import Foundation
 
 /// Anything that can produce a fresh catalog of upcoming movies.
-/// Implementations swap trivially between mock, TMDB direct, and the
+/// Implementations swap trivially between the verified offline slate,
+/// TMDB direct, and the
 /// production BoxCall backend (which fans out to Box Office Mojo,
 /// The Numbers, and Deadline scrapers server-side).
 protocol MovieDataProvider {
@@ -16,11 +17,12 @@ protocol MovieDataProvider {
 /// is set. Titles, studios, release dates, directors, and cast come
 /// from public studio announcements. Tracking estimates are baseline
 /// placeholders that TMDB / the backend overwrite once live.
-final class MockMovieProvider: MovieDataProvider {
+final class VerifiedMovieProvider: MovieDataProvider {
     func fetchUpcoming(windowDays: Int) async throws -> [Movie] {
-        // Only return films that haven't opened yet — a stale seed
-        // should never resurrect a movie that already settled.
-        MockMovieProvider.builtInSeed().filter { !$0.isSettled }
+        let cutoff = Date().addingTimeInterval(Double(windowDays) * 86_400)
+        return Self.builtInSeed()
+            .filter { !$0.isSettled && $0.releaseDate <= cutoff }
+            .sorted { $0.releaseDate < $1.releaseDate }
     }
 
     /// Fall 2026 → Summer 2027 wide-release calendar as of the most
@@ -37,7 +39,7 @@ final class MockMovieProvider: MovieDataProvider {
         return [
             .init(id: "m_clayface", title: "Clayface",
                   studio: "DC Studios / Warner Bros.",
-                  releaseDate: date("2026-09-11"), posterEmoji: "🎭",
+                  releaseDate: date("2026-10-23"), posterEmoji: "🎭",
                   tagline: "A body-horror origin story from the DC Universe.",
                   consensusOpeningMillions: 30, impliedVolPct: 42,
                   genre: "Horror", addedAt: addedAt,
@@ -47,7 +49,7 @@ final class MockMovieProvider: MovieDataProvider {
                   trailerQuery: "Clayface 2026 official trailer"),
             .init(id: "m_practical_magic2", title: "Practical Magic 2",
                   studio: "Warner Bros.",
-                  releaseDate: date("2026-09-18"), posterEmoji: "🔮",
+                  releaseDate: date("2026-09-10"), posterEmoji: "🔮",
                   tagline: "The Owens sisters return.",
                   consensusOpeningMillions: 28, impliedVolPct: 38,
                   genre: "Fantasy", addedAt: addedAt,
@@ -105,7 +107,7 @@ final class MockMovieProvider: MovieDataProvider {
                   cast: ["Joseph Zada", "Whitney Peak", "Mckenna Grace", "Jesse Plemons", "Ralph Fiennes", "Kieran Culkin", "Elle Fanning"],
                   synopsis: "The 50th Hunger Games — the second Quarter Quell — as a sixteen-year-old Haymitch Abernathy is reaped from District 12 alongside twice the usual number of tributes.",
                   trailerQuery: "Hunger Games Sunrise on the Reaping official trailer"),
-            .init(id: "m_focker_in_law", title: "Focker In-Law",
+            .init(id: "m_focker_in_law", title: "Focker-In-Law",
                   studio: "Universal",
                   releaseDate: date("2026-11-25"), posterEmoji: "🤝",
                   tagline: "The circle of trust gets bigger.",
@@ -114,27 +116,27 @@ final class MockMovieProvider: MovieDataProvider {
                   director: "John Hamburg",
                   cast: ["Ben Stiller", "Robert De Niro", "Teri Polo", "Blythe Danner", "Ariana Grande"],
                   synopsis: "Greg Focker's kids are grown — and now it's his turn to interrogate a prospective in-law. Fourth film in the Meet the Parents series, Thanksgiving weekend.",
-                  trailerQuery: "Focker In-Law official trailer"),
+                  trailerQuery: "Focker-In-Law official trailer"),
             .init(id: "m_narnia_nephew", title: "The Chronicles of Narnia: The Magician's Nephew",
-                  studio: "Netflix (IMAX exclusive)",
-                  releaseDate: date("2026-11-26"), posterEmoji: "🦁",
-                  tagline: "Two-week IMAX run before streaming.",
+                  studio: "Netflix",
+                  releaseDate: date("2027-02-12"), posterEmoji: "🦁",
+                  tagline: "In theaters before its Netflix debut.",
                   consensusOpeningMillions: 18, impliedVolPct: 48,
                   genre: "Fantasy", addedAt: addedAt,
                   director: "Greta Gerwig",
                   cast: ["Emma Mackey", "Carey Mulligan", "Daniel Craig"],
                   synopsis: "Gerwig's Narnia begins at the beginning: Digory and Polly's rings, the dying world of Charn, the witch Jadis, and the song that makes a world.",
                   trailerQuery: "Narnia The Magician's Nephew Greta Gerwig official trailer"),
-            .init(id: "m_jumanji3", title: "Jumanji 3",
+            .init(id: "m_jumanji3", title: "Jumanji: Open World",
                   studio: "Sony Pictures",
-                  releaseDate: date("2026-12-11"), posterEmoji: "🥁",
-                  tagline: "The game isn't over.",
+                  releaseDate: date("2026-12-25"), posterEmoji: "🥁",
+                  tagline: "One last game.",
                   consensusOpeningMillions: 50, impliedVolPct: 28,
                   genre: "Adventure", addedAt: addedAt,
                   director: "Jake Kasdan",
-                  cast: ["Dwayne Johnson", "Kevin Hart", "Jack Black", "Karen Gillan", "Awkwafina"],
-                  synopsis: "The avatars are back in the game, and this time the game has learned. The Rock, Hart, Black, and Gillan return for the third modern Jumanji.",
-                  trailerQuery: "Jumanji 3 official trailer"),
+                  cast: ["Dwayne Johnson", "Kevin Hart", "Jack Black", "Karen Gillan", "Danny DeVito"],
+                  synopsis: "Jumanji breaks free of its console and unleashes its chaos into the real world in the final installment of the modern trilogy.",
+                  trailerQuery: "Jumanji Open World official trailer"),
             .init(id: "m_avengers_doomsday", title: "Avengers: Doomsday",
                   studio: "Marvel Studios",
                   releaseDate: date("2026-12-18"), posterEmoji: "⚡️",
@@ -163,7 +165,7 @@ final class MockMovieProvider: MovieDataProvider {
                   genre: "Animation", addedAt: addedAt,
                   director: "20th Century Animation",
                   cast: ["Ray Romano", "John Leguizamo", "Denis Leary", "Queen Latifah", "Simon Pegg"],
-                  synopsis: "Manny, Sid, and Diego navigate a world getting hotter by the minute in the sixth theatrical Ice Age — the first since 2016.",
+                  synopsis: "Manny, Sid, Diego, Ellie, Scrat, and the herd head into the dinosaur-and-lava-filled Lost World in the sixth theatrical Ice Age.",
                   trailerQuery: "Ice Age Boiling Point official trailer"),
             .init(id: "m_sonic4", title: "Sonic the Hedgehog 4",
                   studio: "Paramount",
