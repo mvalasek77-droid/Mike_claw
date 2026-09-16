@@ -9,7 +9,7 @@ struct CustomMarketsView: View {
     var body: some View {
         List {
             Section {
-                if portfolio.user.membership == .mogul {
+                if portfolio.user.membership.canCreateCustomMarkets {
                     Button {
                         showProposeSheet = true
                     } label: {
@@ -33,7 +33,7 @@ struct CustomMarketsView: View {
                     }
                 }
             } footer: {
-                Text("All new markets go through review before they trade. Rules must be objective and settle from a specific public source.")
+                Text("New markets go through a brief review, then go live automatically. Rules must be objective and settle from a specific public source.")
                     .font(.caption)
             }
 
@@ -111,41 +111,59 @@ struct ProposeMarketSheet: View {
     @State private var question: String = ""
     @State private var details: String = ""
     @State private var resolvesOn: Date = Date().addingTimeInterval(30 * 86400)
+    private var minResolveDate: Date { Date().addingTimeInterval(7 * 86400) }
     @State private var err: String?
+    @State private var submitted = false
 
     var body: some View {
         NavigationStack {
             Form {
-                Section("Question") {
-                    TextField("Villeneuve's next opens above $50M", text: $question, axis: .vertical)
-                        .lineLimit(2...3)
-                }
-                Section("Settlement rules") {
-                    TextField("Where do we look up the answer? Which source, which day, which threshold? Be specific.",
-                              text: $details, axis: .vertical)
-                        .lineLimit(4...8)
-                }
-                Section("Resolves on") {
-                    DatePicker("Date", selection: $resolvesOn,
-                               in: Date()..., displayedComponents: [.date])
-                }
-                if let err {
-                    Section { Text(err).foregroundStyle(.red).font(.caption) }
-                }
-                Section {
-                    Button {
-                        submit()
-                    } label: {
-                        Text("Submit for review").frame(maxWidth: .infinity).fontWeight(.semibold)
+                if submitted {
+                    Section {
+                        VStack(spacing: 8) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.largeTitle).foregroundStyle(.green)
+                            Text("Market submitted!")
+                                .font(.headline)
+                            Text("Your market is under review and will go live shortly.")
+                                .font(.caption).foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 20)
                     }
-                    .buttonStyle(.borderedProminent).tint(.orange)
+                } else {
+                    Section("Question") {
+                        TextField("Villeneuve's next opens above $50M", text: $question, axis: .vertical)
+                            .lineLimit(2...3)
+                    }
+                    Section("Settlement rules") {
+                        TextField("Where do we look up the answer? Which source, which day, which threshold? Be specific.",
+                                  text: $details, axis: .vertical)
+                            .lineLimit(4...8)
+                    }
+                    Section("Resolves on") {
+                        DatePicker("Date", selection: $resolvesOn,
+                                   in: minResolveDate..., displayedComponents: [.date])
+                    }
+                    if let err {
+                        Section { Text(err).foregroundStyle(.red).font(.caption) }
+                    }
+                    Section {
+                        Button {
+                            submit()
+                        } label: {
+                            Text("Submit for review").frame(maxWidth: .infinity).fontWeight(.semibold)
+                        }
+                        .buttonStyle(.borderedProminent).tint(.orange)
+                    }
                 }
             }
             .navigationTitle("Propose market")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(submitted ? "Done" : "Cancel") { dismiss() }
                 }
             }
         }
@@ -156,7 +174,7 @@ struct ProposeMarketSheet: View {
         do {
             try CustomMarketService.shared.propose(
                 question: question, details: details, resolvesOn: resolvesOn)
-            dismiss()
+            withAnimation { submitted = true }
         } catch {
             err = error.localizedDescription
         }

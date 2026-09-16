@@ -2,10 +2,9 @@ import Foundation
 import SwiftUI
 
 /// Subscription tier. Free is the default; three paid tiers unlock
-/// more Reel Coins (both a one-time starting bonus and a larger
-/// weekly allowance). Everything else in the app is identical for
-/// free and paid users — no gameplay is gated. This keeps status
-/// (tiers, badges, leaderboard rank) earned rather than bought.
+/// more Reel Coins, exclusive features, and a larger weekly
+/// allowance. Status (tiers, badges, leaderboard rank) is still
+/// earned by winning calls, never bought.
 enum Membership: String, Codable, CaseIterable, Identifiable {
     case free
     case backstage
@@ -52,6 +51,40 @@ enum Membership: String, Codable, CaseIterable, Identifiable {
         }
     }
 
+    /// Simultaneous resting limit orders allowed.
+    var maxLimitOrders: Int {
+        switch self {
+        case .free:           return 1
+        case .backstage:      return 3
+        case .producersPass:  return 10
+        case .mogul:          return .max
+        }
+    }
+
+    /// Subscribers see newly-listed movies 24h before free users.
+    var hasEarlyAccess: Bool { isPaid }
+
+    /// Subscribers get a portfolio performance dashboard.
+    var hasPerformanceStats: Bool {
+        switch self {
+        case .free, .backstage: return false
+        case .producersPass, .mogul: return true
+        }
+    }
+
+    /// Only Mogul can propose custom prop markets.
+    var canCreateCustomMarkets: Bool { self == .mogul }
+
+    /// SF Symbol badge shown next to the subscriber's handle.
+    var badgeIcon: String? {
+        switch self {
+        case .free:           return nil
+        case .backstage:      return "ticket.fill"
+        case .producersPass:  return "star.fill"
+        case .mogul:          return "crown.fill"
+        }
+    }
+
     var perks: [String] {
         switch self {
         case .free:
@@ -63,19 +96,25 @@ enum Membership: String, Codable, CaseIterable, Identifiable {
         case .backstage:
             return [
                 "5,000 RC starting bonus",
-                "1,500 RC weekly allowance"
+                "1,500 RC weekly allowance",
+                "24-hour early access to new markets",
+                "Up to 3 simultaneous limit orders",
+                "Subscriber badge on your profile"
             ]
         case .producersPass:
             return [
                 "15,000 RC starting bonus",
                 "4,000 RC weekly allowance",
+                "Portfolio performance stats",
+                "Up to 10 simultaneous limit orders",
                 "Everything in Backstage"
             ]
         case .mogul:
             return [
                 "40,000 RC starting bonus",
                 "10,000 RC weekly allowance",
-                "Create custom markets",
+                "Create custom prop markets",
+                "Unlimited limit orders",
                 "Everything in Producer's Pass"
             ]
         }

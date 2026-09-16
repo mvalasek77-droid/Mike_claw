@@ -16,11 +16,12 @@ final class OrderBookService: ObservableObject {
     private init() {}
 
     enum PlaceError: LocalizedError {
-        case insufficientFunds, invalidLimit
+        case insufficientFunds, invalidLimit, orderLimitReached
         var errorDescription: String? {
             switch self {
             case .insufficientFunds: return "Not enough Reel Coins to reserve for this limit."
             case .invalidLimit:      return "Limit price must be greater than 0."
+            case .orderLimitReached: return "You've hit your limit-order cap. Cancel an existing order or upgrade your membership for more."
             }
         }
     }
@@ -31,6 +32,10 @@ final class OrderBookService: ObservableObject {
     func placeBuyLimit(contract: Contract, quantity: Int,
                        limitPrice: Double) throws -> UUID {
         guard limitPrice > 0 else { throw PlaceError.invalidLimit }
+        let membership = PortfolioService.shared.user.membership
+        guard openOrders.count < membership.maxLimitOrders else {
+            throw PlaceError.orderLimitReached
+        }
         let reservation = limitPrice * Double(quantity)
         guard PortfolioService.shared.user.reelCoins >= reservation else {
             throw PlaceError.insufficientFunds

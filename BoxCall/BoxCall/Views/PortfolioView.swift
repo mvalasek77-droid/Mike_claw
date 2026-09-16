@@ -17,8 +17,14 @@ struct PortfolioView: View {
                         .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                         .listRowBackground(Color.clear)
                 }
+                if portfolio.user.membership.hasPerformanceStats {
+                    Section("Performance") {
+                        performanceStats
+                    }
+                }
                 if !book.openOrders.isEmpty {
-                    Section("Working limit orders") {
+                    let cap = portfolio.user.membership.maxLimitOrders
+                    Section("Working limit orders (\(book.openOrders.count)/\(cap == .max ? "∞" : "\(cap)"))") {
                         ForEach(book.openOrders) { order in
                             HStack(alignment: .top, spacing: 8) {
                                 Image(systemName: "hourglass")
@@ -92,6 +98,48 @@ struct PortfolioView: View {
             .font(.caption2)
         }
         .padding(.vertical, 6)
+    }
+
+    private var performanceStats: some View {
+        let settled = settledPositions
+        let wins = settled.filter { ($0.settledPayout ?? 0) > $0.cost }.count
+        let losses = settled.filter { ($0.settledPayout ?? 0) < $0.cost }.count
+        let winRate = settled.isEmpty ? 0.0 : Double(wins) / Double(settled.count)
+        let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+        let weeklyPnL = settled
+            .filter { $0.openedAt >= weekAgo }
+            .reduce(0.0) { $0 + ($1.settledPayout ?? 0) - $1.cost }
+
+        return VStack(spacing: 10) {
+            HStack {
+                statTile(label: "Win rate", value: "\(Int(winRate * 100))%",
+                         color: winRate >= 0.5 ? .green : .red)
+                Spacer()
+                statTile(label: "Record", value: "\(wins)W – \(losses)L", color: .primary)
+                Spacer()
+                statTile(label: "Streak", value: "\(portfolio.user.currentStreakWeeks)wk",
+                         color: portfolio.user.currentStreakWeeks > 0 ? .green : .secondary)
+            }
+            HStack {
+                statTile(label: "Weekly P&L",
+                         value: String(format: "%+.0f RC", weeklyPnL),
+                         color: weeklyPnL >= 0 ? .green : .red)
+                Spacer()
+                statTile(label: "Total trades", value: "\(portfolio.positions.count)", color: .primary)
+                Spacer()
+                statTile(label: "Best streak", value: "\(portfolio.user.longestStreakWeeks)wk", color: .secondary)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func statTile(label: String, value: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label).font(.caption2).foregroundStyle(.secondary)
+            Text(value).font(.callout.weight(.semibold)).foregroundStyle(color)
+                .monospacedDigit()
+        }
+        .frame(minWidth: 80, alignment: .leading)
     }
 
     private func simulateAllSettlements() {

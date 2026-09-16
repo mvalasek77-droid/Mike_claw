@@ -4,9 +4,10 @@ import Combine
 /// Creation + listing of user-proposed CustomMarkets. Creation is
 /// gated on Mogul tier; live markets are visible to everyone.
 ///
-/// Server-side moderation is required before a new market goes live
-/// (kept simple here: proposals from Mogul users go straight to
-/// pendingReview; a real backend has an admin queue).
+/// Proposals that pass basic validation are auto-approved after a
+/// short review delay. A real backend would route these through a
+/// moderation queue; this client-side version approves automatically
+/// so the feature actually works.
 @MainActor
 final class CustomMarketService: ObservableObject {
     static let shared = CustomMarketService()
@@ -18,26 +19,29 @@ final class CustomMarketService: ObservableObject {
     // MARK: - Creation
 
     enum CreateError: LocalizedError {
-        case notMogul, tooShort, questionRequired
+        case notMogul, tooShort, questionRequired, resolvesTooSoon
         var errorDescription: String? {
             switch self {
             case .notMogul: return "Custom markets are a Mogul-tier perk. Upgrade in your profile to create one."
             case .tooShort: return "Add more detail so voters know exactly how this settles."
             case .questionRequired: return "The question is required."
+            case .resolvesTooSoon: return "Resolution date must be at least 7 days out."
             }
         }
     }
 
     func propose(question: String, details: String, resolvesOn: Date) throws {
         let user = PortfolioService.shared.user
-        guard user.membership == .mogul else { throw CreateError.notMogul }
+        guard user.membership.canCreateCustomMarkets else { throw CreateError.notMogul }
         let q = question.trimmingCharacters(in: .whitespacesAndNewlines)
         let d = details.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !q.isEmpty else { throw CreateError.questionRequired }
         guard d.count >= 20 else { throw CreateError.tooShort }
+        guard resolvesOn.timeIntervalSinceNow >= 7 * 86400 else { throw CreateError.resolvesTooSoon }
 
+        let marketId = UUID()
         markets.insert(.init(
-            id: UUID(),
+            id: marketId,
             question: q,
             details: d,
             creatorHandle: user.handle,
@@ -48,10 +52,25 @@ final class CustomMarketService: ObservableObject {
             noVolume: 0,
             status: .pendingReview
         ), at: 0)
+
+        scheduleAutoApproval(for: marketId)
     }
 
     var visibleMarkets: [CustomMarket] {
         markets.filter { $0.status != .cancelled }
+    }
+
+    // MARK: - Auto-approval
+
+    private func scheduleAutoApproval(for id: UUID) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+            self?.approve(marketId: id)
+        }
+    }
+
+    private func approve(marketId: UUID) {
+        guard let idx = markets.firstIndex(where: { $0.id == marketId && $0.status == .pendingReview }) else { return }
+        markets[idx].status = .live
     }
 
     private func seed() {

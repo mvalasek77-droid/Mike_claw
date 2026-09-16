@@ -41,14 +41,14 @@ struct ProfileView: View {
     private var membershipCard: some View {
         let m = user.membership
         return HStack(spacing: 12) {
-            Image(systemName: m.isPaid ? "star.circle.fill" : "person.crop.circle")
+            Image(systemName: m.badgeIcon ?? "person.crop.circle")
                 .font(.title2)
                 .foregroundStyle(m.accentColor)
             VStack(alignment: .leading, spacing: 2) {
                 Text(m.displayName)
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(m.accentColor)
-                Text("\(Int(m.weeklyAllowance)) RC weekly · same rules for every \(m.displayName) member")
+                Text("\(Int(m.weeklyAllowance)) RC weekly · \(m.maxLimitOrders == .max ? "unlimited" : "up to \(m.maxLimitOrders)") limit orders")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }

@@ -4,6 +4,12 @@ struct MovieListView: View {
     @EnvironmentObject var market: MarketService
     @EnvironmentObject var portfolio: PortfolioService
 
+    var visibleMovies: [Movie] {
+        let membership = portfolio.user.membership
+        if membership.hasEarlyAccess { return market.movies }
+        return market.movies.filter { Date().timeIntervalSince($0.addedAt) >= 24 * 3600 }
+    }
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -24,7 +30,7 @@ struct MovieListView: View {
                             .listRowBackground(Color.clear)
                     }
                     Section {
-                        ForEach(market.movies) { movie in
+                        ForEach(visibleMovies) { movie in
                             NavigationLink(value: movie) {
                                 MovieRow(movie: movie)
                             }
@@ -136,6 +142,7 @@ struct CoinBalanceRow: View {
 struct MovieRow: View {
     let movie: Movie
     @EnvironmentObject var market: MarketService
+    @EnvironmentObject var portfolio: PortfolioService
 
     var body: some View {
         let implied = market.impliedConsensus(for: movie.id)
@@ -146,11 +153,13 @@ struct MovieRow: View {
                 HStack(spacing: 6) {
                     Text(movie.title).font(.headline)
                     if movie.isNewlyAdded {
-                        Text("NEW")
+                        let isEarly = portfolio.user.membership.hasEarlyAccess
+                            && Date().timeIntervalSince(movie.addedAt) < 24 * 3600
+                        Text(isEarly ? "EARLY" : "NEW")
                             .font(.caption2.weight(.heavy))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 5).padding(.vertical, 1)
-                            .background(Capsule().fill(.orange))
+                            .background(Capsule().fill(isEarly ? .blue : .orange))
                     }
                 }
                 Text(movie.studio).font(.caption).foregroundStyle(.secondary)

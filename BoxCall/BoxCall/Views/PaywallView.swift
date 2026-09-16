@@ -51,10 +51,10 @@ struct PaywallView: View {
 
     private var header: some View {
         VStack(spacing: 8) {
-            Text("More coins. Same game.")
+            Text("Trade bigger. See more. Stand out.")
                 .font(.title2.bold())
                 .multilineTextAlignment(.center)
-            Text("Every account starts with 1,000 Reel Coins and gets 500 RC refilled each week — always free. Subscribers get bigger bonuses and weekly allowances. Nothing else is gated: leaderboards, badges, and status are earned by winning calls, never bought.")
+            Text("Every account gets 1,000 RC and 500 RC refilled weekly — always free. Subscribers unlock bigger allowances, early market access, advanced tools, and profile flair. Leaderboard rank and status are still earned by winning calls, never bought.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -122,9 +122,16 @@ private struct TierCard: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(tier.displayName)
-                        .font(.title3.bold())
-                        .foregroundStyle(tier.accentColor)
+                    HStack(spacing: 6) {
+                        Text(tier.displayName)
+                            .font(.title3.bold())
+                            .foregroundStyle(tier.accentColor)
+                        if let icon = tier.badgeIcon {
+                            Image(systemName: icon)
+                                .font(.caption)
+                                .foregroundStyle(tier.accentColor)
+                        }
+                    }
                     Text(price)
                         .font(.caption)
                         .foregroundStyle(.secondary)
