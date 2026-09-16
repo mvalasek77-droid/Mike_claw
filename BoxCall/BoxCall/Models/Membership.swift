@@ -63,25 +63,19 @@ enum Membership: String, Codable, CaseIterable, Identifiable {
         case .backstage:
             return [
                 "5,000 RC starting bonus",
-                "1,500 RC weekly allowance",
-                "Ad-free experience",
-                "Extended news ticker (last 20 events / movie)"
+                "1,500 RC weekly allowance"
             ]
         case .producersPass:
             return [
                 "15,000 RC starting bonus",
                 "4,000 RC weekly allowance",
-                "Advanced analytics: IV history, demand heatmap",
-                "Priority contest slots on Monday tournaments",
-                "Producer's Pass badge on your profile"
+                "Everything in Backstage"
             ]
         case .mogul:
             return [
                 "40,000 RC starting bonus",
                 "10,000 RC weekly allowance",
-                "Create custom markets (\"Villeneuve's next opens above $50M\")",
-                "Pin one post to any movie page for 24h / week",
-                "Exclusive gold Mogul frame on your avatar",
+                "Create custom markets",
                 "Everything in Producer's Pass"
             ]
         }

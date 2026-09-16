@@ -588,13 +588,7 @@ struct CommentSheet: View {
                 List {
                     Section {
                         ForEach(filteredComments) { c in
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack(spacing: 6) {
-                                    Text("@\(c.authorHandle)").font(.caption.weight(.semibold))
-                                    Text(c.authorTier.name).font(.caption2).foregroundStyle(.secondary)
-                                }
-                                Text(c.body).font(.callout)
-                            }
+                            CommentRow(comment: c, postId: post.id)
                         }
                         if filteredComments.isEmpty {
                             Text("Be the first to weigh in.").foregroundStyle(.secondary)
@@ -623,6 +617,45 @@ struct CommentSheet: View {
                     Button("Close") { dismiss() }
                 }
             }
+        }
+    }
+}
+
+private struct CommentRow: View {
+    let comment: Comment
+    let postId: UUID
+    @ObservedObject var moderation = ModerationService.shared
+    @State private var showReport = false
+
+    var isOwnComment: Bool {
+        comment.authorHandle == PortfolioService.shared.user.handle
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Text("@\(comment.authorHandle)").font(.caption.weight(.semibold))
+                Text(comment.authorTier.name).font(.caption2).foregroundStyle(.secondary)
+            }
+            Text(comment.body).font(.callout)
+        }
+        .contextMenu {
+            if !isOwnComment {
+                Button {
+                    showReport = true
+                } label: {
+                    Label("Report", systemImage: "flag")
+                }
+                Button(role: .destructive) {
+                    moderation.block(handle: comment.authorHandle)
+                } label: {
+                    Label("Block @\(comment.authorHandle)", systemImage: "hand.raised")
+                }
+            }
+        }
+        .sheet(isPresented: $showReport) {
+            ReportSheet(kind: .comment, targetId: comment.id.uuidString,
+                        authorHandle: comment.authorHandle)
         }
     }
 }

@@ -159,8 +159,10 @@ final class PortfolioService: ObservableObject {
             let payoutPerContract = intrinsic * p.multiplier
             let payout = payoutPerContract * Double(p.quantity)
             let net = payout - p.cost
-            user.reelCoins += payout
-            user.lifetimePnL += net
+            mutateUser { u in
+                u.reelCoins += payout
+                u.lifetimePnL += net
+            }
             toSettle[i].settledPayout = payout
             toSettle[i].actualOWMillions = actualMillions
 
@@ -168,23 +170,17 @@ final class PortfolioService: ObservableObject {
                 wonAny = true
                 Haptics.won(large: net > 100)
                 RewardsService.shared.recordWin(position: p, actual: actualMillions, netProfit: net)
-                SocialService.shared.attachOutcome(
-                    positionId: p.id,
-                    actual: actualMillions,
-                    payoutPerContract: payoutPerContract,
-                    netProfit: net
-                )
-            } else {
+            } else if net < 0 {
                 lostAny = true
                 Haptics.lost()
                 RewardsService.shared.recordLoss(position: p)
-                SocialService.shared.attachOutcome(
-                    positionId: p.id,
-                    actual: actualMillions,
-                    payoutPerContract: payoutPerContract,
-                    netProfit: net
-                )
             }
+            SocialService.shared.attachOutcome(
+                positionId: p.id,
+                actual: actualMillions,
+                payoutPerContract: payoutPerContract,
+                netProfit: net
+            )
 
             if let movie {
                 NotificationsService.shared.notifySettlement(
