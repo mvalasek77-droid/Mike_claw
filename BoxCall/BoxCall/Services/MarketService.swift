@@ -290,6 +290,9 @@ final class MarketService: ObservableObject {
         // The user hit the bid; the desk is long and wants to work out.
         deskInventory[contractId, default: 0] += Double(quantity)
         if let c = findContract(contractId) {
+            let bump = Double(quantity) * 0.002 * (c.side == .call ? -1 : 1)
+            movieSentiment[c.movieId, default: 1.0] =
+                clamp((movieSentiment[c.movieId] ?? 1.0) + bump, 0.5, 1.5)
             SentimentEngine.shared.recordFlow(movieId: c.movieId,
                                               side: c.side == .call ? .put : .call,
                                               quantity: quantity)
