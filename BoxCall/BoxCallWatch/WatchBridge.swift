@@ -2,60 +2,71 @@ import Foundation
 import WatchConnectivity
 import Combine
 
-/// Receives snapshot updates from the iPhone via WatchConnectivity.
-/// The iPhone posts the same WidgetSnapshot payload; the watch just
-/// displays a subset. Persists the last-known snapshot in
-/// UserDefaults so the watch has something to show before the phone
-/// wakes up.
 final class WatchBridge: NSObject, ObservableObject, WCSessionDelegate {
     static let shared = WatchBridge()
 
+    // MARK: - Watch snapshot model
+
+    struct PositionSnap: Codable, Identifiable {
+        let id: String
+        let movieTitle: String
+        let movieEmoji: String
+        let sideLabel: String
+        let strikeMillions: Double
+        let quantity: Int
+        let entryPremium: Double
+        let mark: Double
+        let pnl: Double
+        let isSettled: Bool
+        let settledPayout: Double?
+    }
+
     struct Snapshot: Codable {
+        let updatedAt: Date
+
         let nextMovieTitle: String
         let nextMoviePoster: String
         let nextMovieOpensIn: Int
-        let topPositionMovie: String?
-        let topPositionSideLabel: String?
-        let topPositionMark: Double?
-        let topPositionPnL: Double?
-        let updatedAt: Date
+
+        let balance: Double
+        let totalPnL: Double
+        let positions: [PositionSnap]
     }
 
     @Published private(set) var snapshot: Snapshot?
-    private let storageKey = "watch.snapshot"
+
+    private static let appGroup = "group.com.boxcall.shared"
+    private static let storageKey = "watch.snapshot.v2"
 
     override init() {
         super.init()
-        if let data = UserDefaults.standard.data(forKey: storageKey),
-           let s = try? JSONDecoder().decode(Snapshot.self, from: data) {
-            snapshot = s
-        }
+        loadFromAppGroup()
         if WCSession.isSupported() {
             WCSession.default.delegate = self
             WCSession.default.activate()
         }
     }
 
+    func refresh() {
+        loadFromAppGroup()
+    }
+
+    private func loadFromAppGroup() {
+        guard let defaults = UserDefaults(suiteName: Self.appGroup),
+              let data = defaults.data(forKey: Self.storageKey),
+              let s = try? JSONDecoder().decode(Snapshot.self, from: data) else { return }
+        snapshot = s
+    }
+
     // MARK: - WCSessionDelegate
 
     func session(_ session: WCSession,
                  activationDidCompleteWith activationState: WCSessionActivationState,
-                 error: Error?) { /* no-op */ }
-
-#if os(iOS)
-    func sessionDidBecomeInactive(_ session: WCSession) { /* no-op */ }
-
-    func sessionDidDeactivate(_ session: WCSession) {
-        session.activate()
+                 error: Error?) {
+        DispatchQueue.main.async { self.loadFromAppGroup() }
     }
-#endif
 
     func session(_ session: WCSession, didReceiveApplicationContext ctx: [String: Any]) {
-        guard let data = ctx["snapshot"] as? Data,
-              let s = try? JSONDecoder().decode(Snapshot.self, from: data) else { return }
-        DispatchQueue.main.async {
-            self.snapshot = s
-            UserDefaults.standard.set(data, forKey: self.storageKey)
-        }
+        DispatchQueue.main.async { self.loadFromAppGroup() }
     }
 }

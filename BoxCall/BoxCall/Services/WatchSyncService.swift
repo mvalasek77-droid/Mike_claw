@@ -3,11 +3,11 @@ import Foundation
 import WatchConnectivity
 #endif
 
-/// Pushes the same snapshot the home widget uses over to the paired
-/// Apple Watch via WatchConnectivity ApplicationContext (delivered
-/// even when the watch app isn't running).
 final class WatchSyncService: NSObject {
     static let shared = WatchSyncService()
+
+    private static let appGroup = "group.com.boxcall.shared"
+    private static let storageKey = "watch.snapshot.v2"
 
     #if canImport(WatchConnectivity)
     private var session: WCSession?
@@ -22,58 +22,93 @@ final class WatchSyncService: NSObject {
 
     @MainActor
     func push() {
+        let snapshot = buildSnapshot()
+        writeToAppGroup(snapshot)
         guard let session, session.isPaired, session.isWatchAppInstalled else { return }
-        let market = MarketService.shared
-        let portfolio = PortfolioService.shared
-
-        guard let next = market.movies
-            .filter({ $0.daysToRelease >= 0 })
-            .sorted(by: { $0.daysToRelease < $1.daysToRelease })
-            .first else { return }
-
-        let top = portfolio.positions.filter { $0.isOpen }.max { $0.cost < $1.cost }
-        var payload: [String: Any] = [
-            "nextMovieTitle": next.title,
-            "nextMoviePoster": next.posterEmoji,
-            "nextMovieOpensIn": next.daysToRelease,
-            "updatedAt": Date().timeIntervalSince1970
-        ]
-        if let p = top, let m = market.movie(id: p.movieId) {
-            let chain = market.chain(for: p.movieId)
-            let mark = chain.first(where: { $0.id == p.contractId })?.premium ?? p.entryPremium
-            payload["topPositionMovie"] = m.title
-            payload["topPositionSideLabel"] = "\(p.side.display) $\(Int(p.strikeMillions))M"
-            payload["topPositionMark"] = mark
-            payload["topPositionPnL"] = (mark - p.entryPremium) * Double(p.quantity)
-        }
-        // The watch decodes a matching Snapshot struct.
-        struct Snapshot: Codable {
-            let nextMovieTitle: String
-            let nextMoviePoster: String
-            let nextMovieOpensIn: Int
-            let topPositionMovie: String?
-            let topPositionSideLabel: String?
-            let topPositionMark: Double?
-            let topPositionPnL: Double?
-            let updatedAt: Date
-        }
-        let snap = Snapshot(
-            nextMovieTitle: payload["nextMovieTitle"] as? String ?? "",
-            nextMoviePoster: payload["nextMoviePoster"] as? String ?? "🎬",
-            nextMovieOpensIn: payload["nextMovieOpensIn"] as? Int ?? 0,
-            topPositionMovie: payload["topPositionMovie"] as? String,
-            topPositionSideLabel: payload["topPositionSideLabel"] as? String,
-            topPositionMark: payload["topPositionMark"] as? Double,
-            topPositionPnL: payload["topPositionPnL"] as? Double,
-            updatedAt: Date()
-        )
-        if let data = try? JSONEncoder().encode(snap) {
+        if let data = try? JSONEncoder().encode(snapshot) {
             try? session.updateApplicationContext(["snapshot": data])
         }
     }
     #else
-    @MainActor func push() {}
+    @MainActor func push() {
+        writeToAppGroup(buildSnapshot())
+    }
     #endif
+
+    // MARK: - Snapshot model (mirrors WatchBridge.Snapshot)
+
+    private struct PositionSnap: Codable {
+        let id: String
+        let movieTitle: String
+        let movieEmoji: String
+        let sideLabel: String
+        let strikeMillions: Double
+        let quantity: Int
+        let entryPremium: Double
+        let mark: Double
+        let pnl: Double
+        let isSettled: Bool
+        let settledPayout: Double?
+    }
+
+    private struct Snapshot: Codable {
+        let updatedAt: Date
+        let nextMovieTitle: String
+        let nextMoviePoster: String
+        let nextMovieOpensIn: Int
+        let balance: Double
+        let totalPnL: Double
+        let positions: [PositionSnap]
+    }
+
+    @MainActor
+    private func buildSnapshot() -> Snapshot {
+        let market = MarketService.shared
+        let portfolio = PortfolioService.shared
+
+        let next = market.movies
+            .filter { $0.daysToRelease >= 0 }
+            .sorted { $0.daysToRelease < $1.daysToRelease }
+            .first
+
+        let positionSnaps: [PositionSnap] = portfolio.positions.map { p in
+            let movie = market.movie(id: p.movieId)
+            let chain = market.chain(for: p.movieId)
+            let mark = chain.first { $0.id == p.contractId }?.premium ?? p.entryPremium
+            let pnl = p.pnl(mark: mark)
+            return PositionSnap(
+                id: p.id.uuidString,
+                movieTitle: movie?.title ?? "Unknown",
+                movieEmoji: movie?.posterEmoji ?? "🎬",
+                sideLabel: p.side.display,
+                strikeMillions: p.strikeMillions,
+                quantity: p.quantity,
+                entryPremium: p.entryPremium,
+                mark: mark,
+                pnl: pnl,
+                isSettled: !p.isOpen,
+                settledPayout: p.settledPayout
+            )
+        }
+
+        let totalPnL = positionSnaps.reduce(0.0) { $0 + $1.pnl }
+
+        return Snapshot(
+            updatedAt: Date(),
+            nextMovieTitle: next?.title ?? "—",
+            nextMoviePoster: next?.posterEmoji ?? "🎬",
+            nextMovieOpensIn: next?.daysToRelease ?? 0,
+            balance: portfolio.user.reelCoins,
+            totalPnL: totalPnL,
+            positions: positionSnaps
+        )
+    }
+
+    private func writeToAppGroup(_ snapshot: Snapshot) {
+        guard let defaults = UserDefaults(suiteName: Self.appGroup),
+              let data = try? JSONEncoder().encode(snapshot) else { return }
+        defaults.set(data, forKey: Self.storageKey)
+    }
 }
 
 #if canImport(WatchConnectivity)
