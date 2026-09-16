@@ -56,6 +56,7 @@ struct PortfolioView: View {
                         }
                     }
                 }
+                #if DEBUG
                 Section {
                     Button {
                         simulateAllSettlements()
@@ -63,6 +64,7 @@ struct PortfolioView: View {
                         Label("Simulate opening weekends (demo)", systemImage: "sparkles")
                     }
                 }
+                #endif
             }
             .navigationTitle("Portfolio")
         }
@@ -109,6 +111,9 @@ struct PositionRow: View {
     var movie: Movie? { market.movie(id: position.movieId) }
     var currentMark: Double {
         market.chain(for: position.movieId).first { $0.id == position.contractId }?.premium ?? position.entryPremium
+    }
+    var currentBid: Double {
+        market.bid(contractId: position.contractId)
     }
 
     var body: some View {
@@ -189,7 +194,7 @@ struct PositionRow: View {
     }
 
     private var pnlBadge: some View {
-        let pnl = position.pnl(mark: currentMark)
+        let pnl = position.pnl(mark: currentMark, bid: currentBid)
         return Text(pnl, format: .number.precision(.fractionLength(2)).sign(strategy: .always()))
             .font(.callout.weight(.bold))
             .monospacedDigit()

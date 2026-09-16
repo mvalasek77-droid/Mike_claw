@@ -60,7 +60,7 @@ final class SocialService: ObservableObject {
     func toggleReviewLike(id: UUID) {
         guard let idx = reviews.firstIndex(where: { $0.id == id }) else { return }
         reviews[idx].isLikedByMe.toggle()
-        reviews[idx].likes += reviews[idx].isLikedByMe ? 1 : -1
+        reviews[idx].likes = max(0, reviews[idx].likes + (reviews[idx].isLikedByMe ? 1 : -1))
     }
 
     func reviews(for movieId: String) -> [Review] {
@@ -78,25 +78,25 @@ final class SocialService: ObservableObject {
         // Pick any real movie ids that are in the seed; skip missing.
         let picks = m.movies.prefix(6)
         var out: [Review] = []
-        let seedPacks: [(String, Tier, String, String, Int, Int, Bool)] = [
+        let seedPacks: [(String, Tier, String, String, Int, Int, Int, Bool)] = [
             ("popcornshark",  .studioHead, "Franchise fatigue is a real number.",
              "This one carries the tentpole load for the quarter. Presales are strong in the top-25 markets but softer in the flyover, and the trailer's Rotten Tomatoes leak reads middling. I'd fade the highest strikes and buy the mid-body.",
-             312, 4, false),
+             312, 4, 4, false),
             ("indieyoda",     .producer,   "Underestimated. Again.",
              "The tracking model doesn't know how to price this. Letterboxd early reviews are running hot and the marketing pivot in the last two weeks landed. Consensus feels ten to fifteen million light.",
-             187, 8, true),
+             187, 8, 5, true),
             ("openingnight",  .insider,    "Old-fashioned in the best way.",
              "The audience for this shows up. Adult drama sold on movie-star charisma — a lost art. The studio's been quiet in press which usually means confidence. I'm long the money strike.",
-             94,  12, false),
+             94,  12, 4, false),
             ("marqueemaven",  .insider,    "Great trailer, no reason to see it opening weekend.",
              "Streaming will absorb this in three weeks. The core audience already knows the plot from the marketing. Not a bomb — just a slow build.",
-             71,  18, false),
+             71,  18, 3, false),
             ("greenlight",    .analyst,    "Priced fairly. Not much edge either way.",
              "Genre plays in this budget range have overperformed all year. Nothing to short; nothing to swing for the fence on. Consensus is honest.",
-             44,  24, false),
+             44,  24, 3, false),
             ("trailerbait",   .analyst,    "Prestige on autopilot.",
              "You've seen this movie before. Sometimes that's a compliment. The tracking is honest; the audience is loyal; the theatrical run will be short. Neutral.",
-             18,  30, false),
+             18,  30, 3, false),
         ]
         for (pack, movie) in zip(seedPacks, picks) {
             out.append(.init(
@@ -105,9 +105,9 @@ final class SocialService: ObservableObject {
                 authorIsCurrentUser: false,
                 movieId: movie.id, movieTitle: movie.title,
                 moviePosterEmoji: movie.posterEmoji,
-                headline: pack.2, body: pack.3, rating: pack.5 == 0 ? 3 : min(5, pack.5),
+                headline: pack.2, body: pack.3, rating: pack.6,
                 createdAt: Date().addingTimeInterval(-3600 * Double(pack.5)),
-                likes: pack.4, isLikedByMe: pack.6
+                likes: pack.4, isLikedByMe: pack.7
             ))
         }
         reviews = out
@@ -163,7 +163,7 @@ final class SocialService: ObservableObject {
     func toggleLike(postId: UUID) {
         guard let idx = feed.firstIndex(where: { $0.id == postId }) else { return }
         feed[idx].isLikedByMe.toggle()
-        feed[idx].likes += feed[idx].isLikedByMe ? 1 : -1
+        feed[idx].likes = max(0, feed[idx].likes + (feed[idx].isLikedByMe ? 1 : -1))
     }
 
     func addComment(postId: UUID, body: String) {

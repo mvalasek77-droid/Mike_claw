@@ -60,7 +60,7 @@ struct LowBalanceBanner: View {
 
     private var subtitle: String {
         if isBroke {
-            return "Losing trades happen — that's the market. Trading pauses until your allowance lands. Every account resets every Monday."
+            return "Losing trades happen — that's the market. Your next allowance lands on Monday. Every account resets every week."
         } else {
             return "Bets can lose the full premium. Every account resets every Monday with a fresh allowance."
         }

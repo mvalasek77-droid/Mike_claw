@@ -50,13 +50,46 @@ struct LeaderboardView: View {
                     }
                 }
                 Section {
-                    Text("Season ends in 14 days. #1 is crowned Oracle of Summer 2026.")
+                    Text("Season ends \(seasonEndString). #1 is crowned Oracle of \(seasonName).")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
             .navigationTitle("Leaderboard")
         }
+    }
+
+    private var seasonName: String {
+        let cal = Calendar.current
+        let month = cal.component(.month, from: Date())
+        let year = cal.component(.year, from: Date())
+        let name: String
+        switch month {
+        case 1...3:  name = "Winter"
+        case 4...6:  name = "Spring"
+        case 7...9:  name = "Summer"
+        default:     name = "Fall"
+        }
+        return "\(name) \(year)"
+    }
+
+    private var seasonEndString: String {
+        let cal = Calendar.current
+        let month = cal.component(.month, from: Date())
+        let endMonth: Int
+        switch month {
+        case 1...3:  endMonth = 4
+        case 4...6:  endMonth = 7
+        case 7...9:  endMonth = 10
+        default:     endMonth = 1
+        }
+        let year = cal.component(.year, from: Date()) + (endMonth == 1 ? 1 : 0)
+        guard let end = cal.date(from: DateComponents(year: year, month: endMonth, day: 1)) else {
+            return "soon"
+        }
+        let days = cal.dateComponents([.day], from: Date(), to: end).day ?? 0
+        if days <= 0 { return "soon" }
+        return "in \(days) days"
     }
 
     private func rankGlyph(_ n: Int) -> String {

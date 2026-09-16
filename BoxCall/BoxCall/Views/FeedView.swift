@@ -570,6 +570,7 @@ struct PostCard: View {
 struct CommentSheet: View {
     let post: SocialPost
     @EnvironmentObject var social: SocialService
+    @ObservedObject var moderation = ModerationService.shared
     @Environment(\.dismiss) private var dismiss
     @State private var draft: String = ""
 
@@ -577,12 +578,16 @@ struct CommentSheet: View {
         social.feed.first(where: { $0.id == post.id }) ?? post
     }
 
+    var filteredComments: [SocialPost.Comment] {
+        moderation.filter(comments: live.comments)
+    }
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 List {
                     Section {
-                        ForEach(live.comments) { c in
+                        ForEach(filteredComments) { c in
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack(spacing: 6) {
                                     Text("@\(c.authorHandle)").font(.caption.weight(.semibold))
@@ -591,7 +596,7 @@ struct CommentSheet: View {
                                 Text(c.body).font(.callout)
                             }
                         }
-                        if live.comments.isEmpty {
+                        if filteredComments.isEmpty {
                             Text("Be the first to weigh in.").foregroundStyle(.secondary)
                         }
                     }

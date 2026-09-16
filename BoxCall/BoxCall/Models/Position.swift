@@ -16,8 +16,9 @@ struct Position: Identifiable, Codable, Hashable {
     var cost: Double { entryPremium * Double(quantity) }
     var isOpen: Bool { settledPayout == nil }
 
-    func pnl(mark: Double) -> Double {
+    func pnl(mark: Double, bid: Double = 0) -> Double {
         if let payout = settledPayout { return payout - cost }
-        return (mark - entryPremium) * Double(quantity)
+        let exitPrice = bid > 0 ? bid : mark
+        return (exitPrice - entryPremium) * Double(quantity)
     }
 }

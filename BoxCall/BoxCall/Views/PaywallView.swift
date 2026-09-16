@@ -24,9 +24,11 @@ struct PaywallView: View {
                     }
                     if currentMembership.isPaid {
                         Button {
-                            portfolio.downgradeToFree()
+                            if let url = URL(string: "https://apps.apple.com/account/subscriptions") {
+                                UIApplication.shared.open(url)
+                            }
                         } label: {
-                            Text("Cancel membership")
+                            Text("Manage subscription in App Store")
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
                         }

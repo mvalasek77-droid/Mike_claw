@@ -86,7 +86,7 @@ final class PortfolioService: ObservableObject {
         let cost = contract.premium * Double(quantity)
         guard user.reelCoins >= cost else { throw TradeError.insufficientFunds }
 
-        user.reelCoins -= cost
+        mutateUser { $0.reelCoins -= cost }
         let pid = UUID()
         positions.append(.init(
             id: pid,
@@ -124,21 +124,22 @@ final class PortfolioService: ObservableObject {
 
     func closeAtMark(position: Position) {
         guard position.isOpen else { return }
-        // Closing is a sell, so the user hits the desk's bid rather than
-        // getting the mid. That spread is the cost of impatience, and it
-        // is exactly what the agents are being paid for.
         let chain = MarketService.shared.chain(for: position.movieId)
         let fallback = chain.first { $0.id == position.contractId }?.premium
             ?? position.entryPremium
         let bid = MarketService.shared.quote(contractId: position.contractId)?.bid ?? fallback
         let proceeds = bid * Double(position.quantity)
-        user.reelCoins += proceeds
-        user.lifetimePnL += proceeds - position.cost
+        mutateUser { u in
+            u.reelCoins += proceeds
+            u.lifetimePnL += proceeds - position.cost
+        }
         MarketService.shared.recordSell(contractId: position.contractId, quantity: position.quantity)
         Haptics.closeTrade()
         AnalyticsService.shared.track(.tradeClosed(
             movieId: position.movieId, pnl: proceeds - position.cost))
-        positions.removeAll { $0.id == position.id }
+        if let idx = positions.firstIndex(where: { $0.id == position.id }) {
+            positions[idx].settledPayout = proceeds
+        }
     }
 
     // MARK: - Settlement
@@ -199,7 +200,7 @@ final class PortfolioService: ObservableObject {
 
         if wonAny && !lostAny {
             RewardsService.shared.bumpWeeklyStreak()
-        } else if lostAny {
+        } else if lostAny && !wonAny {
             RewardsService.shared.resetStreak()
         }
 
@@ -215,8 +216,10 @@ final class PortfolioService: ObservableObject {
     func redeemWeeklyIfDue() {
         let lastMonday = RefillClock.lastMonday()
         if user.lastAllowanceAt < lastMonday {
-            user.reelCoins += user.membership.weeklyAllowance
-            user.lastAllowanceAt = lastMonday
+            mutateUser { u in
+                u.reelCoins += u.membership.weeklyAllowance
+                u.lastAllowanceAt = lastMonday
+            }
         }
     }
 
@@ -256,11 +259,18 @@ final class PortfolioService: ObservableObject {
     }
 
     func refreshLeaderboard() {
+        let settled = positions.filter { !$0.isOpen }
+        let wins = settled.filter { ($0.settledPayout ?? 0) > $0.cost }.count
+        let rate = settled.isEmpty ? 0 : Double(wins) / Double(settled.count)
+        let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+        let weekly = settled
+            .filter { $0.openedAt >= weekAgo }
+            .reduce(0.0) { $0 + ($1.settledPayout ?? 0) - $1.cost }
         leaderboard = leaderboard.map { entry in
             guard entry.isCurrentUser else { return entry }
             return .init(id: entry.id, handle: entry.handle, tier: user.tier,
-                         reelCoins: user.reelCoins, weeklyPnL: user.lifetimePnL,
-                         winRate: entry.winRate, isCurrentUser: true)
+                         reelCoins: user.reelCoins, weeklyPnL: weekly,
+                         winRate: rate, isCurrentUser: true)
         }.sorted { $0.reelCoins > $1.reelCoins }
     }
 }

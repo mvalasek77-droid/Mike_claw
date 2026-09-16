@@ -63,29 +63,31 @@ final class OrderBookService: ObservableObject {
     }
 
     /// Called by MarketService on every tick — matches any buy-limit
-    /// whose limit is at or above the current mark.
+    /// whose limit is at or above the current ask, and cancels orders
+    /// on movies that have already settled.
     func tickMatch() {
         guard !openOrders.isEmpty else { return }
-        let chainsById: [String: [Contract]] = MarketService.shared.chains
         var stillOpen: [LimitOrder] = []
         for order in openOrders {
-            let mark = chainsById[order.movieId]?
-                .first(where: { $0.id == order.contractId })?.premium
-            guard let mark else {
+            if let movie = MarketService.shared.movie(id: order.movieId), movie.isSettled {
+                let reserved = order.limitPrice * Double(order.quantity)
+                PortfolioService.shared.mutateUser { $0.reelCoins += reserved }
+                var expired = order
+                expired.status = .cancelled
+                filledOrders.append(expired)
+                continue
+            }
+            let ask = MarketService.shared.ask(contractId: order.contractId)
+            guard ask > 0 else {
                 stillOpen.append(order); continue
             }
-            if mark <= order.limitPrice {
-                // Fill at the mark (better than limit possibly) — refund
-                // the price difference so users always get a good-or-
-                // better price.
-                let fillPrice = min(mark, order.limitPrice)
+            if ask <= order.limitPrice {
+                let fillPrice = min(ask, order.limitPrice)
                 let paid = fillPrice * Double(order.quantity)
                 let reserved = order.limitPrice * Double(order.quantity)
                 let refund = max(0, reserved - paid)
                 PortfolioService.shared.mutateUser { $0.reelCoins += refund }
 
-                // Spawn a position without going through buy() (which
-                // would try to charge again).
                 let position = Position(
                     id: UUID(),
                     contractId: order.contractId, movieId: order.movieId,
@@ -97,6 +99,7 @@ final class OrderBookService: ObservableObject {
                 PortfolioService.shared.appendPosition(position)
                 MarketService.shared.recordBuy(contractId: order.contractId,
                                                quantity: order.quantity)
+                RewardsService.shared.grant(xp: 10, reason: "Limit order filled")
 
                 var filled = order
                 filled.status = .filled
