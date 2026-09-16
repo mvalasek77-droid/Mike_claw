@@ -90,6 +90,9 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.boxcall.app.watchkitapp
+        # The watch app needs its own icon or the archive will not
+        # validate, even though it ships inside the iOS submission.
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_FILE: BoxCallWatch/Info.plist
   BoxCallWatchComplication:
     type: app-extension
