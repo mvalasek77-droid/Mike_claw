@@ -272,20 +272,34 @@ struct MovieDetailView: View {
     }
 
     private var ticketButtons: some View {
-        HStack(spacing: 8) {
-            ticketButton("Fandango", color: .red,
-                         url: TicketAffiliate.fandangoURL(for: movie.title))
-            ticketButton("AMC", color: .orange,
-                         url: TicketAffiliate.amcURL(for: movie.title))
-            ticketButton("Atom", color: .blue,
-                         url: TicketAffiliate.atomURL(for: movie.title))
+        VStack(alignment: .leading, spacing: 8) {
+            if movie.daysToRelease > 0 {
+                HStack(spacing: 8) {
+                    linkChip("Fandango", icon: "ticket", color: .red,
+                             url: TicketAffiliate.fandangoURL(for: movie.title))
+                    linkChip("AMC", icon: "ticket", color: .orange,
+                             url: TicketAffiliate.amcURL(for: movie.title))
+                    linkChip("Atom", icon: "ticket", color: .blue,
+                             url: TicketAffiliate.atomURL(for: movie.title))
+                }
+            }
+            if movie.daysToRelease <= 0 {
+                HStack(spacing: 8) {
+                    linkChip("Fandango", icon: "ticket", color: .red,
+                             url: TicketAffiliate.fandangoURL(for: movie.title))
+                    linkChip("BOM", icon: "chart.bar", color: .green,
+                             url: TicketAffiliate.boxOfficeMojoURL(for: movie.title))
+                    linkChip("The Numbers", icon: "number", color: .purple,
+                             url: TicketAffiliate.theNumbersURL(for: movie.title))
+                }
+            }
         }
     }
 
-    private func ticketButton(_ label: String, color: Color, url: URL?) -> some View {
-        Link(destination: url ?? URL(string: "https://boxcall.com")!) {
+    private func linkChip(_ label: String, icon: String, color: Color, url: URL?) -> some View {
+        Link(destination: url ?? URL(string: "https://www.boxofficemojo.com")!) {
             HStack(spacing: 4) {
-                Image(systemName: "ticket")
+                Image(systemName: icon)
                 Text(label).font(.caption.weight(.semibold))
             }
             .foregroundStyle(color)
