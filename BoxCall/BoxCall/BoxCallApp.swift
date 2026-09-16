@@ -10,6 +10,7 @@ struct BoxCallApp: App {
     @StateObject private var coordinator = TradeCoordinator.shared
     @StateObject private var store = StoreService.shared
     @StateObject private var auth = AuthService.shared
+    @StateObject private var settlement = SettlementService.shared
 
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
     @AppStorage("passedAgeGate") private var passedAgeGate: Bool = false
@@ -38,6 +39,7 @@ struct BoxCallApp: App {
                 market.startMarket()
                 await market.refreshCatalog()
                 market.startAutoRefresh()
+                await settlement.checkAndSettle()
                 WidgetSyncService.sync()
             }
             .sheet(item: $coordinator.pendingCopy) { intent in

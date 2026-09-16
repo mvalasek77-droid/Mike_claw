@@ -109,8 +109,11 @@ jobs:
           signals = json.loads(pathlib.Path("site/api/v1/signals.json").read_text())
           if not signals.get("signals"):
               sys.exit("Refusing to publish an empty signal set.")
+          actuals = json.loads(pathlib.Path("site/api/v1/actuals.json").read_text())
+          actuals_count = len(actuals.get("actuals", {}))
           print(f"OK: {manifest['movieCount']} titles, "
-                f"{len(signals['signals'])} signal records.")
+                f"{len(signals['signals'])} signal records, "
+                f"{actuals_count} box office actuals.")
           PY
 
       - uses: actions/upload-pages-artifact@v3

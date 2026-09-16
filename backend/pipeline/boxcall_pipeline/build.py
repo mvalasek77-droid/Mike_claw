@@ -23,7 +23,7 @@ import time
 import httpx
 
 from . import sentiment
-from .sources import bluesky, tmdb, wikipedia, youtube
+from .sources import bluesky, boxoffice, tmdb, wikipedia, youtube
 
 SCHEMA_VERSION = 1
 # Bluesky asks public clients to be gentle; a short pause between titles
@@ -216,6 +216,13 @@ def build(
 
     save_trailer_cache(cache_path, trailer_cache)
 
+    # --- Box office actuals -----------------------------------------
+    actuals_data = collect_actuals(movies, now)
+    if actuals_data:
+        source_status["boxoffice"] = f"ok ({len(actuals_data)} titles with actuals)"
+    else:
+        source_status["boxoffice"] = "no actuals this run"
+
     manifest = {
         "version": SCHEMA_VERSION,
         "generatedAt": iso(now),
@@ -236,7 +243,66 @@ def build(
             "signals": {s["id"]: s for s in signals},
         },
     )
+    write_json(
+        out_dir / "actuals.json",
+        {
+            "version": SCHEMA_VERSION,
+            "generatedAt": iso(now),
+            "actuals": actuals_data,
+        },
+    )
     return manifest
+
+
+def collect_actuals(
+    movies: list[dict],
+    now: dt.datetime,
+) -> dict[str, dict]:
+    """Fetch real box office actuals and match them to our catalog."""
+    try:
+        with httpx.Client(
+            headers={"User-Agent": boxoffice.USER_AGENT},
+            follow_redirects=True,
+        ) as client:
+            results = boxoffice.fetch_actuals(client)
+    except Exception:
+        results = []
+
+    if not results:
+        return {}
+
+    actuals: dict[str, dict] = {}
+    result_lookup = {r.title.lower(): r for r in results}
+
+    for movie in movies:
+        release = movie.get("releaseDate", "")
+        if not release:
+            continue
+        try:
+            release_date = dt.datetime.fromisoformat(release.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            continue
+        if now < release_date:
+            continue
+
+        title_lower = movie["title"].lower()
+        matched = result_lookup.get(title_lower)
+        if not matched:
+            for result in results:
+                if title_lower in result.title.lower() or result.title.lower() in title_lower:
+                    matched = result
+                    break
+
+        if matched:
+            actuals[movie["id"]] = {
+                "title": movie["title"],
+                "domesticOpeningMillions": matched.gross_millions,
+                "isOpeningWeekend": matched.is_opening_weekend,
+                "source": matched.source,
+                "reportedAt": iso(now),
+            }
+
+    return actuals
 
 
 def write_json(path: pathlib.Path, payload: dict) -> None:

@@ -62,6 +62,19 @@ struct PortfolioView: View {
                         }
                     }
                 }
+                if openPositions.contains(where: { movieIsSettleable($0.movieId) }) {
+                    Section {
+                        Button {
+                            Task { await SettlementService.shared.checkAndSettle() }
+                        } label: {
+                            Label("Check for opening weekend results", systemImage: "arrow.clockwise.circle.fill")
+                        }
+                        .foregroundStyle(.orange)
+                    } footer: {
+                        Text("Results are fetched automatically on launch. Tap to check again now.")
+                            .font(.caption)
+                    }
+                }
                 #if DEBUG
                 Section {
                     Button {
@@ -140,6 +153,10 @@ struct PortfolioView: View {
                 .monospacedDigit()
         }
         .frame(minWidth: 80, alignment: .leading)
+    }
+
+    private func movieIsSettleable(_ movieId: String) -> Bool {
+        market.movie(id: movieId)?.isSettled ?? false
     }
 
     private func simulateAllSettlements() {

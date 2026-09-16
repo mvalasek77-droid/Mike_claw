@@ -4,6 +4,7 @@ import SwiftUI
 /// Reachable from Profile → "Data sources".
 struct DataSourcesView: View {
     @EnvironmentObject var market: MarketService
+    @ObservedObject var settlement = SettlementService.shared
 
     var body: some View {
         ScrollView {
@@ -124,10 +125,10 @@ struct DataSourcesView: View {
             }
             Group {
                 Text("Settlement").font(.headline).padding(.top, 4)
-                SourceRow(name: "Box Office Mojo (IMDb)",
-                          role: "Actual reported Fri–Sun domestic gross. Drives Monday settlement of every open position.",
-                          status: "Backend-only in production. No public API — scraped by the server, then applied via settle() on Monday morning.",
-                          wired: false)
+                SourceRow(name: "Box Office Mojo / The Numbers",
+                          role: "Actual reported Fri–Sun domestic gross. Drives automatic settlement of every open position.",
+                          status: settlementStatus,
+                          wired: true)
                 SourceRow(name: "IMDb",
                           role: "Cast / crew metadata for review context.",
                           status: "Paid data licensing — reserved for a later phase.",
@@ -202,6 +203,16 @@ struct DataSourcesView: View {
         }
         return d.statusLine
             + " Trailer ids are cached per movie, and the whole slate is priced in one batched request."
+    }
+
+    private var settlementStatus: String {
+        if let err = settlement.lastError {
+            return "Live via the published data set. Last error: \(err). Falls back to market simulation when actuals aren't available yet."
+        }
+        if let last = settlement.lastCheckAt {
+            return "Live via the published data set (BOM + The Numbers). Last check: \(format(last)). \(settlement.settledThisSession) positions settled this session. Falls back to market simulation when actuals aren't available yet."
+        }
+        return "Live via the published data set. Fetches actuals from the pipeline; falls back to market simulation when unavailable."
     }
 
     private static let refreshFormatter: DateFormatter = {

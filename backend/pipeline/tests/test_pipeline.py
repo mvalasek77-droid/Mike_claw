@@ -15,7 +15,7 @@ import pytest
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
 from boxcall_pipeline import sentiment  # noqa: E402
-from boxcall_pipeline.sources import bluesky, tmdb, wikipedia, youtube  # noqa: E402
+from boxcall_pipeline.sources import bluesky, boxoffice, tmdb, wikipedia, youtube  # noqa: E402
 
 UTC = dt.timezone.utc
 NOW = dt.datetime(2026, 9, 8, 12, 0, tzinfo=UTC)
@@ -371,6 +371,46 @@ class TestYouTube:
 
 
 # --------------------------------------------------------------------
+# Box Office
+# --------------------------------------------------------------------
+
+BOM_FIXTURE = """
+<table>
+<tr><td>1</td><td><a href="/release/rl1">Dune: Part Three</a></td>
+<td>$75,200,000</td><td>new</td><td>4,200</td></tr>
+<tr><td>2</td><td><a href="/release/rl2">Toy Story 5</a></td>
+<td>$32,100,000</td><td>-45%</td><td>3,800</td></tr>
+</table>
+"""
+
+
+class TestBoxOffice:
+    def test_parse_bom_extracts_titles_and_grosses(self):
+        results = boxoffice._parse_bom(BOM_FIXTURE)
+        assert len(results) == 2
+        assert results[0].title == "Dune: Part Three"
+        assert results[0].gross_millions == 75.2
+        assert results[0].source == "boxofficemojo"
+
+    def test_parse_bom_detects_opening_weekend(self):
+        results = boxoffice._parse_bom(BOM_FIXTURE)
+        assert results[0].is_opening_weekend is True
+        assert results[1].is_opening_weekend is False
+
+    def test_parse_gross_handles_formats(self):
+        assert boxoffice._parse_gross("$75,200,000") == 75200000.0
+        assert boxoffice._parse_gross("") is None
+        assert boxoffice._parse_gross("N/A") is None
+
+    def test_fetch_degrades_on_failure(self):
+        class Boom:
+            def get(self, *a, **k):
+                raise __import__("httpx").HTTPError("down")
+
+        assert boxoffice.fetch_actuals(Boom()) == []
+
+
+# --------------------------------------------------------------------
 # TMDB
 # --------------------------------------------------------------------
 
@@ -440,6 +480,7 @@ class StubClient:
 
             def __init__(self, payload):
                 self._payload = payload
+                self.text = json.dumps(payload) if payload else ""
 
             def json(self):
                 return self._payload
@@ -494,12 +535,13 @@ class TestBuild:
         kwargs.update(overrides)
         return build_module.build(tmp_path / "api", **kwargs)
 
-    def test_build_writes_all_three_documents(self, tmp_path, stub_httpx):
+    def test_build_writes_all_four_documents(self, tmp_path, stub_httpx):
         manifest = self._run(tmp_path, stub_httpx)
         out = tmp_path / "api"
         assert (out / "index.json").exists()
         assert (out / "upcoming.json").exists()
         assert (out / "signals.json").exists()
+        assert (out / "actuals.json").exists()
         assert manifest["version"] == 1
         assert manifest["movieCount"] == 1
 
@@ -549,9 +591,16 @@ class TestBuild:
         signals = json.loads((tmp_path / "api" / "signals.json").read_text())
         assert "seed_a" in signals["signals"]
 
+    def test_actuals_json_is_written(self, tmp_path, stub_httpx):
+        self._run(tmp_path, stub_httpx)
+        actuals = json.loads((tmp_path / "api" / "actuals.json").read_text())
+        assert actuals["version"] == 1
+        assert "actuals" in actuals
+
     def test_manifest_reports_per_source_coverage(self, tmp_path, stub_httpx):
         manifest = self._run(tmp_path, stub_httpx)
         assert "bluesky" in manifest["sources"]
         assert "wikipedia" in manifest["sources"]
         assert "youtube" in manifest["sources"]
+        assert "boxoffice" in manifest["sources"]
         assert manifest["generatedAt"].endswith("Z")
