@@ -113,7 +113,7 @@ targets:
       - sdk: WatchConnectivity.framework
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.boxcall.app.watchkitapp.complication
+        PRODUCT_BUNDLE_IDENTIFIER: com.boxcall.app.watchkitapp.boxcallcomplication
         INFOPLIST_KEY_NSExtensionPointIdentifier: com.apple.widgetkit-extension
   BoxCallTests:
     type: bundle.unit-test
