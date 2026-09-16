@@ -1,6 +1,6 @@
 # Roblox dangers: what parents need to know, and how to tell if a child is being targeted
 
-*Research compiled July 2026 for RobloxGuard. Sources at the end. This document
+*Research compiled July 2026 for BloxGuard. Sources at the end. This document
 feeds the app's in-app education content (`app/education.py`) and the incident
 report generator.*
 
@@ -81,7 +81,7 @@ The most dangerous single moment is when chat moves off Roblox. Filters,
 moderation, and parental visibility all vanish at once. Nearly every lawsuit
 in the MDL describes this pivot. **A bio or chat message advertising a
 Discord/Snap/Telegram handle to a child is the highest-value warning signal a
-parent can get** — which is why RobloxGuard treats it as its top-severity
+parent can get** — which is why BloxGuard treats it as its top-severity
 alert.
 
 ### 6. Financial exploitation and scams
@@ -109,7 +109,7 @@ child's trusted social graph.
 
 ## How to tell if a child is being targeted
 
-### Platform-observable signals (what RobloxGuard watches automatically)
+### Platform-observable signals (what BloxGuard watches automatically)
 
 | Signal | Why it matters |
 |---|---|
@@ -156,7 +156,7 @@ reporting the same day:
    teaches kids to hide the next incident. The child is the victim.
 2. **Preserve evidence before blocking.** Screenshot chats, profiles, and
    usernames on the child's device (blocking/reporting can make chat history
-   inaccessible to you). RobloxGuard's evidence vault timestamps and
+   inaccessible to you). BloxGuard's evidence vault timestamps and
    hash-fingerprints everything for a clean handoff to investigators.
    **Exception — sexual images of a minor: do NOT screenshot, save, or
    forward them.** Possessing or transmitting them is itself illegal even
@@ -169,13 +169,13 @@ reporting the same day:
 6. **Lock down the account**: privacy settings to Friends-only or No-one,
    enable Roblox parental controls with a parent PIN, review the friend list
    together.
-7. **Generate the incident report** (RobloxGuard → child → Export Report) and
+7. **Generate the incident report** (BloxGuard → child → Export Report) and
    bring it to police/NCMEC — it contains the timeline, the observed facts,
    and hash-verified evidence captures.
 
 ---
 
-## What Roblox itself provides (use it — RobloxGuard complements, not replaces)
+## What Roblox itself provides (use it — BloxGuard complements, not replaces)
 
 - **Linked parent accounts** with content-maturity limits, chat controls,
   screen-time schedules, and spend limits.

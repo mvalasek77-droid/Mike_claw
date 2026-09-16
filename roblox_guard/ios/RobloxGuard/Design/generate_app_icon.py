@@ -1,7 +1,7 @@
 """Generates Sources/Assets.xcassets/AppIcon.appiconset from scratch.
 
 An original shield-and-block mark — deliberately NOT derived from Roblox's
-own logo, wordmark, or red/white blockhead branding. RobloxGuard is an
+own logo, wordmark, or red/white blockhead branding. BloxGuard is an
 unaffiliated third-party app; an icon that reads as official Roblox branding
 would be a trademark problem and an App Store guideline 4.1 ("copycat")
 problem. The blocky/voxel motif here nods at "a blocky game world" in the

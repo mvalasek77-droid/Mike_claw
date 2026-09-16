@@ -234,7 +234,7 @@ def test_report_endpoint_html_and_md(api):
 
     md_resp = client.get(f"/children/{child_id}/report?format=md")
     assert md_resp.headers["content-type"].startswith("text/markdown")
-    assert "# RobloxGuard incident report" in md_resp.text
+    assert "# BloxGuard incident report" in md_resp.text
     assert "report.cybertip.org" in md_resp.text
 
 

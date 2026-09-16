@@ -1,30 +1,30 @@
-# Generate RobloxGuard.xcodeproj with XcodeGen: `xcodegen generate`
+# Generate BloxGuard.xcodeproj with XcodeGen: `xcodegen generate`
 #
-# RobloxGuard.xcodeproj is intentionally NOT committed — it's generated from
+# BloxGuard.xcodeproj is intentionally NOT committed — it's generated from
 # this file, both locally and in CI (ci_scripts/ci_post_clone.sh runs
 # `xcodegen generate` on every Xcode Cloud build so the project can never
 # drift from project.yml). To bootstrap Xcode Cloud for the first time you
 # must generate + commit the .xcodeproj once locally, since Xcode Cloud's
 # workflow setup needs a project file already in the repo to detect and
 # select — after that first commit, later changes only need project.yml.
-name: RobloxGuard
+name: BloxGuard
 options:
   bundleIdPrefix: com.mikeclaw
   deploymentTarget:
     iOS: "17.0"
 targets:
-  RobloxGuard:
+  BloxGuard:
     type: application
     platform: iOS
     sources: [Sources]
     settings:
       base:
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_CFBundleDisplayName: RobloxGuard
+        INFOPLIST_KEY_CFBundleDisplayName: BloxGuard
         # Parent-facing utility; NOT a Kids Category app (see README).
         PRODUCT_BUNDLE_IDENTIFIER: com.mikeclaw.robloxguard
         CODE_SIGN_STYLE: Manual
-        PROVISIONING_PROFILE_SPECIFIER: RobloxGuard App Store
+        PROVISIONING_PROFILE_SPECIFIER: BloxGuard App Store
         CODE_SIGN_IDENTITY: Apple Distribution
         DEVELOPMENT_TEAM: UDM4W27W9V
         SWIFT_VERSION: "5.9"
@@ -40,31 +40,31 @@ targets:
     # Push Notifications capability restored — distribution profile ZD53Q938HN
     # includes aps-environment production.
     entitlements:
-      path: RobloxGuard.entitlements
+      path: BloxGuard.entitlements
       properties:
         aps-environment: production
     scheme:
-      storeKitConfiguration: RobloxGuard.storekit
+      storeKitConfiguration: BloxGuard.storekit
       testTargets:
-        - RobloxGuardUITests
+        - BloxGuardUITests
 
-  RobloxGuardUITests:
+  BloxGuardUITests:
     type: bundle.ui-testing
     platform: iOS
     sources:
       - path: UITests
-      - path: RobloxGuard.storekit
+      - path: BloxGuard.storekit
         buildPhase: resources
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
-        TEST_TARGET_NAME: RobloxGuard
+        TEST_TARGET_NAME: BloxGuard
         BUNDLE_LOADER: ''
         TEST_HOST: ''
     dependencies:
-      - target: RobloxGuard
+      - target: BloxGuard
 
     # StoreKit 2 subscriptions (PurchaseManager.swift, PaywallView.swift) use
-    # RobloxGuard.storekit through the generated shared scheme. Real product
+    # BloxGuard.storekit through the generated shared scheme. Real product
     # IDs must also exist in App Store Connect before release (see README
     # "Pricing").

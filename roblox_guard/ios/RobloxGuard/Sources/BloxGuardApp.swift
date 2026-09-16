@@ -2,7 +2,7 @@ import SwiftUI
 import UIKit
 
 @main
-struct RobloxGuardApp: App {
+struct BloxGuardApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var store = Store()
     @StateObject private var purchases = PurchaseManager()

@@ -39,7 +39,7 @@ async def test_report_contains_all_sections(populated):
     child, alerts, evidence = populated
     md = build_report_markdown(child, alerts, evidence)
 
-    assert "# RobloxGuard incident report" in md
+    assert "# BloxGuard incident report" in md
     assert "@my_kid" in md
     assert "Pat Parent" in md
     # Situation summary explains the off-platform pivot in plain language

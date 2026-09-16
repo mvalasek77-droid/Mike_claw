@@ -1,4 +1,4 @@
-# RobloxGuard Privacy Policy (DRAFT)
+# BloxGuard Privacy Policy (DRAFT)
 
 > **This is a draft, not legal advice.** It is written to accurately describe
 > what the current codebase actually collects and stores (cross-checked
@@ -13,7 +13,7 @@
 
 ## Who this is for
 
-RobloxGuard is used by **parents and legal guardians**, not children. The
+BloxGuard is used by **parents and legal guardians**, not children. The
 child never installs or logs into the app. This policy describes what we
 collect from the parent using the app and, necessarily, a limited amount of
 information about the linked child's public Roblox account.
@@ -40,7 +40,7 @@ financial, or biometric data.
 ## What we don't do
 
 - **No third-party analytics or advertising SDKs.** Nothing here is shared
-  with ad networks or data brokers, and RobloxGuard does not track you across
+  with ad networks or data brokers, and BloxGuard does not track you across
   other companies' apps or websites.
 - **No selling of data**, ever, to anyone, for any purpose.
 - **No reading of private Roblox chats.** Detection runs entirely on
@@ -71,7 +71,7 @@ about your data, contact us at [support email — see Settings → Support].
 
 ## Children's privacy (COPPA)
 
-RobloxGuard is not directed at children and is not available in Apple's Kids
+BloxGuard is not directed at children and is not available in Apple's Kids
 Category — it is installed and operated exclusively by the parent/guardian.
 Information about a linked child is limited to what's necessary for the
 service (public username, derived safety signals) and is provided under the

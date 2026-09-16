@@ -1,5 +1,5 @@
 {
-  "identifier" : "F5C6A1C0-0000-4A00-8A00-ROBLOXGUARD01",
+  "identifier" : "F5C6A1C0-0000-4A00-8A00-BLOXGUARD001",
   "nonRenewingSubscriptions" : [],
   "products" : [],
   "settings" : {
@@ -15,7 +15,7 @@
     {
       "id" : "20500000",
       "localizations" : [],
-      "name" : "RobloxGuard Protection",
+      "name" : "BloxGuard Protection",
       "subscriptions" : [
         {
           "adHocOffers" : [],

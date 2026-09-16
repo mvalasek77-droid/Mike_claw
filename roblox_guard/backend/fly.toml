@@ -1,4 +1,4 @@
-# Fly.io configuration for RobloxGuard backend
+# Fly.io configuration for BloxGuard backend
 app = "robloxguard-api-shimmering-log-3796"
 primary_region = "iad"
 

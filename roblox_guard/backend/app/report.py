@@ -42,7 +42,7 @@ DISCLAIMER = (
     "the absence of an alert does not mean the account is safe (a false "
     "negative) — automated detection cannot see private chats and cannot "
     "catch everything. This report is one input to your judgment, not a "
-    "verdict, and RobloxGuard is a monitoring aid, not a complete child "
+    "verdict, and BloxGuard is a monitoring aid, not a complete child "
     "safety strategy — pair it with ongoing conversation, Roblox's own "
     "parental controls, and your own supervision."
 )
@@ -102,7 +102,7 @@ def build_report_markdown(child: dict, alerts: list[dict], evidence: list[dict],
     lines: list[str] = []
     add = lines.append
 
-    add("# RobloxGuard incident report")
+    add("# BloxGuard incident report")
     add("")
     add(f"- **Generated:** {now}")
     add(f"- **Child's Roblox account:** @{child['roblox_username']} "
@@ -230,7 +230,7 @@ def build_report_html(child: dict, alerts: list[dict], evidence: list[dict],
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>RobloxGuard report — @{html.escape(child['roblox_username'])}</title>
+<title>BloxGuard report — @{html.escape(child['roblox_username'])}</title>
 <style>
   body {{ font: 15px/1.6 -apple-system, system-ui, sans-serif; color: #1a1a1a;
           max-width: 780px; margin: 2rem auto; padding: 0 1rem; }}

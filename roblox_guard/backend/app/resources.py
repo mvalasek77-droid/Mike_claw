@@ -22,7 +22,7 @@ RESOURCES = [
         "url": "https://en.help.roblox.com/hc/en-us/articles/32285268154772",
         "description": (
             "Link a free Roblox parent account to manage content maturity, "
-            "chat settings, screen time, and spending. RobloxGuard complements "
+            "chat settings, screen time, and spending. BloxGuard complements "
             "these controls; it does not replace them."
         ),
     },

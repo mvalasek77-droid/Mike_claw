@@ -1,7 +1,7 @@
 import StoreKitTest
 import XCTest
 
-final class RobloxGuardUITests: XCTestCase {
+final class BloxGuardUITests: XCTestCase {
 
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -56,7 +56,7 @@ final class RobloxGuardUITests: XCTestCase {
     }
 
     func testCapturePaywallForAppStore() throws {
-        let session = try SKTestSession(configurationFileNamed: "RobloxGuard")
+        let session = try SKTestSession(configurationFileNamed: "BloxGuard")
         session.resetToDefaultState()
         session.clearTransactions()
         session.disableDialogs = true

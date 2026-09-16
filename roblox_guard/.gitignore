@@ -1,6 +1,6 @@
 *.db
 __pycache__/
 .pytest_cache/
-ios/RobloxGuard/RobloxGuard.xcodeproj/
+ios/RobloxGuard/BloxGuard.xcodeproj/
 ios/RobloxGuard/.build/
 ios/RobloxGuard/DerivedData/

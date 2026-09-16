@@ -1,6 +1,6 @@
-# RobloxGuard — a parent's early-warning companion for Roblox
+# BloxGuard — a parent's early-warning companion for Roblox
 
-RobloxGuard helps parents spot the observable precursors of online grooming on
+BloxGuard helps parents spot the observable precursors of online grooming on
 Roblox — friend-list changes, contacts advertising off-platform handles,
 watchlisted experiences, late-night activity — and routes them to the right
 response: a conversation with their child, Roblox's Report Abuse tools, and
@@ -9,7 +9,7 @@ the NCMEC CyberTipline for serious cases.
 **What it deliberately is not:** a chat reader. Private Roblox chats are only
 visible to Roblox's own moderators; any product claiming to read them is
 either scraping the child's logged-in session (against Roblox's Terms of Use,
-and grounds for App Store rejection) or lying. RobloxGuard works entirely from
+and grounds for App Store rejection) or lying. BloxGuard works entirely from
 Roblox's **public, unauthenticated APIs** and never asks for the child's
 password.
 
@@ -19,7 +19,7 @@ flag something innocent (a false positive — a new friend's bio happens to
 mention a Discord server for an unrelated reason), and it will sometimes miss
 something real (a false negative — it cannot see private chats at all, so
 grooming conducted entirely there produces no alert). No alert is a
-determination, and no absence of alerts is a guarantee of safety. RobloxGuard
+determination, and no absence of alerts is a guarantee of safety. BloxGuard
 is **one tool a parent uses, not a standalone safety strategy** — it's meant
 to sit alongside ongoing conversation with your child, Roblox's own parental
 controls, and your own judgment, not replace any of them. The app's
@@ -36,7 +36,7 @@ device, and no credential handling to fail App Review.
 
 Initiating coverage takes one minute:
 
-1. Parent installs RobloxGuard on **their own** phone and completes the
+1. Parent installs BloxGuard on **their own** phone and completes the
    consent onboarding (attesting they are the parent/guardian).
 2. Parent enters the child's **public Roblox username** — nothing else.
 3. The backend takes a baseline snapshot immediately (surfacing any
@@ -113,7 +113,7 @@ roblox_guard/
 │   │   └── resources.py       Reporting / escalation resources
 │   ├── data/experience_watchlist.json   Curated watchlist (ships empty)
 │   └── tests/                 154 tests: signals, monitor, API, push, support
-└── ios/RobloxGuard/    SwiftUI parent app (iOS 17+, XcodeGen project)
+└── ios/BloxGuard/    SwiftUI parent app (iOS 17+, XcodeGen project)
 ```
 
 ### Signals the engine produces
@@ -178,9 +178,9 @@ Key endpoints: `POST /children` (link, requires parental attestation),
 ### Building the iOS app
 
 ```bash
-cd ios/RobloxGuard
+cd ios/BloxGuard
 xcodegen generate           # brew install xcodegen
-open RobloxGuard.xcodeproj
+open BloxGuard.xcodeproj
 ```
 
 Point `APIClient.baseURL` at your deployed backend (HTTPS in release).
@@ -210,7 +210,7 @@ manage-subscription sheet.
 
 **Before this ships**, the four product IDs
 (`com.mikeclaw.robloxguard.{single,family}.{monthly,annual}`) must be created
-in App Store Connect matching `RobloxGuard.storekit` (which is a local test
+in App Store Connect matching `BloxGuard.storekit` (which is a local test
 configuration only, for Simulator testing — see `project.yml`), and receipt
 validation / entitlement checks assumed here are client-side StoreKit 2
 (`Transaction.currentEntitlements`), which is sufficient for gating local UI
@@ -343,7 +343,7 @@ this:
 3. **In the iOS Simulator** — two different things get tested here, and
    they're not the same check:
    - *Does our app + backend plumbing work?* Run the app in Simulator
-     (`Cmd+R` after `xcodegen generate` and opening `RobloxGuard.xcodeproj`),
+     (`Cmd+R` after `xcodegen generate` and opening `BloxGuard.xcodeproj`),
      go to Settings → Notifications → Enable Notifications, grant the
      permission prompt (Simulator supports this natively). The app will get
      a *placeholder* device token from `didRegisterForRemoteNotificationsWithDeviceToken`
@@ -360,7 +360,7 @@ this:
      local-injection tool instead, which bypasses APNs entirely and just
      tests rendering:
      ```bash
-     xcrun simctl push booted com.mikeclaw.robloxguard ios/RobloxGuard/test-push.apns
+     xcrun simctl push booted com.mikeclaw.robloxguard ios/BloxGuard/test-push.apns
      ```
      (`booted` targets whichever Simulator is currently running; swap in a
      specific device UDID from `xcrun simctl list` if you have more than
@@ -421,8 +421,8 @@ repo, and what's left for you on a Mac:
 **Still needed, on a Mac, roughly in order:**
 1. Enroll in the Apple Developer Program if you haven't (paid, tied to your
    Apple ID — this is the account/billing step only you can do).
-2. `cd roblox_guard/ios/RobloxGuard && xcodegen generate`, then commit the
-   resulting `RobloxGuard.xcodeproj` — Xcode Cloud's setup wizard needs a
+2. `cd roblox_guard/ios/BloxGuard && xcodegen generate`, then commit the
+   resulting `BloxGuard.xcodeproj` — Xcode Cloud's setup wizard needs a
    project file already in the repo to detect and select; after this one
    bootstrap commit, `ci_post_clone.sh` keeps it regenerated automatically.
 3. Open the project in Xcode, register the bundle ID
@@ -434,15 +434,15 @@ repo, and what's left for you on a Mac:
    fix real build errors (nothing here has been verified to compile).
 5. App icon is done — `Sources/Assets.xcassets/AppIcon.appiconset`, an
    original shield-and-block mark (not derived from Roblox's branding; see
-   `ios/RobloxGuard/Design/generate_app_icon.py` to regenerate/edit it).
+   `ios/BloxGuard/Design/generate_app_icon.py` to regenerate/edit it).
 6. Create the four subscription products in App Store Connect matching
-   `RobloxGuard.storekit` (see "Pricing" above) before StoreKit works for
-   real users — `RobloxGuard.storekit` only covers local Simulator testing.
+   `BloxGuard.storekit` (see "Pricing" above) before StoreKit works for
+   real users — `BloxGuard.storekit` only covers local Simulator testing.
 7. TestFlight beta once a build passes Xcode Cloud, before public submission.
 
 ## App Store compliance design
 
-| Guideline | How RobloxGuard complies |
+| Guideline | How BloxGuard complies |
 |---|---|
 | **1.3 Kids Category** | Not a Kids Category app. The app is used by the *parent*; the child never opens it. |
 | **5.1.1 / 5.1.4 Privacy & kids' data** | Explicit parental-consent onboarding (attestation stored with who/when); data minimization (username + derived alerts only, no chat, no mirrored social graph); unlink = immediate full deletion; no third-party ads or analytics SDKs. |

@@ -124,7 +124,7 @@ struct BugReportView: View {
         components.scheme = "mailto"
         components.path = Self.supportEmail
         components.queryItems = [
-            URLQueryItem(name: "subject", value: "RobloxGuard bug report"),
+            URLQueryItem(name: "subject", value: "BloxGuard bug report"),
             URLQueryItem(name: "body", value: body),
         ]
         if let url = components.url {

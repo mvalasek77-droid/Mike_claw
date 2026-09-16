@@ -70,7 +70,7 @@ class RobloxClient:
         self._spacing = spacing_seconds
         self._last_request = 0.0
         self._lock = asyncio.Lock()
-        self._http = http or httpx.AsyncClient(timeout=15.0, headers={"User-Agent": "RobloxGuard/1.0 (parental safety companion)"})
+        self._http = http or httpx.AsyncClient(timeout=15.0, headers={"User-Agent": "BloxGuard/1.0 (parental safety companion)"})
 
     async def aclose(self) -> None:
         await self._http.aclose()

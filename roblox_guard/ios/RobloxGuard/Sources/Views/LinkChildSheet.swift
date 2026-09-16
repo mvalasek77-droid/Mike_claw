@@ -34,7 +34,7 @@ struct LinkChildSheet: View {
 
                 Section {
                     Toggle(isOn: $attested) {
-                        Text("I confirm I am this child's parent or legal guardian and I consent to RobloxGuard monitoring this account's public information.")
+                        Text("I confirm I am this child's parent or legal guardian and I consent to BloxGuard monitoring this account's public information.")
                             .font(.subheadline)
                     }
                 }

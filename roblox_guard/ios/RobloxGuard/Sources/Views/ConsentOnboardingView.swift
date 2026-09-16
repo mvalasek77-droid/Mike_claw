@@ -23,9 +23,9 @@ struct ConsentOnboardingView: View {
                         Image(systemName: "shield.lefthalf.filled")
                             .font(.system(size: 44))
                             .foregroundStyle(.tint)
-                        Text("RobloxGuard")
+                        Text("BloxGuard")
                             .font(.largeTitle.bold())
-                        Text("An early-warning companion for parents. RobloxGuard watches the public footprint of your child's Roblox account and helps you start the right conversations.")
+                        Text("An early-warning companion for parents. BloxGuard watches the public footprint of your child's Roblox account and helps you start the right conversations.")
                             .foregroundStyle(.secondary)
                     }
 

@@ -1,6 +1,6 @@
-# App Store Connect Submission Guide — RobloxGuard
+# App Store Connect Submission Guide — BloxGuard
 
-Every field you need to fill in to submit RobloxGuard for review, with exact
+Every field you need to fill in to submit BloxGuard for review, with exact
 values and copy-ready text. Open this next to ASC.
 
 > **Status:** Values below are cross-checked against the actual codebase.
@@ -15,13 +15,13 @@ values and copy-ready text. Open this next to ASC.
 
 | Field | Value | Notes |
 |---|---|---|
-| **Name** | `RobloxGuard` | 30-char limit. Appears on App Store and home screen. |
+| **Name** | `BloxGuard` | 30-char limit. Appears on App Store and home screen. |
 | **Subtitle** | `Roblox safety alerts for parents` | 30-char limit. Shows below name on listing. |
 | **Bundle ID** | `com.mikeclaw.robloxguard` | Must match `project.yml` — already set. |
 | **Primary Language** | `English (U.S.)` | |
 | **Primary Category** | `Utilities` | |
 | **Secondary Category** | `Lifestyle` | Do **NOT** select "Kids" or "Education" — this is a parent-facing utility. Kids Category triggers COPPA-specific requirements that don't apply and could cause rejection. |
-| **Content Rights** | Does not contain, show, or access third-party content | RobloxGuard reads public Roblox API data but doesn't embed or display third-party copyrighted content. Alerts are your own generated analysis. |
+| **Content Rights** | Does not contain, show, or access third-party content | BloxGuard reads public Roblox API data but doesn't embed or display third-party copyrighted content. Alerts are your own generated analysis. |
 
 ---
 
@@ -127,10 +127,10 @@ Now with push notifications — get alerted the moment something changes.
 #### Description (required)
 
 ```
-RobloxGuard is a parent-only companion app that watches your child's public Roblox footprint and alerts you to the observable precursors of online grooming — before it escalates.
+BloxGuard is a parent-only companion app that watches your child's public Roblox footprint and alerts you to the observable precursors of online grooming — before it escalates.
 
 HOW IT WORKS
-Install RobloxGuard on your phone (not your child's). Enter their public Roblox username — no password, no device access needed. The app monitors their public friend list, friends' profiles, and online activity around the clock and alerts you when something looks off.
+Install BloxGuard on your phone (not your child's). Enter their public Roblox username — no password, no device access needed. The app monitors their public friend list, friends' profiles, and online activity around the clock and alerts you when something looks off.
 
 WHAT IT WATCHES FOR
 • Friends whose bios advertise Discord, Snapchat, Telegram, or other off-platform handles — the strongest observable grooming precursor
@@ -149,10 +149,10 @@ WHAT YOU GET
 • Educational content: "Know the Dangers," a grooming-precursor glossary, and a response playbook
 
 BUILT FOR HONESTY
-This app will sometimes be wrong. It will flag something innocent and miss something real. Every alert says so, and onboarding requires you to acknowledge it. RobloxGuard is one tool alongside talking to your child and using Roblox's own parental controls — not a substitute for either.
+This app will sometimes be wrong. It will flag something innocent and miss something real. Every alert says so, and onboarding requires you to acknowledge it. BloxGuard is one tool alongside talking to your child and using Roblox's own parental controls — not a substitute for either.
 
 WHAT IT CANNOT DO
-RobloxGuard cannot read private Roblox chats. No outside app can — only Roblox's own moderators see them. Any product claiming otherwise is violating Roblox's Terms of Use. That's exactly why reporting to Roblox matters: they can see what this app can't.
+BloxGuard cannot read private Roblox chats. No outside app can — only Roblox's own moderators see them. Any product claiming otherwise is violating Roblox's Terms of Use. That's exactly why reporting to Roblox matters: they can see what this app can't.
 
 NOTHING ON YOUR CHILD'S DEVICE
 Nothing is installed on or connected to your child's phone, tablet, or computer. There's nothing for them to find or delete. The app runs entirely on your device, using only publicly visible Roblox data.
@@ -231,7 +231,7 @@ static let familyAnnual = "com.mikeclaw.robloxguard.family.annual"
 ### Subscription Group Name
 
 ```
-RobloxGuard Plans
+BloxGuard Plans
 ```
 
 ### Products (create in this order — Apple shows higher-tier plans first)
@@ -251,7 +251,7 @@ RobloxGuard Plans
 | **Product ID** | `com.mikeclaw.robloxguard.family.monthly` | `com.mikeclaw.robloxguard.family.annual` | `com.mikeclaw.robloxguard.single.monthly` | `com.mikeclaw.robloxguard.single.annual` |
 | **Subscription Duration** | 1 Month | 1 Year | 1 Month | 1 Year |
 | **Price** | $8.99 | $69.00 | $3.99 | $34.00 |
-| **Subscription Group** | RobloxGuard Plans | RobloxGuard Plans | RobloxGuard Plans | RobloxGuard Plans |
+| **Subscription Group** | BloxGuard Plans | BloxGuard Plans | BloxGuard Plans | BloxGuard Plans |
 
 ### Localized Description for Each Product
 
@@ -301,7 +301,7 @@ Leave blank. The app doesn't have user accounts. The reviewer uses `builderman` 
 #### Notes for Review (critical — copy this verbatim)
 
 ```
-RobloxGuard is a parent-only utility that monitors a child's PUBLIC Roblox account footprint (friend list, friends' bios, online status) using Roblox's public, unauthenticated web APIs. It does NOT access private chats, require the child's password, or install anything on the child's device.
+BloxGuard is a parent-only utility that monitors a child's PUBLIC Roblox account footprint (friend list, friends' bios, online status) using Roblox's public, unauthenticated web APIs. It does NOT access private chats, require the child's password, or install anything on the child's device.
 
 TO TEST THE APP:
 1. Launch the app and complete the consent onboarding (4 toggles + Continue).

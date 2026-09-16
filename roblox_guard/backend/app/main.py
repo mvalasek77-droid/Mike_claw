@@ -159,7 +159,7 @@ def create_app(settings: Optional[Settings] = None,
             raise HTTPException(status_code=400, detail="Missing installation identifier.")
         return value
 
-    app = FastAPI(title="RobloxGuard", version="0.1.0", lifespan=lifespan,
+    app = FastAPI(title="BloxGuard", version="0.1.0", lifespan=lifespan,
                   dependencies=[Depends(require_auth)])
     app.state.db = db
     app.state.monitor = monitor
@@ -391,7 +391,7 @@ def create_app(settings: Optional[Settings] = None,
                                 detail="No devices registered — enable notifications in the app first.")
         return await push.send_to_all(
             db,
-            title="RobloxGuard test",
+            title="BloxGuard test",
             body="If you see this, push notifications are working.",
             client_id=owner,
         )

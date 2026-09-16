@@ -1,4 +1,4 @@
-"""Runtime configuration for the RobloxGuard backend.
+"""Runtime configuration for the BloxGuard backend.
 
 Everything is overridable via environment variables so the same build runs
 locally, in CI, and behind a real deployment without code changes.

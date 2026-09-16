@@ -1,4 +1,4 @@
-# RobloxGuard roadmap
+# BloxGuard roadmap
 
 ## Shipped (v0.1 — current branch)
 

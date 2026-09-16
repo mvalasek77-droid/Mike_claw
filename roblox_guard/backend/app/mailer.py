@@ -22,7 +22,7 @@ def send_bug_report_email(settings: Settings, report: dict) -> bool:
         return False
 
     msg = EmailMessage()
-    msg["Subject"] = f"[RobloxGuard] Bug report: {report['summary'][:80]}"
+    msg["Subject"] = f"[BloxGuard] Bug report: {report['summary'][:80]}"
     msg["From"] = settings.smtp_from or settings.smtp_user or settings.support_email
     msg["To"] = settings.support_email
     if report.get("contact_email"):

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Post-deploy smoke test for a RobloxGuard backend.
+"""Post-deploy smoke test for a BloxGuard backend.
 
 Runs the critical path against a RUNNING server and prints PASS/FAIL per
 step. Uses Roblox's own official accounts (user 'Roblox', 'builderman') as

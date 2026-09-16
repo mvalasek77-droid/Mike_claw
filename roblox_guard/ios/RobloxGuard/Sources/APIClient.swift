@@ -2,7 +2,7 @@ import Foundation
 import Security
 import UIKit
 
-/// Thin client for the RobloxGuard backend. The app never talks to Roblox
+/// Thin client for the BloxGuard backend. The app never talks to Roblox
 /// directly and never handles the child's Roblox credentials — there is no
 /// password field anywhere in this app by design.
 struct APIClient {

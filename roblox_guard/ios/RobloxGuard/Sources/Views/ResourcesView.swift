@@ -45,7 +45,7 @@ struct ResourcesView: View {
                 }
                 Section {
                     DisclosureGroup("Do I install anything on my child's phone?") {
-                        Text("No. RobloxGuard runs only on YOUR phone. It watches the public footprint of your child's Roblox account — friend list, friends' profiles, online status — which is visible without any access to their device or password. Nothing to install, nothing for them to delete, nothing that breaks when they get a new device.")
+                        Text("No. BloxGuard runs only on YOUR phone. It watches the public footprint of your child's Roblox account — friend list, friends' profiles, online status — which is visible without any access to their device or password. Nothing to install, nothing for them to delete, nothing that breaks when they get a new device.")
                             .font(.footnote)
                     }
                     DisclosureGroup("How do I start coverage?") {
