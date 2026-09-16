@@ -82,7 +82,7 @@ final class SettlementService: ObservableObject {
     // MARK: - Known actuals for seed movies
 
     private static let knownActuals: [String: Double] = [
-        "m_practical_magic2": 24.5,
+        "m_practical_magic2": 30.0,
     ]
 
     // MARK: - Data fetching
