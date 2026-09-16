@@ -1,0 +1,68 @@
+name: "🐛 Eternal Combat — Bug Report"
+description: Report a problem with the Eternal Combat watch game.
+title: "[Bug] <short summary>"
+labels: ["bug", "eternal-combat"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping make **Eternal Combat** better! Please fill in as much
+        as you can — the device + watchOS version and exact steps are the most
+        useful parts.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What went wrong, and what did you expect instead?
+      placeholder: "When I parried Titus's haymaker, the game…"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Exact steps, ideally numbered.
+      placeholder: |
+        1. Story → pick Vesper
+        2. Reach the final floor (Titus)
+        3. Input ▽ ▽ • ◆ ★
+        4. …
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Where did it happen?
+      options:
+        - Story
+        - Training
+        - Versus
+        - Menus / Character Select
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Apple Watch model + watchOS version
+      placeholder: "Apple Watch Series 9, watchOS 11.2"
+    validations:
+      required: true
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: How often does it happen?
+      options:
+        - Every time
+        - Often
+        - Sometimes
+        - Once
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Screenshots, a screen recording, settings (Blood on/off, CPU difficulty), etc.
+    validations:
+      required: false

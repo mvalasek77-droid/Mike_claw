@@ -1,0 +1,36 @@
+# XcodeGen spec. Generate the Xcode project with:  xcodegen generate
+# (brew install xcodegen). Then open WatchFighter.xcodeproj and run on a
+# watchOS Simulator or device.
+name: WatchFighter
+options:
+  bundleIdPrefix: com.watchfighter
+  deploymentTarget:
+    watchOS: "10.0"
+
+targets:
+  WatchFighter Watch App:
+    type: application
+    platform: watchOS
+    sources:
+      - "WatchFighter Watch App"
+    info:
+      path: "WatchFighter Watch App/Info.plist"
+      properties:
+        CFBundleDisplayName: WatchFighter
+        WKApplication: true
+        WKWatchOnly: true
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.watchfighter.app
+        GENERATE_INFOPLIST_FILE: NO
+        SWIFT_VERSION: "5.0"
+
+  WatchFighterEngineTests:
+    type: bundle.unit-test
+    platform: watchOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: WatchFighter Watch App

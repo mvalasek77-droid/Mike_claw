@@ -1,0 +1,43 @@
+{
+  "identifier" : "B1F3A2C4",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "2.99",
+      "familyShareable" : false,
+      "internalID" : "6A41D0E7",
+      "localizations" : [
+        {
+          "description" : "Unlock every fighter on the ladder right away, including the final boss.",
+          "displayName" : "Full Roster",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.alphaeliteholdings.watchfighter.fullroster",
+      "referenceName" : "Full Roster",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "0",
+    "_askToBuyEnabled" : false,
+    "_billingIssuesEnabled" : false,
+    "_developerTeamID" : "UDM4W27W9V",
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 0,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}
