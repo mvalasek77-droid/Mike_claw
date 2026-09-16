@@ -58,7 +58,7 @@ final class VerifiedMovieProvider: MovieDataProvider {
         return [
             .init(id: "m_practical_magic2", title: "Practical Magic 2",
                   studio: "Warner Bros.",
-                  releaseDate: date("2026-09-18"), posterEmoji: "\u{1F52E}",
+                  releaseDate: date("2026-09-12"), posterEmoji: "\u{1F52E}",
                   tagline: "The Owens sisters are back.",
                   consensusOpeningMillions: 28, impliedVolPct: 40,
                   genre: "Fantasy", addedAt: addedAt,

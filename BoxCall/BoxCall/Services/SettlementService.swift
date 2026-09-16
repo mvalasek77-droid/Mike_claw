@@ -61,14 +61,16 @@ final class SettlementService: ObservableObject {
             }
             guard hasOpenPositions else { continue }
 
-            if let actual = actuals[movie.id] ?? actuals[movie.title.lowercased()] {
+            let actual = actuals[movie.id]
+                ?? actuals[movie.title.lowercased()]
+                ?? Self.knownActuals[movie.id]
+            if let actual {
                 portfolio.settle(movieId: movie.id, actualMillions: actual)
-                count += 1
             } else {
                 let simulated = market.simulatedActualOW(for: movie)
                 portfolio.settle(movieId: movie.id, actualMillions: simulated)
-                count += 1
             }
+            count += 1
         }
 
         if count > 0 {
@@ -76,6 +78,12 @@ final class SettlementService: ObservableObject {
             portfolio.refreshLeaderboard()
         }
     }
+
+    // MARK: - Known actuals for seed movies
+
+    private static let knownActuals: [String: Double] = [
+        "m_practical_magic2": 24.5,
+    ]
 
     // MARK: - Data fetching
 
