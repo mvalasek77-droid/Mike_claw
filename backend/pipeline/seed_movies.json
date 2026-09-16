@@ -3,5 +3,6 @@
   {"id": "seed_odyssey", "title": "The Odyssey", "releaseDate": "2026-07-17", "genre": "Adventure", "posterURL": null},
   {"id": "seed_spiderman", "title": "Spider-Man: Brand New Day", "releaseDate": "2026-07-31", "genre": "Action", "posterURL": null},
   {"id": "seed_avengers", "title": "Avengers: Doomsday", "releaseDate": "2026-12-18", "genre": "Action", "posterURL": null},
-  {"id": "seed_supergirl", "title": "Supergirl", "releaseDate": "2026-06-26", "genre": "Action", "posterURL": null}
+  {"id": "seed_supergirl", "title": "Supergirl", "releaseDate": "2026-06-26", "genre": "Action", "posterURL": null},
+  {"id": "seed_resident_evil", "title": "Resident Evil", "releaseDate": "2026-09-19", "genre": "Horror", "posterURL": null}
 ]

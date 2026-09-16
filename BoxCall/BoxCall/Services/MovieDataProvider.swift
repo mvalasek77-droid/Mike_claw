@@ -67,6 +67,17 @@ final class VerifiedMovieProvider: MovieDataProvider {
                   synopsis: "Sally and Gillian Owens return three decades on, with a new generation of the family discovering the curse has not finished with them.",
                   trailerQuery: "Practical Magic 2 official trailer"),
 
+            .init(id: "m_resident_evil", title: "Resident Evil",
+                  studio: "Constantin Film / Sony",
+                  releaseDate: date("2026-09-19"), posterEmoji: "\u{1F9DF}",
+                  tagline: "Every nightmare has an origin.",
+                  consensusOpeningMillions: 22, impliedVolPct: 48,
+                  genre: "Horror", addedAt: addedAt,
+                  director: "Zach Cregger",
+                  cast: ["Ella Balinska", "Tom Hopper", "Hannah John-Kamen", "Robbie Amell"],
+                  synopsis: "A new team of survivors enters Raccoon City as the T-virus outbreak spirals out of control, uncovering Umbrella Corporation's darkest experiments.",
+                  trailerQuery: "Resident Evil 2026 official trailer"),
+
             .init(id: "m_verity", title: "Verity",
                   studio: "Amazon MGM Studios",
                   releaseDate: date("2026-10-02"), posterEmoji: "\u{1F4D6}",
