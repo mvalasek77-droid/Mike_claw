@@ -545,7 +545,7 @@ struct GameScreen: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(Color.watchsmashGold)
-                .disabled(purchases.isPurchasing || purchases.fullRosterProduct == nil)
+                .disabled(purchases.isPurchasing || purchases.isLoadingProduct)
                 .accessibilityLabel(rosterPurchaseLabel)
 
                 Button {
@@ -572,10 +572,20 @@ struct GameScreen: View {
 
     private var rosterPurchaseLabel: String {
         if purchases.isPurchasing { return "WAIT…" }
+        if purchases.isLoadingProduct { return "LOADING…" }
         if let product = purchases.fullRosterProduct {
             return "FULL ROSTER \(product.displayPrice)"
         }
         return "FULL ROSTER"
+    }
+
+    private var fighterUnlockLabel: String {
+        if purchases.isPurchasing { return "WAIT…" }
+        if purchases.isLoadingProduct { return "LOADING…" }
+        if let product = purchases.fullRosterProduct {
+            return "UNLOCK ALL \(product.displayPrice)"
+        }
+        return "UNLOCK ALL"
     }
 
     /// Master-volume picker: five discrete levels (0/25/50/75/100%) so the
@@ -724,16 +734,16 @@ struct GameScreen: View {
                 .disabled(locked)
             }
 
-            if locked, let product = purchases.fullRosterProduct {
+            if locked, !purchases.ownsFullRoster {
                 Button {
                     purchases.startPurchase()
                 } label: {
-                    Label(purchases.isPurchasing ? "WAIT…" : "UNLOCK ALL \(product.displayPrice)", systemImage: "cart.fill")
+                    Label(fighterUnlockLabel, systemImage: "cart.fill")
                         .font(.system(size: 8, weight: .black, design: .rounded))
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(Color.watchsmashGold)
-                .disabled(purchases.isPurchasing)
+                .disabled(purchases.isPurchasing || purchases.isLoadingProduct)
 
                 Button("RESTORE") {
                     purchases.startRestore()

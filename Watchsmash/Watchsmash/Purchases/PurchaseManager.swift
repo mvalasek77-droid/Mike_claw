@@ -7,11 +7,10 @@ final class PurchaseManager: ObservableObject {
     @Published private(set) var fullRosterProduct: Product?
     @Published private(set) var ownsFullRoster = false
     @Published private(set) var isPurchasing = false
+    @Published private(set) var isLoadingProduct = false
     @Published private(set) var message: String?
 
     private var updatesTask: Task<Void, Never>?
-    /// Owns the in-flight purchase/restore so a view teardown mid-flow can't
-    /// orphan it and a double tap can't start a second one.
     private var storeTask: Task<Void, Never>?
 
     deinit {
@@ -19,10 +18,15 @@ final class PurchaseManager: ObservableObject {
         storeTask?.cancel()
     }
 
-    /// Fire-and-forget entry points for SwiftUI buttons. The work is owned here,
-    /// not by the view, so it survives a redraw and is cancelled on teardown.
     func startPurchase() {
         guard storeTask == nil else { return }
+        if fullRosterProduct == nil {
+            storeTask = Task { [weak self] in
+                await self?.loadProduct()
+                self?.storeTask = nil
+            }
+            return
+        }
         storeTask = Task { [weak self] in
             await self?.purchaseFullRoster()
             self?.storeTask = nil
@@ -38,13 +42,33 @@ final class PurchaseManager: ObservableObject {
     }
 
     func prepare() async {
-        do {
-            fullRosterProduct = try await Product.products(for: [Self.fullRosterProductID]).first
-            await refreshEntitlements()
-        } catch {
-            message = "STORE UNAVAILABLE"
-        }
+        await loadProduct()
+        await refreshEntitlements()
         listenForUpdates()
+    }
+
+    private func loadProduct() async {
+        isLoadingProduct = true
+        defer { isLoadingProduct = false }
+
+        for attempt in 0..<4 {
+            if attempt > 0 {
+                try? await Task.sleep(for: .seconds(Double(1 << attempt)))
+            }
+            do {
+                let products = try await Product.products(for: [Self.fullRosterProductID])
+                if let product = products.first {
+                    fullRosterProduct = product
+                    message = nil
+                    return
+                }
+            } catch {
+                continue
+            }
+        }
+        if fullRosterProduct == nil {
+            message = "TAP TO RETRY"
+        }
     }
 
     func purchaseFullRoster() async {
