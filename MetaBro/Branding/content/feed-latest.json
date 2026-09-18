@@ -1,28 +1,27 @@
 {
-  "generated_for": "2026-09-18T18",
+  "generated_for": "2026-09-18T22",
   "posts": [
     {
-      "community": null,
-      "title": null,
-      "body": "Pickup basketball this Saturday at Riverside. Who's in?",
-      "score": 19,
-      "reactions": [
+      "community": {
+        "id": "e6e12bde-c99f-f89a-5f96-3cfdd3839629",
+        "name": "Stoic Bros",
+        "slug": "philosophy",
+        "member_count": 22300,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/philosophy.png",
+        "is_joined": true
+      },
+      "title": "Memento mori \u2014 keeps me grounded",
+      "body": "Read a page of Marcus Aurelius every morning. Recommend it.",
+      "score": 267,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [
         {
-          "kind": "strong",
-          "count": 13
-        },
-        {
-          "kind": "respect",
-          "count": 26
-        },
-        {
-          "kind": "lol",
-          "count": 24
+          "kind": "champ",
+          "count": 2
         }
       ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "2b55cada-8b07-b87b-6000-a5d8c309a873",
+      "id": "953050a5-240e-5c09-5f87-d91346011609",
       "author": {
         "id": "88da342c-12c1-951a-f0bc-99247785f086",
         "handle": "@theoknows",
@@ -31,8 +30,8 @@
         "bro_cred": 1120
       },
       "image_url": null,
-      "comment_count": 114,
-      "created_at": "2026-09-18T17:47:49+00:00",
+      "comment_count": 30,
+      "created_at": "2026-09-18T22:41:32+00:00",
       "my_vote": 0
     },
     {
@@ -44,9 +43,9 @@
         "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fatherhood.png",
         "is_joined": true
       },
-      "title": "Tips for a 5am toddler?",
-      "body": "He's up before the sun. How do you bros keep your sanity?",
-      "score": 293,
+      "title": "Built a treehouse this weekend",
+      "body": "Kid 'helped'. Took twice as long. Best two days of the year.",
+      "score": 121,
       "reactions": [],
       "my_reaction": null,
       "awards": [
@@ -55,117 +54,17 @@
           "count": 1
         }
       ],
-      "id": "30d9598a-2840-3d80-52e8-b155fdd18379",
+      "id": "3588fb80-8797-233f-45f7-6cac671e2c89",
       "author": {
-        "id": "88da342c-12c1-951a-f0bc-99247785f086",
-        "handle": "@theoknows",
-        "display_name": "Theo",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/theoknows.png",
-        "bro_cred": 1120
+        "id": "43f16f34-9942-cb48-49d9-122dc9237e11",
+        "handle": "@leobuilds",
+        "display_name": "Leo",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/leobuilds.png",
+        "bro_cred": 760
       },
       "image_url": null,
-      "comment_count": 109,
-      "created_at": "2026-09-18T14:32:49+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": {
-        "id": "e6e12bde-c99f-f89a-5f96-3cfdd3839629",
-        "name": "Stoic Bros",
-        "slug": "philosophy",
-        "member_count": 22300,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/philosophy.png",
-        "is_joined": true
-      },
-      "title": "On discipline vs motivation",
-      "body": "Motivation gets you started. Discipline is what shows up at 5am.",
-      "score": 208,
-      "reactions": [],
-      "my_reaction": null,
-      "awards": [
-        {
-          "kind": "champ",
-          "count": 3
-        }
-      ],
-      "id": "4fdd683d-6ec8-de44-f418-5457389d22df",
-      "author": {
-        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
-        "handle": "@coachdave",
-        "display_name": "Dave",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
-        "bro_cred": 9300
-      },
-      "image_url": null,
-      "comment_count": 11,
-      "created_at": "2026-09-18T14:51:49+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": {
-        "id": "e6e12bde-c99f-f89a-5f96-3cfdd3839629",
-        "name": "Stoic Bros",
-        "slug": "philosophy",
-        "member_count": 22300,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/philosophy.png",
-        "is_joined": true
-      },
-      "title": "The obstacle is the way",
-      "body": "Reframed a brutal week as training. Different game entirely.",
-      "score": 166,
-      "reactions": [],
-      "my_reaction": null,
-      "awards": [
-        {
-          "kind": "champ",
-          "count": 1
-        }
-      ],
-      "id": "f1a1dc57-8534-9ee8-d9f9-b5e17af23de0",
-      "author": {
-        "id": "337023ca-f0d6-6b4b-335e-42aa37ae608b",
-        "handle": "@you",
-        "display_name": "You",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/you.png",
-        "bro_cred": 1280
-      },
-      "image_url": null,
-      "comment_count": 3,
-      "created_at": "2026-09-18T15:18:49+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": null,
-      "title": null,
-      "body": "Just hit a year sober. Grateful for this crew.",
-      "score": 46,
-      "reactions": [
-        {
-          "kind": "respect",
-          "count": 41
-        },
-        {
-          "kind": "strong",
-          "count": 27
-        },
-        {
-          "kind": "like",
-          "count": 25
-        }
-      ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "454f1614-c369-5042-cc5b-e0ff313857b6",
-      "author": {
-        "id": "88da342c-12c1-951a-f0bc-99247785f086",
-        "handle": "@theoknows",
-        "display_name": "Theo",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/theoknows.png",
-        "bro_cred": 1120
-      },
-      "image_url": null,
-      "comment_count": 9,
-      "created_at": "2026-09-18T13:27:49+00:00",
+      "comment_count": 108,
+      "created_at": "2026-09-18T20:51:32+00:00",
       "my_vote": 0
     },
     {
@@ -176,16 +75,110 @@
       "reactions": [
         {
           "kind": "strong",
-          "count": 35
+          "count": 30
         },
         {
           "kind": "like",
-          "count": 32
+          "count": 21
         }
       ],
       "my_reaction": null,
       "awards": [],
-      "id": "6de5e89d-9c26-c3c8-4ada-e434c8c16221",
+      "id": "28303e17-60f5-f024-19b7-46fa2a5aab18",
+      "author": {
+        "id": "88da342c-12c1-951a-f0bc-99247785f086",
+        "handle": "@theoknows",
+        "display_name": "Theo",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/theoknows.png",
+        "bro_cred": 1120
+      },
+      "image_url": null,
+      "comment_count": 114,
+      "created_at": "2026-09-18T20:26:32+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Anyone up for a sunrise hike this weekend?",
+      "score": 85,
+      "reactions": [
+        {
+          "kind": "strong",
+          "count": 36
+        },
+        {
+          "kind": "like",
+          "count": 5
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "f85867cd-ca6b-0b8e-91c4-a8bbd4e91b84",
+      "author": {
+        "id": "88da342c-12c1-951a-f0bc-99247785f086",
+        "handle": "@theoknows",
+        "display_name": "Theo",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/theoknows.png",
+        "bro_cred": 1120
+      },
+      "image_url": null,
+      "comment_count": 104,
+      "created_at": "2026-09-18T18:25:32+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Just hit a year sober. Grateful for this crew.",
+      "score": 16,
+      "reactions": [
+        {
+          "kind": "respect",
+          "count": 14
+        },
+        {
+          "kind": "strong",
+          "count": 6
+        },
+        {
+          "kind": "like",
+          "count": 6
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "3efafb57-2e35-733a-10ed-2f28178828b5",
+      "author": {
+        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
+        "handle": "@coachdave",
+        "display_name": "Dave",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
+        "bro_cred": 9300
+      },
+      "image_url": null,
+      "comment_count": 13,
+      "created_at": "2026-09-18T17:39:32+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Anyone up for a sunrise hike this weekend?",
+      "score": 15,
+      "reactions": [
+        {
+          "kind": "strong",
+          "count": 9
+        },
+        {
+          "kind": "like",
+          "count": 26
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "cb6dc967-ba43-7dd5-27b1-1dde763de503",
       "author": {
         "id": "337023ca-f0d6-6b4b-335e-42aa37ae608b",
         "handle": "@you",
@@ -194,8 +187,8 @@
         "bro_cred": 1280
       },
       "image_url": null,
-      "comment_count": 23,
-      "created_at": "2026-09-18T13:59:49+00:00",
+      "comment_count": 82,
+      "created_at": "2026-09-18T17:38:32+00:00",
       "my_vote": 0
     }
   ],
