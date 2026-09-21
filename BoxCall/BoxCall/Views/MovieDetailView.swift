@@ -14,6 +14,11 @@ struct MovieDetailView: View {
         market.chain(for: movie.id).filter { $0.side == (showPutSide ? .put : .call) }
     }
 
+    /// The book on this movie is closed once results are out (start of
+    /// Sunday of opening weekend) — taps are rejected by PortfolioService,
+    /// but the UI must say so too.
+    private var tradingClosed: Bool { movie.isSettled }
+
     var events: [MarketEvent] {
         market.events(for: movie.id)
     }
@@ -34,7 +39,11 @@ struct MovieDetailView: View {
                 if !events.isEmpty { newsTicker }
                 ticketButtons
                 sidePicker
-                chainHeader
+                if tradingClosed {
+                    tradingClosedBanner
+                } else {
+                    chainHeader
+                }
                 chainTable
                 reviewsSection
             }
@@ -360,6 +369,23 @@ struct MovieDetailView: View {
         }
     }
 
+    /// Replaces the live-chain header once the weekend figure is public.
+    private var tradingClosedBanner: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "lock.fill")
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Trading closed")
+                    .font(.caption.weight(.semibold))
+                Text("Opening weekend results are out — positions settle at the published number.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+        .padding(10)
+        .background(RoundedRectangle(cornerRadius: 10).fill(Theme.marqueeGold.opacity(0.12)))
+    }
+
     private var chainTable: some View {
         VStack(spacing: 0) {
             HStack {
@@ -378,6 +404,7 @@ struct MovieDetailView: View {
 
             ForEach(chain) { contract in
                 Button {
+                    guard !tradingClosed else { return }
                     tradeTarget = contract
                 } label: {
                     HStack {
@@ -395,14 +422,16 @@ struct MovieDetailView: View {
                             .frame(width: 50, alignment: .trailing)
                             .foregroundStyle(.secondary)
                             .font(.caption)
-                        Image(systemName: "cart.badge.plus")
+                        Image(systemName: tradingClosed ? "lock.fill" : "cart.badge.plus")
                             .frame(width: 30)
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(tradingClosed ? Color.secondary : Color.orange)
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 10)
+                    .opacity(tradingClosed ? 0.55 : 1)
                 }
                 .buttonStyle(.plain)
+                .disabled(tradingClosed)
                 Divider()
             }
         }

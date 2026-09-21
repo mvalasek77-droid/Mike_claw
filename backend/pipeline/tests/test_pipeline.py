@@ -374,13 +374,49 @@ class TestYouTube:
 # Box Office
 # --------------------------------------------------------------------
 
+# Live shapes captured Sep 2026 (weekend 2026W38).
 BOM_FIXTURE = """
 <table>
-<tr><td>1</td><td><a href="/release/rl1">Dune: Part Three</a></td>
-<td>$75,200,000</td><td>new</td><td>4,200</td></tr>
-<tr><td>2</td><td><a href="/release/rl2">Toy Story 5</a></td>
-<td>$32,100,000</td><td>-45%</td><td>3,800</td></tr>
+<tr><td>1</td><td>-</td>
+<td><a href="/release/rl1/">Resident Evil</a></td>
+<td>$60,000,000</td><td>-</td><td>3,684</td><td>-</td>
+<td>$16,286</td><td>$60,000,000</td><td>1</td>
+<td>Columbia Pictures</td><td>true</td><td>true</td></tr>
+<tr><td>2</td><td>1</td>
+<td><a href="/release/rl2/">Practical Magic 2</a></td>
+<td>$12,155,000</td><td>-59.5%</td><td>4,163</td><td>+17</td>
+<td>$2,919</td><td>$50,031,587</td><td>2</td>
+<td>Warner Bros.</td><td>false</td><td>true</td></tr>
 </table>
+"""
+
+TN_FIXTURE = """
+<h1>Weekend Domestic Box Office September 18, 2026</h1>
+<table>
+<tr><td class="data">1</td><td class="data">(new)</td>
+<td><b><a href="/movie/Resident-Evil-(2026)">Resident Evil</a></b></td>
+<td class="data chart_estimate">$60,000,000</td>
+<td class="data Weekend"> </td><td class="data">3,684</td>
+<td class="data">$16,287</td><td class="data">$60,000,000</td>
+<td class="data">3</td></tr>
+<tr><td class="data">2</td><td class="data">(1)</td>
+<td><b><a href="/movie/Practical-Magic-2">Practical Magic 2</a></b></td>
+<td class="data">$12,155,000</td>
+<td class="data">-59%</td><td class="data">4,163</td>
+<td class="data">$2,920</td><td class="data">$50,032,000</td>
+<td class="data">10</td></tr>
+</table>
+<table>
+<!-- Secondary 'Top 5' daily table with TOTAL grosses: must never parse. -->
+<tr><td>1</td><td><a href="/movie/Resident-Evil-(2026)">Resident Evil</a></td>
+<td>$60,000,000</td><td>3,684</td><td>$60,000,000</td></tr>
+</table>
+"""
+
+BOM_RELEASE_PAGE_FIXTURE = """
+<div>Opening</div><span>$60,000,000</span>
+<div>3,684 theaters</div>
+<div>Release Date</div><span>Sep 18, 2026</span>
 """
 
 
@@ -388,19 +424,87 @@ class TestBoxOffice:
     def test_parse_bom_extracts_titles_and_grosses(self):
         results = boxoffice._parse_bom(BOM_FIXTURE)
         assert len(results) == 2
-        assert results[0].title == "Dune: Part Three"
-        assert results[0].gross_millions == 75.2
+        assert results[0].title == "Resident Evil"
+        assert results[0].gross_millions == 60.0
         assert results[0].source == "boxofficemojo"
 
-    def test_parse_bom_detects_opening_weekend(self):
+    def test_parse_bom_uses_weeks_in_release_not_rank(self):
+        """A week-2 holdover ranked #2 must NOT be an opening, and a
+        #1-ranked opener must be — the weeks column decides, not the
+        rank or a 'new' text marker."""
         results = boxoffice._parse_bom(BOM_FIXTURE)
-        assert results[0].is_opening_weekend is True
-        assert results[1].is_opening_weekend is False
+        assert results[0].is_opening_weekend is True   # weeks == 1
+        assert results[1].is_opening_weekend is False  # weeks == 2
+
+    def test_parse_the_numbers_anchors_to_the_weekend_table(self):
+        results = boxoffice._parse_the_numbers(TN_FIXTURE)
+        assert len(results) == 2  # the Top-5 total table must not parse
+        assert results[0].title == "Resident Evil"
+        assert results[0].gross_millions == 60.0
+        assert results[0].source == "the-numbers"
+
+    def test_parse_the_numbers_detects_new_releases(self):
+        results = boxoffice._parse_the_numbers(TN_FIXTURE)
+        assert results[0].is_opening_weekend is True    # (new)
+        assert results[1].is_opening_weekend is False  # (1)
+
+    def test_cross_check_publishes_only_agreements(self):
+        class Client:
+            def get(self, url, **k):
+                class Resp:
+                    status_code = 200
+
+                    def __init__(self):
+                        if "boxofficemojo" in str(url):
+                            self.text = BOM_FIXTURE
+                        else:
+                            self.text = TN_FIXTURE
+
+                return Resp()
+
+        got = boxoffice.fetch_cross_checked(
+            Client(), ["Resident Evil", "Practical Magic 2"]
+        )
+        titles = [r.title for r in got]
+        assert "Resident Evil" in titles          # agrees, opening
+        assert "Practical Magic 2" not in titles  # holdover: excluded
+        re_row = next(r for r in got if r.title == "Resident Evil")
+        assert re_row.source == "boxofficemojo+the-numbers"
+
+    def test_cross_check_drops_disagreements(self):
+        disagree_bom = BOM_FIXTURE.replace("$60,000,000", "$45,000,000")
+
+        class Client:
+            def get(self, url, **k):
+                class Resp:
+                    status_code = 200
+
+                    def __init__(self):
+                        self.text = disagree_bom if "boxofficemojo" in str(url) else TN_FIXTURE
+
+                return Resp()
+
+        assert boxoffice.fetch_cross_checked(Client(), ["Resident Evil"]) == []
+
+    def test_release_page_opening_is_read(self):
+        got = boxoffice._parse_release_opening(
+            BOM_RELEASE_PAGE_FIXTURE, "Resident Evil"
+        )
+        assert got is not None
+        assert got.gross_millions == 60.0
+        assert got.source == "boxofficemojo-release"
 
     def test_parse_gross_handles_formats(self):
         assert boxoffice._parse_gross("$75,200,000") == 75200000.0
+        assert boxoffice._parse_gross("$60,000,000") == 60000000.0
         assert boxoffice._parse_gross("") is None
         assert boxoffice._parse_gross("N/A") is None
+        assert boxoffice._parse_gross("-59.5%") is None
+        # Bare integers must NOT parse: theater counts, ranks, and
+        # weeks-in-release cells are bare numbers everywhere on these
+        # charts. (A theater count once parsed as a $0.000037M gross.)
+        assert boxoffice._parse_gross("3,684") is None
+        assert boxoffice._parse_gross("37") is None
 
     def test_fetch_degrades_on_failure(self):
         class Boom:

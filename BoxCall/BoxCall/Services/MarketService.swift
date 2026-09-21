@@ -503,10 +503,14 @@ final class MarketService: ObservableObject {
     // MARK: - Verified catalog + chain generation
 
     private func loadVerifiedCatalog() {
-        // Same filter fetchUpcoming applies: never surface a film that
-        // has already opened on cold launch.
+        // Never surface a film whose book is already closed — UNLESS the
+        // user still holds a position on it: the movie must stay in the
+        // catalog so SettlementService can find and settle it. It gets
+        // pruned by the next refresh once the position is settled.
+        let openMovieIds = Set(PortfolioService.shared.positions
+            .filter { $0.isOpen }.map { $0.movieId })
         let seeds = VerifiedMovieProvider.builtInSeed()
-            .filter { !$0.isSettled }
+            .filter { !$0.isSettled || openMovieIds.contains($0.id) }
             .sorted { $0.releaseDate < $1.releaseDate }
         movies = seeds
         var built: [String: [Contract]] = [:]

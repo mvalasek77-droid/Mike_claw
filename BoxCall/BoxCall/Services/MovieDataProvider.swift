@@ -55,29 +55,14 @@ final class VerifiedMovieProvider: MovieDataProvider {
         /// Roughly when the projections below were reported.
         let trackedAt = date("2026-08-20")
 
+        // NOTE: Practical Magic 2 (opened 2026-09-11, $30.0M) and
+        // Resident Evil (opened 2026-09-18, $60.0M per BOM weekend
+        // 2026W38) have been retired from the slate. A slate entry must
+        // be a film that hasn't opened yet; their actuals live in
+        // SettlementService.knownActuals so any position held on them
+        // still settles at the real number.
+
         return [
-            .init(id: "m_practical_magic2", title: "Practical Magic 2",
-                  studio: "Warner Bros.",
-                  releaseDate: date("2026-09-11"), posterEmoji: "\u{1F52E}",
-                  tagline: "The Owens sisters are back.",
-                  consensusOpeningMillions: 30, impliedVolPct: 40,
-                  genre: "Fantasy", addedAt: addedAt,
-                  director: "Susanne Bier",
-                  cast: ["Sandra Bullock", "Nicole Kidman", "Joey King", "Lee Pace"],
-                  synopsis: "Sally and Gillian Owens return three decades on, with a new generation of the family discovering the curse has not finished with them.",
-                  trailerQuery: "Practical Magic 2 official trailer"),
-
-            .init(id: "m_resident_evil", title: "Resident Evil",
-                  studio: "Constantin Film / Sony",
-                  releaseDate: date("2026-09-18"), posterEmoji: "\u{1F9DF}",
-                  tagline: "Every nightmare has an origin.",
-                  consensusOpeningMillions: 45, impliedVolPct: 48,
-                  genre: "Horror", addedAt: addedAt,
-                  director: "Zach Cregger",
-                  cast: ["Austin Abrams", "Zach Cherry", "Kali Reis", "Paul Walter Hauser"],
-                  synopsis: "Zach Cregger reboots Capcom's survival-horror franchise, following a group of strangers trapped inside Raccoon City as the T-virus outbreak spirals out of control.",
-                  trailerQuery: "Resident Evil 2026 official trailer"),
-
             .init(id: "m_verity", title: "Verity",
                   studio: "Amazon MGM Studios",
                   releaseDate: date("2026-10-02"), posterEmoji: "\u{1F4D6}",

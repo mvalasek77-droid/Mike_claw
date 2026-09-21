@@ -3,6 +3,10 @@ import Foundation
 import WatchConnectivity
 #endif
 
+/// Builds the portfolio snapshot the watch app displays and ships it
+/// over WCSession. App Group writes are kept for the iOS widget only —
+/// the WATCH reads exclusively from the WCSession payload (app groups
+/// do not cross devices).
 final class WatchSyncService: NSObject {
     static let shared = WatchSyncService()
 
@@ -29,6 +33,27 @@ final class WatchSyncService: NSObject {
             try? session.updateApplicationContext(["snapshot": data])
         }
     }
+
+    /// The watch app asks for a fresh snapshot when it becomes active
+    /// (scenePhase) or finishes activation. WCSession delivers this on
+    /// a background queue; rebuild + push on the main actor.
+    private func handleWatchRequest() {
+        Task { @MainActor in self.push() }
+    }
+
+    /// Marks move every few seconds, but `updateApplicationContext`
+    /// coalesces to the latest state, so a slow cadence keeps the watch
+    /// reasonably fresh without churning WCSession. Runs only while the
+    /// iOS app is alive (timer dies with it — no background drain).
+    private var pushTimer: Timer?
+
+    func startAutoPush(interval: TimeInterval = 60) {
+        guard WCSession.isSupported() else { return }
+        pushTimer?.invalidate()
+        pushTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.push() }
+        }
+    }
     #else
     @MainActor func push() {
         writeToAppGroup(buildSnapshot())
@@ -36,8 +61,11 @@ final class WatchSyncService: NSObject {
     #endif
 
     // MARK: - Snapshot model (mirrors WatchBridge.Snapshot)
+    //
+    // Internal (not private) so the wire-contract test can construct and
+    // encode one — the watch decodes this exact shape.
 
-    private struct PositionSnap: Codable {
+    struct PositionSnap: Codable {
         let id: String
         let movieTitle: String
         let movieEmoji: String
@@ -51,7 +79,7 @@ final class WatchSyncService: NSObject {
         let settledPayout: Double?
     }
 
-    private struct Snapshot: Codable {
+    struct Snapshot: Codable {
         let updatedAt: Date
         let nextMovieTitle: String
         let nextMoviePoster: String
@@ -116,6 +144,14 @@ extension WatchSyncService: WCSessionDelegate {
     func session(_ session: WCSession,
                  activationDidCompleteWith activationState: WCSessionActivationState,
                  error: Error?) {}
+
+    /// The watch pings us for a fresh snapshot (fire-and-forget).
+    func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
+        if message["request"] as? String == "snapshot" {
+            handleWatchRequest()
+        }
+    }
+
     func sessionDidBecomeInactive(_ session: WCSession) {}
     func sessionDidDeactivate(_ session: WCSession) { session.activate() }
 }

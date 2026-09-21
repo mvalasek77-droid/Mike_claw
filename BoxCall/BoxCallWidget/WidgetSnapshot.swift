@@ -21,9 +21,9 @@ struct WidgetSnapshot: Codable {
 
     static let placeholder = WidgetSnapshot(
         updatedAt: Date(),
-        nextMovieTitle: "Resident Evil",
-        nextMoviePoster: "🧟",
-        nextMovieOpensIn: 8,
+        nextMovieTitle: "Verity",
+        nextMoviePoster: "📖",
+        nextMovieOpensIn: 12,
         nextMovieImpliedConsensus: 35.0,
         topPositionMovie: "Resident Evil",
         topPositionSideLabel: "CALL $35M",

@@ -61,16 +61,27 @@ final class SettlementService: ObservableObject {
             }
             guard hasOpenPositions else { continue }
 
+            // Real number first: the published data set, then the
+            // verified built-ins. Trading closed Sunday; the weekend
+            // figure is public by Sunday afternoon — settle at it.
             let actual = actuals[movie.id]
                 ?? actuals[movie.title.lowercased()]
                 ?? Self.knownActuals[movie.id]
             if let actual {
                 portfolio.settle(movieId: movie.id, actualMillions: actual)
-            } else {
+                count += 1
+                continue
+            }
+
+            // No published figure yet. Hold settlement until one exists
+            // (checks re-run on every foreground return) — but don't let
+            // positions dangle forever if the pipeline is down.
+            let closedFor = Date().timeIntervalSince(movie.tradingClosedAt)
+            if closedFor > Self.settlementGrace {
                 let simulated = market.simulatedActualOW(for: movie)
                 portfolio.settle(movieId: movie.id, actualMillions: simulated)
+                count += 1
             }
-            count += 1
         }
 
         if count > 0 {
@@ -80,10 +91,22 @@ final class SettlementService: ObservableObject {
     }
 
     // MARK: - Known actuals for seed movies
+    //
+    // Verified against Box Office Mojo's published weekend chart. These
+    // guarantee the shipped slate settles at the REAL number even
+    // before the data pipeline's first publish.
 
     private static let knownActuals: [String: Double] = [
         "m_practical_magic2": 30.0,
+        // BOM weekend 2026W38: Resident Evil #1, $60,000,000 opening.
+        "m_resident_evil": 60.0,
     ]
+
+    /// How long past trading close we keep waiting for a real published
+    /// weekend figure before falling back to the market simulation.
+    /// Estimates post Sunday ~9am–noon ET; 48h covers a dead pipeline
+    /// without letting positions dangle forever.
+    private static let settlementGrace: TimeInterval = 48 * 3600
 
     // MARK: - Data fetching
 

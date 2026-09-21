@@ -94,6 +94,14 @@ targets:
         # validate, even though it ships inside the iOS submission.
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_FILE: BoxCallWatch/Info.plist
+        # NOTE: no CODE_SIGN_ENTITLEMENTS here on purpose. The watch app's
+        # app-group membership isn't assignable via the ASC API (portal
+        # GUI only) and the wildcard team profile can't carry app groups.
+        # The sync fix needs NO app group: WatchBridge decodes the WCSession
+        # payload directly; cold starts read the WCSession inbox
+        # (receivedApplicationContext), which persists without one. The
+        # app-group cache in WatchBridge no-ops (suiteName returns nil)
+        # until the group is assigned to this bundle ID via the portal.
   BoxCallWatchComplication:
     type: app-extension
     platform: watchOS
@@ -118,6 +126,9 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.boxcall.app.watchkitapp.boxcallcomplication
         INFOPLIST_KEY_NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        # No entitlements — same app-group story as the watch app target:
+        # group assignment is portal-GUI-only; the complication reads
+        # WatchBridge's in-process snapshot, which needs no group.
   BoxCallTests:
     type: bundle.unit-test
     platform: iOS

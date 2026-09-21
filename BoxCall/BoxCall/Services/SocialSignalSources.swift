@@ -714,13 +714,16 @@ extension Config {
 
     /// Where the published data set lives.
     ///
-    /// Defaults to the GitHub Pages site the repository's scheduled
-    /// Action publishes to. Override with BOXCALL_API_BASE in Info.plist
-    /// to point at a fork, a staging build, or a local server.
+    /// The dedicated boxcall-data repo's GitHub Pages site — its own
+    /// repo, its own Pages, its own cron (the shared Mike_claw Pages
+    /// is deployed by another project, so hosting data there would
+    /// have the two workflows clobbering each other's deploys).
+    /// Override with BOXCALL_API_BASE in Info.plist to point at a
+    /// fork, a staging build, or a local server.
     static var dataAPIBaseURL: URL {
         let configured = (Bundle.main.object(forInfoDictionaryKey: "BOXCALL_API_BASE") as? String) ?? ""
         if !configured.isEmpty, let url = URL(string: configured) { return url }
-        return URL(string: "https://mvalasek77-droid.github.io/Mike_claw/api/v1/")!
+        return URL(string: "https://mvalasek77-droid.github.io/boxcall-data/api/v1/")!
     }
 
     /// Stack of social signal sources.

@@ -119,6 +119,10 @@ final class PortfolioService: ObservableObject {
            let badge = Badge.make("first_call") {
             RewardsService.shared.award(badge: badge)
         }
+        // Positions/balance changed — the watch reads the WCSession
+        // payload, so push it a fresh snapshot now (coalesces if several
+        // mutations land close together).
+        WatchSyncService.shared.push()
         return pid
     }
 
@@ -140,6 +144,7 @@ final class PortfolioService: ObservableObject {
         if let idx = positions.firstIndex(where: { $0.id == position.id }) {
             positions[idx].settledPayout = proceeds
         }
+        WatchSyncService.shared.push()
     }
 
     // MARK: - Settlement
@@ -200,6 +205,10 @@ final class PortfolioService: ObservableObject {
             RewardsService.shared.resetStreak()
         }
 
+        if !toSettle.isEmpty {
+            WatchSyncService.shared.push()
+        }
+
         if user.reelCoins < 1 {
             NotificationsService.shared.notifyOutOfCoins()
         }
@@ -229,6 +238,7 @@ final class PortfolioService: ObservableObject {
     /// limit order without re-charging the user.
     func appendPosition(_ p: Position) {
         positions.append(p)
+        WatchSyncService.shared.push()
     }
 
     // MARK: - Leaderboard mock

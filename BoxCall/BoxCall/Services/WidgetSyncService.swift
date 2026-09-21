@@ -28,6 +28,11 @@ enum WidgetSyncService {
 
     /// Read from live services, build a snapshot, write to App Group,
     /// then poke WidgetCenter so the timeline reloads.
+    ///
+    /// The watch push at the end is UNCONDITIONAL: when no upcoming movie
+    /// exists the widget keeps its last snapshot, but the watch must still
+    /// receive portfolio state — it reads the WCSession payload, not this
+    /// app group.
     static func sync() {
         let market = MarketService.shared
         let portfolio = PortfolioService.shared
@@ -36,42 +41,45 @@ enum WidgetSyncService {
         let sorted = market.movies
             .filter { $0.daysToRelease >= 0 }
             .sorted { $0.daysToRelease < $1.daysToRelease }
-        guard let next = sorted.first else { return }
+        let next = sorted.first
 
         // Top position = biggest cost, open only.
-        let openPositions = portfolio.positions.filter { $0.isOpen }
-        let top = openPositions.max { $0.cost < $1.cost }
-        var topMovie: String?
-        var topSide: String?
-        var topMark: Double?
-        var topEntry: Double?
-        var topPnL: Double?
-        if let p = top, let movie = market.movie(id: p.movieId) {
-            let chain = market.chain(for: p.movieId)
-            let mark = chain.first { $0.id == p.contractId }?.premium ?? p.entryPremium
-            topMovie = movie.title
-            topSide = "\(p.side.display) $\(Int(p.strikeMillions))M"
-            topMark = mark
-            topEntry = p.entryPremium
-            topPnL = (mark - p.entryPremium) * Double(p.quantity)
-        }
+        if let next {
+            let openPositions = portfolio.positions.filter { $0.isOpen }
+            let top = openPositions.max { $0.cost < $1.cost }
+            var topMovie: String?
+            var topSide: String?
+            var topMark: Double?
+            var topEntry: Double?
+            var topPnL: Double?
+            if let p = top, let movie = market.movie(id: p.movieId) {
+                let chain = market.chain(for: p.movieId)
+                let mark = chain.first { $0.id == p.contractId }?.premium ?? p.entryPremium
+                topMovie = movie.title
+                topSide = "\(p.side.display) $\(Int(p.strikeMillions))M"
+                topMark = mark
+                topEntry = p.entryPremium
+                topPnL = (mark - p.entryPremium) * Double(p.quantity)
+            }
 
-        let snapshot = AppSideWidgetSnapshot(
-            updatedAt: Date(),
-            nextMovieTitle: next.title,
-            nextMoviePoster: next.posterEmoji,
-            nextMovieOpensIn: next.daysToRelease,
-            nextMovieImpliedConsensus: market.impliedConsensus(for: next.id),
-            topPositionMovie: topMovie,
-            topPositionSideLabel: topSide,
-            topPositionMark: topMark,
-            topPositionEntry: topEntry,
-            topPositionPnL: topPnL
-        )
-        guard let defaults = UserDefaults(suiteName: appGroup),
-              let data = try? JSONEncoder().encode(snapshot) else { return }
-        defaults.set(data, forKey: key)
-        WidgetCenter.shared.reloadAllTimelines()
+            let snapshot = AppSideWidgetSnapshot(
+                updatedAt: Date(),
+                nextMovieTitle: next.title,
+                nextMoviePoster: next.posterEmoji,
+                nextMovieOpensIn: next.daysToRelease,
+                nextMovieImpliedConsensus: market.impliedConsensus(for: next.id),
+                topPositionMovie: topMovie,
+                topPositionSideLabel: topSide,
+                topPositionMark: topMark,
+                topPositionEntry: topEntry,
+                topPositionPnL: topPnL
+            )
+            if let defaults = UserDefaults(suiteName: appGroup),
+               let data = try? JSONEncoder().encode(snapshot) {
+                defaults.set(data, forKey: key)
+                WidgetCenter.shared.reloadAllTimelines()
+            }
+        }
         WatchSyncService.shared.push()
     }
 }

@@ -14,6 +14,7 @@ struct BoxCallApp: App {
 
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
     @AppStorage("passedAgeGate") private var passedAgeGate: Bool = false
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
@@ -31,6 +32,16 @@ struct BoxCallApp: App {
                 RewardToastOverlay()
                     .environmentObject(rewards)
             }
+            .onChange(of: scenePhase) { _, phase in
+                // Coming back to the foreground: marks and settlements may
+                // have moved; refresh widget AND watch (watch push is
+                // unconditional inside sync()), and re-check settlements —
+                // the weekend's published figures land Sunday afternoon.
+                if phase == .active {
+                    WidgetSyncService.sync()
+                    Task { await settlement.checkAndSettle() }
+                }
+            }
             .task {
                 AnalyticsService.shared.installCrashHandler()
                 AnalyticsService.shared.track(.appOpen)
@@ -41,6 +52,10 @@ struct BoxCallApp: App {
                 market.startAutoRefresh()
                 await settlement.checkAndSettle()
                 WidgetSyncService.sync()
+                // Slow cadence keeps the watch's marks/P&L fresh while the
+                // app is alive; updateApplicationContext coalesces, so this
+                // never stacks payloads.
+                WatchSyncService.shared.startAutoPush()
             }
             .sheet(item: $coordinator.pendingCopy) { intent in
                 TradeSheet(contract: intent.contract, movie: intent.movie)

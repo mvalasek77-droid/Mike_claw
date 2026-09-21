@@ -258,22 +258,23 @@ def collect_actuals(
     movies: list[dict],
     now: dt.datetime,
 ) -> dict[str, dict]:
-    """Fetch real box office actuals and match them to our catalog."""
-    try:
-        with httpx.Client(
-            headers={"User-Agent": boxoffice.USER_AGENT},
-            follow_redirects=True,
-        ) as client:
-            results = boxoffice.fetch_actuals(client)
-    except Exception:
-        results = []
+    """Fetch real box office actuals and match them to our catalog.
 
-    if not results:
-        return {}
+    Two layers, because publishing a wrong settlement number is the
+    worst failure this pipeline can produce:
 
-    actuals: dict[str, dict] = {}
-    result_lookup = {r.title.lower(): r for r in results}
+      1. Cross-checked chart read: BOM weekend chart AND The Numbers
+         weekend chart must both report the film as a NEW release with
+         figures that agree within `AGREEMENT_TOLERANCE`.
+      2. Corroborated release-page read: BOM's per-release 'Opening'
+         figure, cross-checked against whatever the chart layer found.
 
+    A film's second-weekend gross must never be recorded as its
+    opening — the parsers flag opening weekends (weeks-in-release==1
+    on BOM, a '(new)' marker on TN) and this layer only records
+    openings, for films released within the last 10 days.
+    """
+    wanted: list[dict] = []
     for movie in movies:
         release = movie.get("releaseDate", "")
         if not release:
@@ -282,25 +283,73 @@ def collect_actuals(
             release_date = dt.datetime.fromisoformat(release.replace("Z", "+00:00"))
         except (ValueError, AttributeError):
             continue
-        if now < release_date:
-            continue
+        # Seed dates are date-only strings → naive datetimes; compare
+        # against a naive `now` so both sides always match.
+        if release_date.tzinfo is None:
+            if now < release_date.replace(tzinfo=now.tzinfo):
+                continue
+            if now > release_date.replace(tzinfo=now.tzinfo) + dt.timedelta(days=10):
+                continue
+        else:
+            if now < release_date:
+                continue
+            if now > release_date + dt.timedelta(days=10):
+                continue
+        wanted.append(movie)
 
-        title_lower = movie["title"].lower()
-        matched = result_lookup.get(title_lower)
-        if not matched:
-            for result in results:
-                if title_lower in result.title.lower() or result.title.lower() in title_lower:
-                    matched = result
-                    break
+    if not wanted:
+        return {}
 
-        if matched:
-            actuals[movie["id"]] = {
-                "title": movie["title"],
-                "domesticOpeningMillions": matched.gross_millions,
-                "isOpeningWeekend": matched.is_opening_weekend,
-                "source": matched.source,
-                "reportedAt": iso(now),
+    actuals: dict[str, dict] = {}
+    try:
+        with httpx.Client(
+            headers={"User-Agent": boxoffice.USER_AGENT},
+            follow_redirects=True,
+        ) as client:
+            titles = [m["title"] for m in wanted]
+            cross = boxoffice.fetch_cross_checked(client, titles)
+            cross_by_title = {
+                boxoffice._normalize(r.title): r for r in cross
             }
+
+            for movie in wanted:
+                key = boxoffice._normalize(movie["title"])
+                chart_hit = cross_by_title.get(key)
+                release_hit = boxoffice.fetch_release_opening(
+                    client, movie["title"]
+                )
+
+                candidates: list[boxoffice.OpeningResult] = []
+                if release_hit is not None:
+                    candidates.append(release_hit)
+                if chart_hit is not None:
+                    candidates.append(chart_hit)
+                if not candidates:
+                    continue
+
+                # Corroboration: when more than one independent read
+                # exists, they must agree.
+                scale = max(c.gross_millions for c in candidates)
+                if any(
+                    abs(c.gross_millions - candidates[0].gross_millions) / scale
+                    > boxoffice.AGREEMENT_TOLERANCE
+                    for c in candidates
+                ):
+                    continue
+
+                primary = candidates[0]
+                sources = "+".join(
+                    dict.fromkeys(c.source for c in candidates)
+                )
+                actuals[movie["id"]] = {
+                    "title": movie["title"],
+                    "domesticOpeningMillions": primary.gross_millions,
+                    "isOpeningWeekend": True,
+                    "source": sources,
+                    "reportedAt": iso(now),
+                }
+    except Exception:
+        return actuals
 
     return actuals
 
