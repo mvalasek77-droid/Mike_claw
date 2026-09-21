@@ -1,18 +1,18 @@
 {
-  "generated_for": "2026-09-21T08",
+  "generated_for": "2026-09-21T15",
   "posts": [
     {
       "community": {
-        "id": "e6e12bde-c99f-f89a-5f96-3cfdd3839629",
-        "name": "Stoic Bros",
-        "slug": "philosophy",
-        "member_count": 22300,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/philosophy.png",
+        "id": "22aca3d4-e132-fb9a-d97f-d6efb9771f45",
+        "name": "Iron Bro-hood",
+        "slug": "fitness",
+        "member_count": 182000,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fitness.png",
         "is_joined": true
       },
-      "title": "On discipline vs motivation",
-      "body": "Motivation gets you started. Discipline is what shows up at 5am.",
-      "score": 222,
+      "title": "PSA: warm up your rotator cuffs, bros",
+      "body": "Saved my bench after years of nagging pain. Here's the routine.",
+      "score": 108,
       "reactions": [],
       "my_reaction": null,
       "awards": [
@@ -21,17 +21,17 @@
           "count": 1
         }
       ],
-      "id": "9a12ec68-af01-6d53-74cf-2bbcbd759c0a",
+      "id": "b75e4e90-745d-4874-424c-de46feb12120",
       "author": {
-        "id": "43f16f34-9942-cb48-49d9-122dc9237e11",
-        "handle": "@leobuilds",
-        "display_name": "Leo",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/leobuilds.png",
-        "bro_cred": 760
+        "id": "550c58e9-f006-03d7-e005-01cf109b1c20",
+        "handle": "@coachmike",
+        "display_name": "Coach Mike",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachmike.png",
+        "bro_cred": 4200
       },
       "image_url": null,
-      "comment_count": 105,
-      "created_at": "2026-09-21T04:25:07+00:00",
+      "comment_count": 46,
+      "created_at": "2026-09-21T12:48:17+00:00",
       "my_vote": 0
     },
     {
@@ -45,49 +45,39 @@
       },
       "title": "Hit a new deadlift PR today",
       "body": "405 for a clean triple. Sleep and protein, that's the whole secret.",
-      "score": 298,
+      "score": 137,
       "reactions": [],
       "my_reaction": null,
-      "awards": [
-        {
-          "kind": "champ",
-          "count": 3
-        }
-      ],
-      "id": "d2e9411b-d750-3726-4d86-179154129208",
+      "awards": [],
+      "id": "2c2e8eaf-f4d8-4141-9dee-2a70b32bde94",
       "author": {
-        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
-        "handle": "@newbro",
-        "display_name": "Sam",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
-        "bro_cred": 40
+        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
+        "handle": "@coachdave",
+        "display_name": "Dave",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
+        "bro_cred": 9300
       },
       "image_url": null,
-      "comment_count": 64,
-      "created_at": "2026-09-21T06:52:07+00:00",
+      "comment_count": 37,
+      "created_at": "2026-09-21T11:52:17+00:00",
       "my_vote": 0
     },
     {
       "community": {
-        "id": "ad1f28f2-deee-3630-ebff-760d7a720f9e",
-        "name": "Dad Mode",
-        "slug": "fatherhood",
-        "member_count": 58700,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fatherhood.png",
+        "id": "369ccbe1-980c-cd6b-4b8b-e6cb2c492438",
+        "name": "Grill Masters",
+        "slug": "bbq",
+        "member_count": 96400,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/bbq.png",
         "is_joined": true
       },
-      "title": "First steps today",
-      "body": "Caught it on video. Did not expect to tear up. Worth every sleepless night.",
-      "score": 195,
+      "title": "Low and slow brisket \u2014 14 hours",
+      "body": "Wrapped at 165, pulled at 203. Bark was unreal. AMA.",
+      "score": 116,
       "reactions": [],
       "my_reaction": null,
-      "awards": [
-        {
-          "kind": "champ",
-          "count": 3
-        }
-      ],
-      "id": "f9fcb6c0-170a-acda-c010-9ce4b5235e65",
+      "awards": [],
+      "id": "586a9389-67bb-54af-a0d1-e39b03230f04",
       "author": {
         "id": "550c58e9-f006-03d7-e005-01cf109b1c20",
         "handle": "@coachmike",
@@ -96,76 +86,38 @@
         "bro_cred": 4200
       },
       "image_url": null,
-      "comment_count": 44,
-      "created_at": "2026-09-21T05:05:07+00:00",
+      "comment_count": 51,
+      "created_at": "2026-09-21T13:36:17+00:00",
       "my_vote": 0
     },
     {
       "community": null,
       "title": null,
-      "body": "Pickup basketball this Saturday at Riverside. Who's in?",
-      "score": 28,
+      "body": "Grilling at my place Sunday \u2014 bring a chair and a story.",
+      "score": 11,
       "reactions": [
         {
-          "kind": "strong",
-          "count": 17
+          "kind": "respect",
+          "count": 24
         },
         {
-          "kind": "respect",
+          "kind": "strong",
           "count": 33
-        },
-        {
-          "kind": "lol",
-          "count": 5
         }
       ],
       "my_reaction": null,
       "awards": [],
-      "id": "925dfbad-1869-13e9-fa2f-38a31cf29c37",
+      "id": "6c837d40-6cb8-7c4a-98f2-afeaa4d09aca",
       "author": {
-        "id": "550c58e9-f006-03d7-e005-01cf109b1c20",
-        "handle": "@coachmike",
-        "display_name": "Coach Mike",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachmike.png",
-        "bro_cred": 4200
+        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
+        "handle": "@coachdave",
+        "display_name": "Dave",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
+        "bro_cred": 9300
       },
       "image_url": null,
-      "comment_count": 38,
-      "created_at": "2026-09-21T04:59:07+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": null,
-      "title": null,
-      "body": "Pickup basketball this Saturday at Riverside. Who's in?",
-      "score": 19,
-      "reactions": [
-        {
-          "kind": "strong",
-          "count": 10
-        },
-        {
-          "kind": "respect",
-          "count": 31
-        },
-        {
-          "kind": "lol",
-          "count": 6
-        }
-      ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "1430774a-7016-7ffc-1a57-fdb659b46e90",
-      "author": {
-        "id": "88da342c-12c1-951a-f0bc-99247785f086",
-        "handle": "@theoknows",
-        "display_name": "Theo",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/theoknows.png",
-        "bro_cred": 1120
-      },
-      "image_url": null,
-      "comment_count": 74,
-      "created_at": "2026-09-21T02:08:07+00:00",
+      "comment_count": 41,
+      "created_at": "2026-09-21T10:04:17+00:00",
       "my_vote": 0
     },
     {
@@ -177,13 +129,46 @@
         "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fatherhood.png",
         "is_joined": true
       },
-      "title": "First steps today",
-      "body": "Caught it on video. Did not expect to tear up. Worth every sleepless night.",
-      "score": 75,
+      "title": "Built a treehouse this weekend",
+      "body": "Kid 'helped'. Took twice as long. Best two days of the year.",
+      "score": 78,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [
+        {
+          "kind": "champ",
+          "count": 2
+        }
+      ],
+      "id": "f39ce4cf-65ac-2b10-a492-1ee246d55324",
+      "author": {
+        "id": "bb5a2bd9-5ff6-b2d4-8c47-662f9908097f",
+        "handle": "@rajlifts",
+        "display_name": "Raj",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/rajlifts.png",
+        "bro_cred": 3050
+      },
+      "image_url": null,
+      "comment_count": 39,
+      "created_at": "2026-09-21T09:39:17+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "369ccbe1-980c-cd6b-4b8b-e6cb2c492438",
+        "name": "Grill Masters",
+        "slug": "bbq",
+        "member_count": 96400,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/bbq.png",
+        "is_joined": true
+      },
+      "title": "Low and slow brisket \u2014 14 hours",
+      "body": "Wrapped at 165, pulled at 203. Bark was unreal. AMA.",
+      "score": 222,
       "reactions": [],
       "my_reaction": null,
       "awards": [],
-      "id": "e2eb1c70-9bd0-96a8-9adf-f43f6fb7e52d",
+      "id": "854d0136-22a4-70a9-13eb-5c4fc4f65126",
       "author": {
         "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
         "handle": "@newbro",
@@ -192,8 +177,8 @@
         "bro_cred": 40
       },
       "image_url": null,
-      "comment_count": 78,
-      "created_at": "2026-09-21T03:38:07+00:00",
+      "comment_count": 15,
+      "created_at": "2026-09-21T11:24:17+00:00",
       "my_vote": 0
     }
   ],
