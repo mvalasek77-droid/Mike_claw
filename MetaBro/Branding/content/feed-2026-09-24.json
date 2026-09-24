@@ -1,18 +1,48 @@
 {
-  "generated_for": "2026-09-24T08",
+  "generated_for": "2026-09-24T13",
   "posts": [
     {
+      "community": null,
+      "title": null,
+      "body": "Anyone up for a sunrise hike this weekend?",
+      "score": 93,
+      "reactions": [
+        {
+          "kind": "strong",
+          "count": 9
+        },
+        {
+          "kind": "like",
+          "count": 4
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "a52c416a-622e-2564-710c-d1895b031f3f",
+      "author": {
+        "id": "bb5a2bd9-5ff6-b2d4-8c47-662f9908097f",
+        "handle": "@rajlifts",
+        "display_name": "Raj",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/rajlifts.png",
+        "bro_cred": 3050
+      },
+      "image_url": null,
+      "comment_count": 112,
+      "created_at": "2026-09-24T12:48:41+00:00",
+      "my_vote": 0
+    },
+    {
       "community": {
-        "id": "369ccbe1-980c-cd6b-4b8b-e6cb2c492438",
-        "name": "Grill Masters",
-        "slug": "bbq",
-        "member_count": 96400,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/bbq.png",
+        "id": "22aca3d4-e132-fb9a-d97f-d6efb9771f45",
+        "name": "Iron Bro-hood",
+        "slug": "fitness",
+        "member_count": 182000,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fitness.png",
         "is_joined": true
       },
-      "title": "Reverse sear is the only way",
-      "body": "Smoke to 120, rest, then blast it. Edge to edge pink every time.",
-      "score": 118,
+      "title": "PSA: warm up your rotator cuffs, bros",
+      "body": "Saved my bench after years of nagging pain. Here's the routine.",
+      "score": 205,
       "reactions": [],
       "my_reaction": null,
       "awards": [
@@ -21,51 +51,111 @@
           "count": 2
         }
       ],
-      "id": "bb1cc6b4-c92b-3ea6-07ac-bee546204856",
+      "id": "8b54fd89-fa61-15e1-e222-f09c2acb6541",
       "author": {
-        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
-        "handle": "@coachdave",
-        "display_name": "Dave",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
-        "bro_cred": 9300
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
       },
       "image_url": null,
-      "comment_count": 2,
-      "created_at": "2026-09-24T05:39:46+00:00",
+      "comment_count": 42,
+      "created_at": "2026-09-24T10:29:41+00:00",
       "my_vote": 0
     },
     {
       "community": null,
       "title": null,
-      "body": "Just hit a year sober. Grateful for this crew.",
-      "score": 57,
+      "body": "Grilling at my place Sunday \u2014 bring a chair and a story.",
+      "score": 49,
       "reactions": [
         {
           "kind": "respect",
-          "count": 32
+          "count": 13
         },
         {
           "kind": "strong",
-          "count": 31
-        },
-        {
-          "kind": "like",
-          "count": 12
+          "count": 4
         }
       ],
       "my_reaction": null,
       "awards": [],
-      "id": "ff94e161-e350-973a-2acb-a36741f93593",
+      "id": "d7e453bc-b878-6503-dee8-d546e046f92a",
       "author": {
-        "id": "43f16f34-9942-cb48-49d9-122dc9237e11",
-        "handle": "@leobuilds",
-        "display_name": "Leo",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/leobuilds.png",
-        "bro_cred": 760
+        "id": "88da342c-12c1-951a-f0bc-99247785f086",
+        "handle": "@theoknows",
+        "display_name": "Theo",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/theoknows.png",
+        "bro_cred": 1120
       },
       "image_url": null,
-      "comment_count": 118,
-      "created_at": "2026-09-24T04:21:46+00:00",
+      "comment_count": 0,
+      "created_at": "2026-09-24T12:29:41+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Grilling at my place Sunday \u2014 bring a chair and a story.",
+      "score": 89,
+      "reactions": [
+        {
+          "kind": "respect",
+          "count": 5
+        },
+        {
+          "kind": "strong",
+          "count": 13
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "86168722-f3b0-9ae7-d820-0ba5ccb533c1",
+      "author": {
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
+      },
+      "image_url": null,
+      "comment_count": 99,
+      "created_at": "2026-09-24T11:05:41+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Pickup basketball this Saturday at Riverside. Who's in?",
+      "score": 73,
+      "reactions": [
+        {
+          "kind": "strong",
+          "count": 14
+        },
+        {
+          "kind": "respect",
+          "count": 22
+        },
+        {
+          "kind": "lol",
+          "count": 5
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "d234e337-31c2-c2c8-f274-877674fc3d1a",
+      "author": {
+        "id": "bb5a2bd9-5ff6-b2d4-8c47-662f9908097f",
+        "handle": "@rajlifts",
+        "display_name": "Raj",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/rajlifts.png",
+        "bro_cred": 3050
+      },
+      "image_url": null,
+      "comment_count": 35,
+      "created_at": "2026-09-24T07:32:41+00:00",
       "my_vote": 0
     },
     {
@@ -79,121 +169,26 @@
       },
       "title": "Low and slow brisket \u2014 14 hours",
       "body": "Wrapped at 165, pulled at 203. Bark was unreal. AMA.",
-      "score": 77,
+      "score": 174,
       "reactions": [],
       "my_reaction": null,
       "awards": [
         {
           "kind": "champ",
-          "count": 3
+          "count": 2
         }
       ],
-      "id": "b29a1725-4b4d-c998-0455-39320f8835c9",
+      "id": "39bd536f-f7f5-28ef-b1eb-db159d39cabe",
       "author": {
-        "id": "bb5a2bd9-5ff6-b2d4-8c47-662f9908097f",
-        "handle": "@rajlifts",
-        "display_name": "Raj",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/rajlifts.png",
-        "bro_cred": 3050
+        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
+        "handle": "@coachdave",
+        "display_name": "Dave",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
+        "bro_cred": 9300
       },
       "image_url": null,
-      "comment_count": 36,
-      "created_at": "2026-09-24T05:55:46+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": {
-        "id": "369ccbe1-980c-cd6b-4b8b-e6cb2c492438",
-        "name": "Grill Masters",
-        "slug": "bbq",
-        "member_count": 96400,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/bbq.png",
-        "is_joined": true
-      },
-      "title": "Reverse sear is the only way",
-      "body": "Smoke to 120, rest, then blast it. Edge to edge pink every time.",
-      "score": 117,
-      "reactions": [],
-      "my_reaction": null,
-      "awards": [],
-      "id": "39d3d76d-3f33-5908-5a95-e977e74e7f9d",
-      "author": {
-        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
-        "handle": "@newbro",
-        "display_name": "Sam",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
-        "bro_cred": 40
-      },
-      "image_url": null,
-      "comment_count": 55,
-      "created_at": "2026-09-24T02:10:46+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": {
-        "id": "369ccbe1-980c-cd6b-4b8b-e6cb2c492438",
-        "name": "Grill Masters",
-        "slug": "bbq",
-        "member_count": 96400,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/bbq.png",
-        "is_joined": true
-      },
-      "title": "Best cheap smoker under $300?",
-      "body": "Looking to upgrade from the kettle. What are you bros running?",
-      "score": 102,
-      "reactions": [],
-      "my_reaction": null,
-      "awards": [
-        {
-          "kind": "champ",
-          "count": 3
-        }
-      ],
-      "id": "889f2dc2-ca18-29ca-ceb7-67a7596ca6ef",
-      "author": {
-        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
-        "handle": "@newbro",
-        "display_name": "Sam",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
-        "bro_cred": 40
-      },
-      "image_url": null,
-      "comment_count": 34,
-      "created_at": "2026-09-24T03:17:46+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": null,
-      "title": null,
-      "body": "Just hit a year sober. Grateful for this crew.",
-      "score": 47,
-      "reactions": [
-        {
-          "kind": "respect",
-          "count": 34
-        },
-        {
-          "kind": "strong",
-          "count": 29
-        },
-        {
-          "kind": "like",
-          "count": 36
-        }
-      ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "058ea8dc-a032-1fbd-07cd-aaca59121512",
-      "author": {
-        "id": "550c58e9-f006-03d7-e005-01cf109b1c20",
-        "handle": "@coachmike",
-        "display_name": "Coach Mike",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachmike.png",
-        "bro_cred": 4200
-      },
-      "image_url": null,
-      "comment_count": 95,
-      "created_at": "2026-09-24T01:45:46+00:00",
+      "comment_count": 0,
+      "created_at": "2026-09-24T10:48:41+00:00",
       "my_vote": 0
     }
   ],
