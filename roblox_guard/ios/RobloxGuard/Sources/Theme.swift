@@ -25,6 +25,17 @@ enum Theme {
     }
 }
 
+/// Trademark disclaimer required for nominative use of the Roblox name.
+/// Shown on onboarding, the paywall, and Settings, and mirrored in the App
+/// Store description and screenshot captions (App Store guideline 4.1).
+enum Legal {
+    static let affiliationDisclaimer =
+        "BloxGuard is an independent app. It is not affiliated with, "
+        + "endorsed by, or sponsored by Roblox Corporation. \"Roblox\" is a "
+        + "trademark of Roblox Corporation, used here only to describe the "
+        + "platform this app helps parents monitor."
+}
+
 /// Adaptive haptics: intensity follows what the event means, so the phone
 /// "feels" different for an informational ping vs. an elevated alert.
 enum Haptics {

@@ -108,6 +108,8 @@ struct DashboardView: View {
                 } footer: {
                     if child.id == store.children.last?.id {
                         Text("Alerts are automated pattern matches, not verdicts — they can be wrong in either direction. Use BloxGuard alongside conversation and supervision, not in place of them.")
+                        Text(Legal.affiliationDisclaimer)
+                            .padding(.top, 4)
                     }
                 }
             }

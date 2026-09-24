@@ -27,6 +27,10 @@ struct ConsentOnboardingView: View {
                             .font(.largeTitle.bold())
                         Text("An early-warning companion for parents. BloxGuard watches the public footprint of your child's Roblox account and helps you start the right conversations.")
                             .foregroundStyle(.secondary)
+                        Text(Legal.affiliationDisclaimer)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .padding(.top, 2)
                     }
 
                     GroupBox {

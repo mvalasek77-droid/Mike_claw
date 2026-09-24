@@ -57,6 +57,12 @@ struct PaywallView: View {
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: .infinity)
 
+                    Text(Legal.affiliationDisclaimer)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+
                     // Required by App Store guideline 3.1.2(b).
                     HStack(spacing: 16) {
                         Link("Terms of Use (EULA)",

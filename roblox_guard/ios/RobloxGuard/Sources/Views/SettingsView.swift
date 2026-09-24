@@ -141,7 +141,9 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                     Link("Privacy Policy", destination: PaywallView.privacyPolicyURL)
                         .font(.footnote)
-                } header: { Text("Privacy") }
+                } header: { Text("Privacy") } footer: {
+                    Text(Legal.affiliationDisclaimer)
+                }
 
                 // MARK: - Support
                 Section {
