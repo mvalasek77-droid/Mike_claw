@@ -1,37 +1,38 @@
 {
-  "generated_for": "2026-09-27T03",
+  "generated_for": "2026-09-27T11",
   "posts": [
     {
-      "community": {
-        "id": "22aca3d4-e132-fb9a-d97f-d6efb9771f45",
-        "name": "Iron Bro-hood",
-        "slug": "fitness",
-        "member_count": 182000,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fitness.png",
-        "is_joined": true
-      },
-      "title": "PSA: warm up your rotator cuffs, bros",
-      "body": "Saved my bench after years of nagging pain. Here's the routine.",
-      "score": 126,
-      "reactions": [],
-      "my_reaction": null,
-      "awards": [
+      "community": null,
+      "title": null,
+      "body": "Pickup basketball this Saturday at Riverside. Who's in?",
+      "score": 64,
+      "reactions": [
         {
-          "kind": "champ",
-          "count": 2
+          "kind": "strong",
+          "count": 34
+        },
+        {
+          "kind": "respect",
+          "count": 6
+        },
+        {
+          "kind": "lol",
+          "count": 4
         }
       ],
-      "id": "42253ac4-3b18-1026-00a3-f7cb95a7efa7",
+      "my_reaction": null,
+      "awards": [],
+      "id": "978a08f9-419f-a1c5-1b07-7f018cd6af15",
       "author": {
-        "id": "550c58e9-f006-03d7-e005-01cf109b1c20",
-        "handle": "@coachmike",
-        "display_name": "Coach Mike",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachmike.png",
-        "bro_cred": 4200
+        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
+        "handle": "@newbro",
+        "display_name": "Sam",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
+        "bro_cred": 40
       },
       "image_url": null,
-      "comment_count": 98,
-      "created_at": "2026-09-27T00:32:50+00:00",
+      "comment_count": 19,
+      "created_at": "2026-09-27T08:33:37+00:00",
       "my_vote": 0
     },
     {
@@ -45,97 +46,7 @@
       },
       "title": "Cutting without losing strength",
       "body": "Higher protein, slower deficit, keep the heavy sets. Worked for me.",
-      "score": 90,
-      "reactions": [],
-      "my_reaction": null,
-      "awards": [],
-      "id": "93b63560-f5ad-7a5a-c83b-1a5240b1c9e2",
-      "author": {
-        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
-        "handle": "@ironbro",
-        "display_name": "Marcus",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
-        "bro_cred": 4820
-      },
-      "image_url": null,
-      "comment_count": 104,
-      "created_at": "2026-09-27T01:33:50+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": {
-        "id": "22aca3d4-e132-fb9a-d97f-d6efb9771f45",
-        "name": "Iron Bro-hood",
-        "slug": "fitness",
-        "member_count": 182000,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fitness.png",
-        "is_joined": true
-      },
-      "title": "Mobility > maxing out",
-      "body": "Ten minutes of hips and shoulders before every session. Game changer.",
-      "score": 146,
-      "reactions": [],
-      "my_reaction": null,
-      "awards": [],
-      "id": "2e4198e2-2758-5b1d-5d19-0b529a4b02e7",
-      "author": {
-        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
-        "handle": "@ironbro",
-        "display_name": "Marcus",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
-        "bro_cred": 4820
-      },
-      "image_url": null,
-      "comment_count": 119,
-      "created_at": "2026-09-26T22:06:50+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": null,
-      "title": null,
-      "body": "Just hit a year sober. Grateful for this crew.",
-      "score": 71,
-      "reactions": [
-        {
-          "kind": "respect",
-          "count": 27
-        },
-        {
-          "kind": "strong",
-          "count": 19
-        },
-        {
-          "kind": "like",
-          "count": 14
-        }
-      ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "8bff86a9-f8b7-6858-bf3f-177513bd7248",
-      "author": {
-        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
-        "handle": "@newbro",
-        "display_name": "Sam",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
-        "bro_cred": 40
-      },
-      "image_url": null,
-      "comment_count": 13,
-      "created_at": "2026-09-26T21:49:50+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": {
-        "id": "1e27fcd8-c8ff-7cac-af7b-60a88268cbe1",
-        "name": "Garage Gearheads",
-        "slug": "cars",
-        "member_count": 141200,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/cars.png",
-        "is_joined": true
-      },
-      "title": "Finally finished the brake job",
-      "body": "New rotors, pads, fresh fluid. Pedal feel is night and day.",
-      "score": 50,
+      "score": 77,
       "reactions": [],
       "my_reaction": null,
       "awards": [
@@ -144,7 +55,35 @@
           "count": 3
         }
       ],
-      "id": "6f906ec9-8c78-3b42-a7de-cfcefc3ca228",
+      "id": "25d436fa-8bac-c76e-48db-e74ce96faa6b",
+      "author": {
+        "id": "88da342c-12c1-951a-f0bc-99247785f086",
+        "handle": "@theoknows",
+        "display_name": "Theo",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/theoknows.png",
+        "bro_cred": 1120
+      },
+      "image_url": null,
+      "comment_count": 106,
+      "created_at": "2026-09-27T09:45:37+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "e6e12bde-c99f-f89a-5f96-3cfdd3839629",
+        "name": "Stoic Bros",
+        "slug": "philosophy",
+        "member_count": 22300,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/philosophy.png",
+        "is_joined": true
+      },
+      "title": "The obstacle is the way",
+      "body": "Reframed a brutal week as training. Different game entirely.",
+      "score": 168,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [],
+      "id": "37d02fb1-bb40-6386-46b4-aa518e747973",
       "author": {
         "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
         "handle": "@newbro",
@@ -153,8 +92,64 @@
         "bro_cred": 40
       },
       "image_url": null,
-      "comment_count": 76,
-      "created_at": "2026-09-26T21:29:50+00:00",
+      "comment_count": 58,
+      "created_at": "2026-09-27T07:40:37+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "ad1f28f2-deee-3630-ebff-760d7a720f9e",
+        "name": "Dad Mode",
+        "slug": "fatherhood",
+        "member_count": 58700,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fatherhood.png",
+        "is_joined": true
+      },
+      "title": "Tips for a 5am toddler?",
+      "body": "He's up before the sun. How do you bros keep your sanity?",
+      "score": 71,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [],
+      "id": "ce44816a-791b-668d-3425-c1cc93b158e4",
+      "author": {
+        "id": "bb5a2bd9-5ff6-b2d4-8c47-662f9908097f",
+        "handle": "@rajlifts",
+        "display_name": "Raj",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/rajlifts.png",
+        "bro_cred": 3050
+      },
+      "image_url": null,
+      "comment_count": 67,
+      "created_at": "2026-09-27T08:13:37+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "ad1f28f2-deee-3630-ebff-760d7a720f9e",
+        "name": "Dad Mode",
+        "slug": "fatherhood",
+        "member_count": 58700,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fatherhood.png",
+        "is_joined": true
+      },
+      "title": "Tips for a 5am toddler?",
+      "body": "He's up before the sun. How do you bros keep your sanity?",
+      "score": 150,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [],
+      "id": "6f92d91d-60af-9516-2b44-25184e94a454",
+      "author": {
+        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
+        "handle": "@newbro",
+        "display_name": "Sam",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
+        "bro_cred": 40
+      },
+      "image_url": null,
+      "comment_count": 43,
+      "created_at": "2026-09-27T08:35:37+00:00",
       "my_vote": 0
     },
     {
@@ -166,18 +161,13 @@
         "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fitness.png",
         "is_joined": true
       },
-      "title": "Hit a new deadlift PR today",
-      "body": "405 for a clean triple. Sleep and protein, that's the whole secret.",
-      "score": 95,
+      "title": "Cutting without losing strength",
+      "body": "Higher protein, slower deficit, keep the heavy sets. Worked for me.",
+      "score": 112,
       "reactions": [],
       "my_reaction": null,
-      "awards": [
-        {
-          "kind": "champ",
-          "count": 1
-        }
-      ],
-      "id": "d56224ad-92b7-3804-37a9-0967001b2ed6",
+      "awards": [],
+      "id": "80aeb403-2cd3-b5f3-a622-dce2efb09c57",
       "author": {
         "id": "bb5a2bd9-5ff6-b2d4-8c47-662f9908097f",
         "handle": "@rajlifts",
@@ -186,8 +176,8 @@
         "bro_cred": 3050
       },
       "image_url": null,
-      "comment_count": 74,
-      "created_at": "2026-09-26T22:04:50+00:00",
+      "comment_count": 17,
+      "created_at": "2026-09-27T06:42:37+00:00",
       "my_vote": 0
     }
   ],
