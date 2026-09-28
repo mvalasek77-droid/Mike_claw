@@ -1,14 +1,13 @@
 import Foundation
 
-/// Fetches actual opening-weekend grosses from the published data set
-/// and settles open positions automatically.
+/// Settles open positions on the opening-weekend number as soon as it's
+/// published — normally Sunday, when studios report weekend estimates.
 ///
-/// The production path: a scheduled GitHub Action scrapes free public
-/// sources (Box Office Mojo via the published data set, with The Numbers
-/// as a fallback), writes `actuals.json` to GitHub Pages, and this
-/// service pulls that file on app launch. When the data set has an
-/// actual for a movie the user holds a position on, the position is
-/// settled at that number.
+/// The BoxCall Data workflow reads the weekend charts (Box Office Mojo,
+/// The Numbers as fallback) hourly on Sunday and publishes every opening
+/// in `actuals.json`. The first figure published for a film is frozen, so
+/// every player settles on the same number. The app checks on launch, on
+/// returning to the foreground, and every 15 minutes while open.
 ///
 /// Positions wait for the reported number — settling early on a guess
 /// would permanently skew the profit leaderboard. Only if no number has
@@ -34,8 +33,16 @@ final class SettlementService: ObservableObject {
         self.baseURL = baseURL
     }
 
-    /// Check for settleable movies and settle any open positions.
-    /// Called on app launch and after catalog refreshes.
+    private static let minimumInterval: TimeInterval = 15 * 60
+
+    /// For the app's minute timer: checks at most every 15 minutes.
+    func checkIfDue() async {
+        if let lastCheckAt, Date().timeIntervalSince(lastCheckAt) < Self.minimumInterval { return }
+        await checkAndSettle()
+    }
+
+    /// Settles every open position on a movie that has opened and has a
+    /// published opening number.
     func checkAndSettle() async {
         let portfolio = PortfolioService.shared
         let market = MarketService.shared
@@ -47,8 +54,9 @@ final class SettlementService: ObservableObject {
         )
         guard !openMovieIds.isEmpty else { return }
 
+        // Opened (trading locked) is enough: results can land Sunday.
         let settledMovies = market.movies.filter { movie in
-            openMovieIds.contains(movie.id) && movie.isSettled
+            openMovieIds.contains(movie.id) && !movie.isTradingOpen
         }
         guard !settledMovies.isEmpty else { return }
 
@@ -63,7 +71,7 @@ final class SettlementService: ObservableObject {
             guard hasOpenPositions else { continue }
 
             let actual = actuals[movie.id]
-                ?? actuals[movie.title.lowercased()]
+                ?? actuals[Movie.titleKey(movie.title)]
                 ?? Self.knownActuals[movie.id]
             if let actual {
                 portfolio.settle(movieId: movie.id, actualMillions: actual)
@@ -100,7 +108,7 @@ final class SettlementService: ObservableObject {
         do {
             var request = URLRequest(url: url)
             request.timeoutInterval = 10
-            // Results land Monday; a cached copy from Sunday would hide them.
+            // Results land Sunday; a cached copy from earlier would hide them.
             request.cachePolicy = .reloadIgnoringLocalCacheData
             let (data, response) = try await session.data(for: request)
             guard let http = response as? HTTPURLResponse,
@@ -109,10 +117,10 @@ final class SettlementService: ObservableObject {
             }
             let envelope = try JSONDecoder().decode(ActualsEnvelope.self, from: data)
             var result: [String: Double] = [:]
-            for (key, entry) in envelope.actuals {
+            for (key, entry) in envelope.actuals where entry.isOpeningWeekend ?? true {
                 result[key] = entry.domesticOpeningMillions
                 if let title = entry.title {
-                    result[title.lowercased()] = entry.domesticOpeningMillions
+                    result[Movie.titleKey(title)] = entry.domesticOpeningMillions
                 }
             }
             lastError = nil
@@ -135,6 +143,7 @@ private struct ActualsEnvelope: Decodable {
 private struct ActualEntry: Decodable {
     let title: String?
     let domesticOpeningMillions: Double
+    let isOpeningWeekend: Bool?
     let source: String?
     let reportedAt: String?
 }

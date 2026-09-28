@@ -345,7 +345,7 @@ struct MovieDetailView: View {
                     .font(.subheadline.weight(.bold))
                 Text(movie.isSettled
                      ? "This movie's opening weekend is in. Check Positions for your result."
-                     : "Contracts locked when \(movie.title) opened. Every position settles Monday on the reported opening weekend. Movies that haven't opened yet are still trading.")
+                     : "Contracts locked when \(movie.title) opened. Every position settles on the opening-weekend number, usually reported Sunday. Movies that haven't opened yet are still trading.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

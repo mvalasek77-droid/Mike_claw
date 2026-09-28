@@ -4,7 +4,7 @@ import Combine
 
 /// Local-notification driver + in-app notification inbox.
 /// A real product would swap the local scheduling for APNs pushes
-/// from the server that runs Monday settlement.
+/// from the server that runs settlement.
 @MainActor
 final class NotificationsService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
     static let shared = NotificationsService()

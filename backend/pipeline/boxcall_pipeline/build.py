@@ -17,8 +17,10 @@ import datetime as dt
 import json
 import os
 import pathlib
+import re
 import sys
 import time
+import unicodedata
 
 import httpx
 
@@ -158,6 +160,7 @@ def build(
     max_movies: int,
     youtube_search_budget: int,
     now: dt.datetime | None = None,
+    previous_actuals_path: pathlib.Path | None = None,
 ) -> dict:
     now = now or dt.datetime.now(dt.timezone.utc)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -217,11 +220,11 @@ def build(
     save_trailer_cache(cache_path, trailer_cache)
 
     # --- Box office actuals -----------------------------------------
-    actuals_data = collect_actuals(movies, now)
-    if actuals_data:
-        source_status["boxoffice"] = f"ok ({len(actuals_data)} titles with actuals)"
-    else:
-        source_status["boxoffice"] = "no actuals this run"
+    previous = load_previous_actuals(previous_actuals_path)
+    # Match against the bundled seed too: it keeps films that already opened.
+    actuals_data = collect_actuals(movies + load_seed(seed_path), now, previous)
+    added = max(len(actuals_data) - len(previous), 0)
+    source_status["boxoffice"] = f"ok ({len(actuals_data)} openings on file, {added} new this run)"
 
     manifest = {
         "version": SCHEMA_VERSION,
@@ -254,55 +257,72 @@ def build(
     return manifest
 
 
+def title_key(title: str) -> str:
+    """Case-, accent- and punctuation-insensitive title, shared with the iOS client."""
+    folded = unicodedata.normalize("NFKD", title).encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z0-9]+", " ", folded.lower()).strip()
+
+
+def load_previous_actuals(path: pathlib.Path | None) -> dict[str, dict]:
+    if not path or not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text())
+        actuals = data.get("actuals", {})
+        return actuals if isinstance(actuals, dict) else {}
+    except (OSError, json.JSONDecodeError, AttributeError):
+        return {}
+
+
 def collect_actuals(
     movies: list[dict],
     now: dt.datetime,
+    previous: dict[str, dict] | None = None,
+    *,
+    keep_days: int = 180,
 ) -> dict[str, dict]:
-    """Fetch real box office actuals and match them to our catalog."""
+    """Every opening weekend seen so far, keyed by catalog id when known.
+
+    Values are frozen once published: the first number — normally the
+    studios' Sunday estimate — is the one every player settles on, so
+    nobody is paid on a different figure for the same film. Films that
+    aren't in the catalog are still published by title, because the
+    catalog drops a film the moment it opens.
+    """
+    actuals = dict(previous or {})
     try:
         with httpx.Client(
             headers={"User-Agent": boxoffice.USER_AGENT},
             follow_redirects=True,
         ) as client:
-            results = boxoffice.fetch_actuals(client)
+            results = boxoffice.fetch_actuals(client, today=now.date())
     except Exception:
         results = []
 
-    if not results:
-        return {}
+    by_title = {title_key(m["title"]): m for m in movies if m.get("title")}
+    published_titles = {title_key(v.get("title", "")) for v in actuals.values()}
 
-    actuals: dict[str, dict] = {}
-    result_lookup = {r.title.lower(): r for r in results}
-
-    for movie in movies:
-        release = movie.get("releaseDate", "")
-        if not release:
+    for result in results:
+        if not result.is_opening_weekend:
             continue
-        try:
-            release_date = dt.datetime.fromisoformat(release.replace("Z", "+00:00"))
-        except (ValueError, AttributeError):
+        key_title = title_key(result.title)
+        if not key_title or key_title in published_titles:
             continue
-        if now < release_date:
-            continue
+        movie = by_title.get(key_title)
+        key = movie["id"] if movie else f"title:{key_title.replace(' ', '-')}"
+        actuals[key] = {
+            "title": movie["title"] if movie else result.title,
+            "domesticOpeningMillions": result.gross_millions,
+            "isOpeningWeekend": True,
+            "isEstimate": result.is_estimate,
+            "weekendOf": result.weekend_of,
+            "source": result.source,
+            "reportedAt": iso(now),
+        }
+        published_titles.add(key_title)
 
-        title_lower = movie["title"].lower()
-        matched = result_lookup.get(title_lower)
-        if not matched:
-            for result in results:
-                if title_lower in result.title.lower() or result.title.lower() in title_lower:
-                    matched = result
-                    break
-
-        if matched:
-            actuals[movie["id"]] = {
-                "title": movie["title"],
-                "domesticOpeningMillions": matched.gross_millions,
-                "isOpeningWeekend": matched.is_opening_weekend,
-                "source": matched.source,
-                "reportedAt": iso(now),
-            }
-
-    return actuals
+    cutoff = (now - dt.timedelta(days=keep_days)).date().isoformat()
+    return {k: v for k, v in actuals.items() if (v.get("weekendOf") or "9999") >= cutoff}
 
 
 def write_json(path: pathlib.Path, payload: dict) -> None:
@@ -322,6 +342,11 @@ def main(argv: list[str] | None = None) -> int:
         default=8,
         help="Max search.list calls per run (100 quota units each).",
     )
+    parser.add_argument(
+        "--previous-actuals",
+        default=None,
+        help="Last published actuals.json; its openings are carried forward unchanged.",
+    )
     args = parser.parse_args(argv)
 
     manifest = build(
@@ -332,6 +357,7 @@ def main(argv: list[str] | None = None) -> int:
         youtube_key=os.getenv("YOUTUBE_API_KEY", ""),
         max_movies=args.max_movies,
         youtube_search_budget=args.youtube_search_budget,
+        previous_actuals_path=pathlib.Path(args.previous_actuals) if args.previous_actuals else None,
     )
     print(json.dumps(manifest, indent=2))
     return 0

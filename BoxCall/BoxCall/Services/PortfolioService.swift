@@ -109,7 +109,7 @@ final class PortfolioService: ObservableObject {
             case .notFound:
                 return "That contract vanished."
             case .alreadySettled:
-                return "Trading on this movie locked when it opened. It settles Monday on the reported opening weekend."
+                return "Trading on this movie locked when it opened. It settles on the opening weekend number, usually reported Sunday."
             }
         }
     }

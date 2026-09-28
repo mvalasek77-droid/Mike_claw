@@ -52,6 +52,13 @@ final class RivalLeagueTests: XCTestCase {
         XCTAssertEqual(stakes, [StartingGrant.reelCoins])
     }
 
+    /// Must agree with the pipeline's `title_key`, or results never match films.
+    func testTitleKey_matchesThePipeline() {
+        XCTAssertEqual(Movie.titleKey("Spider-Man: Brand New Day"), "spider man brand new day")
+        XCTAssertEqual(Movie.titleKey("  Avengers:  Endgame Encore "), "avengers endgame encore")
+        XCTAssertEqual(Movie.titleKey("Amélie"), "amelie")
+    }
+
     func testSeasonName() {
         XCTAssertEqual(Season.name(at: date(2026, 9, 28)), "Summer 2026")
         XCTAssertEqual(Season.name(at: date(2026, 10, 1)), "Fall 2026")

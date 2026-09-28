@@ -48,7 +48,7 @@ final class OrderBookService: ObservableObject {
         case insufficientFunds, invalidLimit, orderLimitReached, tradingLocked
         var errorDescription: String? {
             switch self {
-            case .tradingLocked:     return "Trading on this movie locked when it opened. It settles Monday."
+            case .tradingLocked:     return "Trading on this movie locked when it opened. It settles when the weekend numbers come in, usually Sunday."
             case .insufficientFunds: return "Not enough Reel Coins to reserve for this limit."
             case .invalidLimit:      return "Limit price must be greater than 0."
             case .orderLimitReached: return "You've hit your limit-order cap. Cancel an existing order or upgrade your membership for more."

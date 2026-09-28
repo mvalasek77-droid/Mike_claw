@@ -65,7 +65,10 @@ struct BoxCallApp: App {
                     Task { await settlement.checkAndSettle() }
                 }
             }
-            .onReceive(weeklyTick) { _ in portfolio.applyWeeklyCycle() }
+            .onReceive(weeklyTick) { _ in
+                portfolio.applyWeeklyCycle()
+                Task { await settlement.checkIfDue() }
+            }
             // Ask right after the tour, not on some later launch.
             .onChange(of: hasCompletedOnboarding) { _, done in
                 if done { requestNotificationsIfAppropriate() }

@@ -167,7 +167,8 @@ Losses are real: coins deplete, and if you burn through your balance you can't t
 **Weekly cycle** (`RefillClock.swift` / `WeeklyReset`, `PortfolioService.applyWeeklyCycle()`):
 - **Friday:** a movie opens and trading on it locks (`Movie.isTradingOpen`). Movies that haven't opened keep trading.
 - **Sunday 00:00 local:** the week's stake is taken back; profit is kept as cash. Unfilled limit orders are refunded first. Open positions are never closed — any stake riding on them becomes `stakeOwed`.
-- **Monday 00:00 local:** opening weekends settle and a fresh stake (the tier's `weeklyAllowance`, 1,000 RC free) lands, so a player who lost everything is back in.
+- **Sunday afternoon:** studios report weekend estimates; the BoxCall Data workflow publishes them within the hour and the app settles opening-weekend trades on that figure (frozen, so everyone settles on the same number).
+- **Monday 00:00 local:** a fresh 1,000 RC stake lands, so a player who lost everything is back in.
 - A position that was open at a reset repays up to its cost toward `stakeOwed` from its proceeds; profit above cost is kept, and a losing carried trade owes nothing. This stops a player dodging the reset by parking the stake in an unreleased movie.
 - Missed a week? On next launch you get exactly one reset and one stake — never a stacked backlog.
 

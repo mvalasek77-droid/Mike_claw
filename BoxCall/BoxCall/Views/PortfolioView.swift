@@ -215,7 +215,7 @@ struct PositionRow: View {
                         .controlSize(.small)
                         .accessibilityLabel("Close position at current mark")
                     } else {
-                        Label(movie?.isSettled ?? false ? "Awaiting results" : "Settles Mon",
+                        Label(movie?.isSettled ?? false ? "Awaiting results" : "Settles Sun",
                               systemImage: "lock.fill")
                             .font(.caption2)
                             .foregroundStyle(.secondary)

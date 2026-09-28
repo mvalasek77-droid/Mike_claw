@@ -1,20 +1,25 @@
 name: BoxCall Data
 
-# Builds the static BoxCall API and publishes it to GitHub Pages.
+# Builds the BoxCall data feed — upcoming movies, crowd signals and every
+# opening weekend so far — and publishes it as plain JSON on the
+# `boxcall-data` branch. The app reads it from raw.githubusercontent.com.
 #
-# Cost: zero. Actions minutes are unmetered on public repositories and
-# Pages serves from a CDN on a 100 GB/month soft allowance, which a few
-# hundred KB of JSON refreshed eight times a day does not approach.
+# It deliberately does not use GitHub Pages: this repository's Pages site
+# serves another app's privacy and support pages, and a Pages deploy
+# replaces the whole site.
 #
-# NOTE: GitHub only fires `schedule` on a repository's DEFAULT branch.
-# Until this file is merged there, the cron will not run and you must
-# trigger it by hand from the Actions tab.
+# GitHub only fires `schedule` from the repository's DEFAULT branch. Until
+# this file is on that branch, the feed rebuilds on pushes to the BoxCall
+# branch and from the Actions tab ("Run workflow").
 
 on:
   schedule:
-    # Every three hours. Social numbers move on the order of hours and
-    # the YouTube quota is a daily budget, so more often buys nothing.
-    - cron: "0 */3 * * *"
+    # Catalog and signals, four times a day.
+    - cron: "0 */6 * * *"
+    # Sunday 8 AM–4 PM Pacific, hourly: studios report weekend estimates.
+    - cron: "15 15-23 * * 0"
+    # Sunday evening Pacific, and Monday's corrections.
+    - cron: "15 0-6 * * 1"
   workflow_dispatch:
     inputs:
       max_movies:
@@ -22,27 +27,33 @@ on:
         required: false
         default: "40"
   push:
-    branches: [main, master]
+    branches: [claude/movie-betting-app-hspuu3]
     paths:
       - "backend/pipeline/**"
       - ".github/workflows/boxcall-data.yml"
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
-# Never let two runs publish at once, but let a running build finish
-# rather than cancelling a half-written data set.
+# Never let two runs publish at once, and never cancel one mid-publish.
 concurrency:
-  group: boxcall-pages
+  group: boxcall-data
   cancel-in-progress: false
 
+env:
+  # The branch holding the pipeline code when a scheduled run starts from
+  # the default branch. Override with a repository variable once merged.
+  SOURCE_REF: ${{ vars.BOXCALL_SOURCE_REF || 'claude/movie-betting-app-hspuu3' }}
+  DATA_BRANCH: boxcall-data
+
 jobs:
-  build:
+  build-and-publish:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'push' && github.ref || env.SOURCE_REF }}
 
       - uses: actions/setup-python@v5
         with:
@@ -51,12 +62,13 @@ jobs:
           cache-dependency-path: backend/pipeline/requirements.txt
 
       - name: Install dependencies
-        run: pip install -r backend/pipeline/requirements.txt
+        run: pip install -r backend/pipeline/requirements.txt pytest
+
+      - name: Run unit tests
+        run: python -m pytest backend/pipeline/tests -q
 
       # Resolving a trailer's video id costs 100 YouTube quota units
-      # against a 10,000/day default; the id never changes. Caching it
-      # is the difference between a sustainable pull and burning the
-      # day's budget on every run.
+      # against a 10,000/day default; the id never changes.
       - name: Restore trailer id cache
         uses: actions/cache/restore@v4
         with:
@@ -65,20 +77,32 @@ jobs:
           restore-keys: |
             boxcall-trailer-ids-
 
-      - name: Run unit tests
-        run: python -m pytest backend/pipeline/tests -q
+      # Openings are published once and frozen, so each run must start
+      # from the last published set. If the data branch exists but can't
+      # be read, stop rather than publish a feed that forgot results.
+      - name: Load previously published openings
+        run: |
+          mkdir -p .prev
+          if git ls-remote --exit-code --heads origin "$DATA_BRANCH" > /dev/null; then
+            git fetch --depth=1 origin "$DATA_BRANCH"
+            git show FETCH_HEAD:api/v1/actuals.json > .prev/actuals.json
+            echo "Carrying forward $(python -c 'import json;print(len(json.load(open(".prev/actuals.json"))["actuals"]))') openings."
+          else
+            echo "No data branch yet; starting fresh."
+          fi
 
-      - name: Build the API
+      - name: Build the feed
         env:
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        working-directory: backend/pipeline
         run: |
           python -m boxcall_pipeline.build \
             --out "$GITHUB_WORKSPACE/site/api/v1" \
             --seed "$GITHUB_WORKSPACE/backend/pipeline/seed_movies.json" \
             --cache "$GITHUB_WORKSPACE/.cache/trailer_ids.json" \
+            --previous-actuals "$GITHUB_WORKSPACE/.prev/actuals.json" \
             --max-movies "${{ github.event.inputs.max_movies || 40 }}"
-        working-directory: backend/pipeline
 
       - name: Save trailer id cache
         uses: actions/cache/save@v4
@@ -87,45 +111,39 @@ jobs:
           path: .cache
           key: boxcall-trailer-ids-${{ github.run_id }}
 
-      - name: Assemble the site
-        run: |
-          # Landing page at the root, API underneath it.
-          cp -r landing/. site/ 2>/dev/null || true
-          # Pages runs Jekyll by default, which strips files and folders
-          # beginning with an underscore. We publish plain JSON.
-          touch site/.nojekyll
-          echo "### Published API" >> "$GITHUB_STEP_SUMMARY"
-          echo '```json' >> "$GITHUB_STEP_SUMMARY"
-          cat site/api/v1/index.json >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Fail if the build produced nothing usable
+      - name: Check and summarize the feed
         run: |
           python - <<'PY'
-          import json, pathlib, sys
-          manifest = json.loads(pathlib.Path("site/api/v1/index.json").read_text())
+          import json, os, pathlib, sys
+          root = pathlib.Path("site/api/v1")
+          manifest = json.loads((root / "index.json").read_text())
+          actuals = json.loads((root / "actuals.json").read_text())["actuals"]
+          upcoming = json.loads((root / "upcoming.json").read_text())["movies"]
           if manifest.get("movieCount", 0) < 1:
               sys.exit("Refusing to publish an empty catalog.")
-          signals = json.loads(pathlib.Path("site/api/v1/signals.json").read_text())
-          if not signals.get("signals"):
-              sys.exit("Refusing to publish an empty signal set.")
-          actuals = json.loads(pathlib.Path("site/api/v1/actuals.json").read_text())
-          actuals_count = len(actuals.get("actuals", {}))
-          print(f"OK: {manifest['movieCount']} titles, "
-                f"{len(signals['signals'])} signal records, "
-                f"{actuals_count} box office actuals.")
+          lines = ["### BoxCall feed", "", "**Sources**", ""]
+          lines += [f"- {k}: {v}" for k, v in manifest["sources"].items()]
+          lines += ["", f"**Upcoming ({len(upcoming)})**", ""]
+          lines += [f"- {m['releaseDate']} — {m['title']}" for m in upcoming[:25]]
+          lines += ["", f"**Opening weekends on file ({len(actuals)})**", ""]
+          for a in sorted(actuals.values(), key=lambda a: a.get("weekendOf", ""), reverse=True)[:25]:
+              tag = "estimate" if a.get("isEstimate") else "actual"
+              lines.append(f"- {a.get('weekendOf')} — {a['title']}: ${a['domesticOpeningMillions']}M ({tag}, {a.get('source')})")
+          text = "\n".join(lines)
+          print(text)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+              f.write(text + "\n")
           PY
 
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Publish to the data branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd site
+          git init -q -b "$DATA_BRANCH"
+          git add -A
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "Publish BoxCall data $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -q -f "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$DATA_BRANCH"
+          echo "Published to https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/$DATA_BRANCH/api/v1/"

@@ -2,15 +2,8 @@ import Foundation
 
 /// Merge multiple upcoming-movies providers into one deduped stream.
 ///
-/// In production the composite is:
-///   1. Studio-verified offline slate — trusted cold-start titles/dates
-///   2. TMDB (when configured) — titles, posters, dates
-///   3. BoxCall backend (`/upcoming`) — aggregates IMDb Coming Soon,
-///      The Numbers, Deadline calendars via server-side scrapers
-///   4. Anything else you plug in later
-///
-/// Later sources take priority when the same movie appears twice, so
-/// richer metadata from the backend overrides the TMDB baseline.
+/// Later sources take priority when the same film appears twice; see
+/// `Config.compositeProvider` for the order.
 final class CompositeMovieProvider: MovieDataProvider {
     private let sources: [MovieDataProvider]
     init(_ sources: [MovieDataProvider]) { self.sources = sources }
@@ -36,61 +29,98 @@ final class CompositeMovieProvider: MovieDataProvider {
         return Array(byKey.values).sorted { $0.releaseDate < $1.releaseDate }
     }
 
-    /// Normalize by lowercased title + release-week bucket so the same
-    /// title from different providers merges even if IDs differ.
+    /// Same film, same key — even when sources disagree on the id or on
+    /// a release date the studio has since moved.
     private func dedupKey(for m: Movie) -> String {
-        let cal = Calendar.current
-        let year = cal.component(.year, from: m.releaseDate)
-        let week = cal.component(.weekOfYear, from: m.releaseDate)
-        return "\(m.title.lowercased())_\(year)_\(week)"
+        Movie.titleKey(m.title)
     }
 }
 
-// MARK: - Backend upcoming provider (aggregates IMDb / The Numbers server-side)
+// MARK: - Published feed provider
 
-/// The production upcoming source. Hits your own /upcoming endpoint,
-/// which internally scrapes IMDb Coming Soon, The Numbers release
-/// calendar, and Deadline release schedule. Stubbed here — the endpoint
-/// doesn't exist yet, so it returns [] gracefully and lets TMDB carry
-/// the catalog.
-final class BoxCallBackendUpcomingProvider: MovieDataProvider {
-    let baseURL: URL
-    let session: URLSession
+/// Upcoming releases from the BoxCall data feed (`upcoming.json`), which
+/// the BoxCall Data workflow rebuilds several times a day from TMDB's US
+/// release calendar. This is how new films reach the app without an update.
+final class PublishedCatalogProvider: MovieDataProvider {
+    private let baseURL: URL
+    private let session: URLSession
 
-    init(baseURL: URL = URL(string: "https://api.boxcall.com")!,
-         session: URLSession = .shared) {
+    init(baseURL: URL = Config.dataAPIBaseURL, session: URLSession = .shared) {
         self.baseURL = baseURL
         self.session = session
     }
 
     func fetchUpcoming(windowDays: Int) async throws -> [Movie] {
-        guard var comps = URLComponents(url: baseURL.appendingPathComponent("upcoming"),
-                                        resolvingAgainstBaseURL: false) else { return [] }
-        comps.queryItems = [.init(name: "window_days", value: "\(windowDays)")]
-        guard let url = comps.url else { return [] }
-        do {
-            let (data, resp) = try await session.data(from: url)
-            guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return [] }
-            let decoder = JSONDecoder()
-            let df = DateFormatter(); df.dateFormat = "yyyy-MM-dd"
-            decoder.dateDecodingStrategy = .formatted(df)
-            let batch = try decoder.decode([Movie].self, from: data)
-            return batch
-        } catch {
-            return []   // Backend not up yet — degrade gracefully.
+        var request = URLRequest(url: baseURL.appendingPathComponent("upcoming.json"))
+        request.timeoutInterval = 12
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
+        let feed = try JSONDecoder().decode(Feed.self, from: data)
+        let today = Calendar.current.startOfDay(for: Date())
+        let cutoff = today.addingTimeInterval(Double(windowDays) * 86_400)
+        return feed.movies
+            .compactMap { $0.movie() }
+            .filter { $0.releaseDate >= today && $0.releaseDate <= cutoff }
+    }
+
+    private struct Feed: Decodable {
+        let movies: [Entry]
+    }
+
+    private struct Entry: Decodable {
+        let id: String
+        let title: String
+        let releaseDate: String
+        let posterURL: String?
+        let overview: String?
+        let genre: String?
+        let popularity: Double?
+
+        private static let dateFormatter: DateFormatter = {
+            let f = DateFormatter()
+            f.calendar = Calendar(identifier: .gregorian)
+            f.timeZone = .current
+            f.dateFormat = "yyyy-MM-dd"
+            return f
+        }()
+
+        func movie() -> Movie? {
+            guard let date = Self.dateFormatter.date(from: releaseDate) else { return nil }
+            // Same cold-start estimate as the direct TMDB path; tracking
+            // data refines it once the film is in the catalog.
+            let popularity = min(200, max(1, self.popularity ?? 30))
+            return Movie(
+                id: id,
+                title: title,
+                studio: "—",
+                releaseDate: date,
+                posterEmoji: TMDBMovieProvider.emojiForGenre(genre),
+                posterURL: posterURL,
+                tagline: overview?.split(separator: ".").first.map { String($0) + "." } ?? title,
+                consensusOpeningMillions: (2.0 + popularity / 3.5).rounded(),
+                impliedVolPct: max(20.0, 80.0 - popularity * 0.25).rounded(),
+                genre: genre ?? "—",
+                addedAt: Date(),
+                synopsis: overview
+            )
         }
     }
 }
 
 extension Config {
-    /// Builds a composite that always starts with the studio-verified
-    /// offline slate. Live sources enrich or replace matching entries.
+    /// Every source that can list upcoming films. Later sources win when two
+    /// list the same title, so the hand-verified slate — curated dates,
+    /// cast and stable ids that open positions refer to — has the last word.
     static var compositeProvider: MovieDataProvider {
-        var sources: [MovieDataProvider] = [VerifiedMovieProvider()]
+        var sources: [MovieDataProvider] = []
         if !tmdbAPIKey.isEmpty {
             sources.append(TMDBMovieProvider(apiKey: tmdbAPIKey))
         }
-        sources.append(BoxCallBackendUpcomingProvider())
+        sources.append(PublishedCatalogProvider())
+        sources.append(VerifiedMovieProvider())
         return CompositeMovieProvider(sources)
     }
 }

@@ -168,7 +168,7 @@ struct TheBigIdeaSection: View {
                 Text("The 30-second version")
                     .font(.caption.weight(.bold))
                     .foregroundStyle(.orange)
-                Text("Every movie opens on a Friday. By Monday morning we know the number — say, **$92M for Toy Story 5**.")
+                Text("Most movies open on a Friday. By Sunday afternoon the studios report the number — say, **$92M for Toy Story 5**.")
                     .font(.callout)
                 Text("BoxCall lets you place a friendly bet before that number comes in.")
                     .font(.callout)
@@ -428,7 +428,7 @@ struct SettlementSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             LearnHeader(index: 8, title: LearnSection.settlement.title)
-            LearnParagraph("Trading on a movie locks when it opens on Friday. Over the weekend, the studio reports Friday, Saturday, and Sunday grosses. Monday morning, BoxCall pulls the reported domestic three-day number and settles every open position on that movie. Movies that haven't opened yet keep trading all weekend.")
+            LearnParagraph("Trading on a movie locks when it opens on Friday. On Sunday the studios report the domestic three-day weekend, and BoxCall settles every open position on that movie at that figure — the same number for every player, even if Monday's final count moves it slightly. Movies that haven't opened yet keep trading all weekend.")
             LearnParagraph("Settlement pays the intrinsic value of each contract:")
             HStack(spacing: 10) {
                 FormulaBox(title: "Call settle", formula: "max(actual − K, 0) × mult × qty")
@@ -452,7 +452,7 @@ struct LosingCoinsSection: View {
             LossScenarioCard(
                 number: 1,
                 title: "The contract expires worthless.",
-                explanation: "You bought a Call at the $12M strike for 2.80 RC each × 10 contracts = 28 RC. On Monday the movie opens at $10M — below your strike. Your Call pays $0 intrinsic. You lose the full 28 RC.",
+                explanation: "You bought a Call at the $12M strike for 2.80 RC each × 10 contracts = 28 RC. The movie opens at $10M — below your strike. Your Call pays $0 intrinsic. You lose the full 28 RC.",
                 verdict: "Max loss = premium × quantity. Never more, no matter how far the movie misses."
             )
             LossScenarioCard(
@@ -473,7 +473,7 @@ struct LosingCoinsSection: View {
             Text("The weekly reset")
                 .font(.subheadline.weight(.bold))
 
-            LearnParagraph("Every week follows the box office. Friday: the movie opens and trading on it locks. Sunday at 12:00 AM (your local time): your weekly stake is taken back and you keep any profit above it. Monday at 12:00 AM: opening weekends settle, winners are paid, and every account gets a fresh stake.")
+            LearnParagraph("Every week follows the box office. Friday: the movie opens and trading on it locks. Sunday at 12:00 AM (your local time): your weekly stake is taken back and you keep any profit above it. Sunday afternoon: studios report the weekend, opening-weekend trades settle and winners are paid. Monday at 12:00 AM: every account gets a fresh stake.")
             LearnParagraph("Example: you start the week with a 1,000 RC stake and finish Saturday at 1,350 RC. Sunday the 1,000 goes back and you keep 350. Monday your 1,000 stake returns — 1,350 again. If you'd lost it all, Monday still puts you back at 1,000.")
             LearnParagraph("Trades still running on Sunday — this weekend's opener, or a movie that hasn't opened yet like Avengers: Doomsday — are never closed by the reset. If part of your stake is riding on one, that trade pays the stake back out of its winnings when it settles or you sell it, and you keep everything above that. If it loses, nothing is owed. Unfilled limit orders are cancelled and refunded just before the reset.")
 
@@ -629,7 +629,7 @@ struct GlossarySection: View {
         ("Moneyness",        "How far your strike is from consensus. ITM = in-the-money (already profitable). OTM = out-of-the-money (needs movement)."),
         ("Consensus",        "The current crowd/tracker estimate of opening weekend. The chain is built around it."),
         ("Multiplier",       "Reel Coins per $1M of intrinsic value per contract (default: 1)."),
-        ("Settlement",       "The Monday process that pays intrinsic value on every open position based on the reported opening-weekend gross.")
+        ("Settlement",       "Paying out every open position at the reported opening-weekend gross, usually on Sunday.")
     ]
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {

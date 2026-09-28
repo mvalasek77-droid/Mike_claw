@@ -76,8 +76,18 @@ struct Movie: Identifiable, Codable, Hashable {
         Date() > releaseDate.addingTimeInterval(3 * 86400)
     }
 
+    /// Case- and punctuation-insensitive title. Matches the data pipeline's
+    /// `title_key`, so the same film lines up across sources.
+    static func titleKey(_ title: String) -> String {
+        title.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: nil)
+            .lowercased()
+            .components(separatedBy: CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyz0123456789").inverted)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+    }
+
     /// Contracts can be bought and sold until the movie opens; then they
-    /// lock until Monday settlement.
+    /// lock until the opening weekend number settles them (usually Sunday).
     var isTradingOpen: Bool {
         Date() < opensAt
     }

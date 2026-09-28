@@ -376,26 +376,68 @@ class TestYouTube:
 
 BOM_FIXTURE = """
 <table>
-<tr><td>1</td><td><a href="/release/rl1">Dune: Part Three</a></td>
-<td>$75,200,000</td><td>new</td><td>4,200</td></tr>
-<tr><td>2</td><td><a href="/release/rl2">Toy Story 5</a></td>
-<td>$32,100,000</td><td>-45%</td><td>3,800</td></tr>
+<tr><th>Rank</th><th>LW</th><th>Release</th><th>Gross</th><th>%\u00b1 LW</th><th>Theaters</th>
+<th>Change</th><th>Average</th><th>Total Gross</th><th>Weeks</th><th>Distributor</th>
+<th>New This Week</th><th>Estimated</th></tr>
+<tr><td>1</td><td>-</td><td><a href="/release/rl1">Avengers: Endgame Encore</a></td>
+<td>$26,000,000</td><td>-</td><td>3,900</td><td>-</td><td>$6,666</td><td>$26,000,000</td>
+<td>1</td><td>Walt Disney</td><td>true</td><td>true</td></tr>
+<tr><td>2</td><td>1</td><td><a href="/release/rl2">Resident Evil</a></td>
+<td>$23,300,000</td><td>-61.2%</td><td>3,600</td><td>-</td><td>$6,472</td><td>$103,400,000</td>
+<td>2</td><td>Sony</td><td>false</td><td>true</td></tr>
+<tr><td>3</td><td>-</td><td><a href="/release/rl3">Heart of the Beast</a></td>
+<td>$20,000,000</td><td>-</td><td>3,100</td><td>-</td><td>$6,451</td><td>$20,000,000</td>
+<td>1</td><td>Paramount</td><td>true</td><td>true</td></tr>
+</table>
+"""
+
+NUMBERS_FIXTURE = """
+<table>
+<tr><th></th><th></th><th>Movie Title</th><th>Distributor</th><th>Gross</th><th>Change</th>
+<th>Thtrs.</th><th>Change</th><th>Per Thtr.</th><th>Total Gross</th><th>Week</th></tr>
+<tr><td>1</td><td>new</td><td><b><a href="/movie/x">Resident Evil</a></b></td><td>Sony</td>
+<td>$60,100,000</td><td></td><td>3,500</td><td></td><td>$17,171</td><td>$60,100,000</td><td>1</td></tr>
+<tr><td>2</td><td>1</td><td><b><a href="/movie/y">Practical Magic 2</a></b></td><td>Warner Bros.</td>
+<td>$12,200,000</td><td>-59%</td><td>3,700</td><td></td><td>$3,297</td><td>$50,000,000</td><td>2</td></tr>
 </table>
 """
 
 
 class TestBoxOffice:
-    def test_parse_bom_extracts_titles_and_grosses(self):
-        results = boxoffice._parse_bom(BOM_FIXTURE)
-        assert len(results) == 2
-        assert results[0].title == "Dune: Part Three"
-        assert results[0].gross_millions == 75.2
-        assert results[0].source == "boxofficemojo"
+    def test_bom_columns_are_found_by_header(self):
+        results = boxoffice.parse_chart(BOM_FIXTURE, source="boxofficemojo")
+        assert [r.title for r in results] == [
+            "Avengers: Endgame Encore", "Resident Evil", "Heart of the Beast"]
+        assert results[0].gross_millions == 26.0
+        assert results[0].is_estimate is True
 
-    def test_parse_bom_detects_opening_weekend(self):
-        results = boxoffice._parse_bom(BOM_FIXTURE)
+    def test_only_first_weekends_count_as_openings(self):
+        results = boxoffice.parse_chart(BOM_FIXTURE, source="boxofficemojo")
+        opening = {r.title for r in results if r.is_opening_weekend}
+        assert opening == {"Avengers: Endgame Encore", "Heart of the Beast"}
+
+    def test_the_numbers_layout_parses_the_same_way(self):
+        results = boxoffice.parse_chart(NUMBERS_FIXTURE, source="the-numbers")
+        assert results[0].title == "Resident Evil"
+        assert results[0].gross_millions == 60.1
         assert results[0].is_opening_weekend is True
         assert results[1].is_opening_weekend is False
+
+    def test_a_page_without_a_header_row_yields_nothing(self):
+        assert boxoffice.parse_chart("<table><tr><td>1</td></tr></table>", source="x") == []
+
+    def test_weekend_friday(self):
+        assert boxoffice.weekend_friday(dt.date(2026, 9, 27)) == dt.date(2026, 9, 25)  # Sunday
+        assert boxoffice.weekend_friday(dt.date(2026, 9, 25)) == dt.date(2026, 9, 25)  # Friday
+        assert boxoffice.weekend_friday(dt.date(2026, 9, 30)) == dt.date(2026, 9, 25)  # Wednesday
+
+    def test_sunday_asks_for_this_weekend_friday_does_not(self):
+        assert boxoffice.weekends_to_check(dt.date(2026, 9, 27))[0] == dt.date(2026, 9, 25)
+        assert boxoffice.weekends_to_check(dt.date(2026, 9, 25))[0] == dt.date(2026, 9, 18)
+
+    def test_bom_url_uses_the_iso_week_of_the_friday(self):
+        year, week, _ = dt.date(2026, 9, 25).isocalendar()
+        assert boxoffice.BOM_WEEKEND_URL.format(year=year, week=week).endswith("/weekend/2026W39/")
 
     def test_parse_gross_handles_formats(self):
         assert boxoffice._parse_gross("$75,200,000") == 75200000.0
@@ -407,7 +449,52 @@ class TestBoxOffice:
             def get(self, *a, **k):
                 raise __import__("httpx").HTTPError("down")
 
-        assert boxoffice.fetch_actuals(Boom()) == []
+        assert boxoffice.fetch_actuals(Boom(), today=dt.date(2026, 9, 27)) == []
+
+
+class TestActualsHistory:
+    NOW = dt.datetime(2026, 9, 27, 20, tzinfo=dt.timezone.utc)
+
+    def _collect(self, monkeypatch, results, previous=None, movies=None):
+        from boxcall_pipeline import build as build_module
+        monkeypatch.setattr(boxoffice, "fetch_actuals", lambda client, today=None: results)
+        return build_module.collect_actuals(movies or [], self.NOW, previous)
+
+    def _opening(self, title, gross, *, opening=True, estimate=True):
+        return boxoffice.OpeningResult(title, gross, opening, "boxofficemojo", "2026-09-25", estimate)
+
+    def test_openings_are_keyed_by_catalog_id_when_known(self, monkeypatch):
+        actuals = self._collect(monkeypatch, [self._opening("Resident Evil", 60.1)],
+                                movies=[{"id": "seed_resident_evil", "title": "Resident Evil"}])
+        assert actuals["seed_resident_evil"]["domesticOpeningMillions"] == 60.1
+
+    def test_films_outside_the_catalog_are_published_by_title(self, monkeypatch):
+        actuals = self._collect(monkeypatch, [self._opening("Heart of the Beast", 20.0)])
+        assert actuals["title:heart-of-the-beast"]["title"] == "Heart of the Beast"
+
+    def test_second_weekends_never_become_an_opening(self, monkeypatch):
+        actuals = self._collect(monkeypatch, [self._opening("Resident Evil", 23.3, opening=False)])
+        assert actuals == {}
+
+    def test_a_published_opening_is_frozen(self, monkeypatch):
+        previous = {"seed_resident_evil": {"title": "Resident Evil", "domesticOpeningMillions": 60.1,
+                                           "weekendOf": "2026-09-18"}}
+        actuals = self._collect(monkeypatch, [self._opening("Resident Evil", 61.0, estimate=False)],
+                                previous=previous)
+        assert actuals["seed_resident_evil"]["domesticOpeningMillions"] == 60.1
+
+    def test_history_is_carried_forward_and_pruned_after_six_months(self, monkeypatch):
+        previous = {
+            "recent": {"title": "Recent", "domesticOpeningMillions": 10, "weekendOf": "2026-09-11"},
+            "ancient": {"title": "Ancient", "domesticOpeningMillions": 10, "weekendOf": "2026-01-02"},
+        }
+        actuals = self._collect(monkeypatch, [], previous=previous)
+        assert "recent" in actuals and "ancient" not in actuals
+
+    def test_title_key_ignores_case_and_punctuation(self):
+        from boxcall_pipeline.build import title_key
+        assert title_key("Spider-Man: Brand New Day") == title_key("spider man brand new day")
+        assert title_key("Amélie") == "amelie"
 
 
 # --------------------------------------------------------------------

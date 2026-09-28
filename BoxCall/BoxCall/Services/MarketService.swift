@@ -114,14 +114,21 @@ final class MarketService: ObservableObject {
         var byId: [String: Movie] = Dictionary(uniqueKeysWithValues: movies.map { ($0.id, $0) })
         var chainsById = chains
         var addedIds: Set<String> = []
+        // A film already listed under another source's id is the same film:
+        // update it in place instead of listing it twice.
+        let idByTitle = Dictionary(movies.map { (Movie.titleKey($0.title), $0.id) },
+                                   uniquingKeysWith: { first, _ in first })
+        var remoteIds: Set<String> = []
 
         for r in remote {
-            if let existing = byId[r.id] {
+            let id = byId[r.id] != nil ? r.id : (idByTitle[Movie.titleKey(r.title)] ?? r.id)
+            remoteIds.insert(id)
+            if let existing = byId[id] {
                 // Refresh metadata; keep addedAt so NEW badge doesn't retrigger.
                 // Rich facts: prefer the remote's if present, else keep what
                 // we had (the seed carries hand-curated director/cast/synopsis
                 // that TMDB's /upcoming endpoint doesn't return).
-                byId[r.id] = Movie(
+                byId[id] = Movie(
                     id: existing.id, title: r.title, studio: r.studio,
                     releaseDate: r.releaseDate, posterEmoji: r.posterEmoji,
                     posterURL: r.posterURL ?? existing.posterURL, tagline: r.tagline,
@@ -132,7 +139,8 @@ final class MarketService: ObservableObject {
                     cast: r.cast.isEmpty ? existing.cast : r.cast,
                     synopsis: r.synopsis ?? existing.synopsis,
                     trailerQuery: r.trailerQuery ?? existing.trailerQuery,
-                    criticScore: r.criticScore ?? existing.criticScore)
+                    criticScore: r.criticScore ?? existing.criticScore,
+                    tradeProjection: r.tradeProjection ?? existing.tradeProjection)
             } else {
                 byId[r.id] = r
                 chainsById[r.id] = generateChain(for: r)
@@ -144,7 +152,6 @@ final class MarketService: ObservableObject {
         // Prune old local movies that already opened and have no open positions.
         let openMovieIds = Set(PortfolioService.shared.positions
             .filter { $0.isOpen }.map { $0.movieId })
-        let remoteIds = Set(remote.map(\.id))
         for (id, m) in byId {
             if remoteIds.contains(id) { continue }
             if openMovieIds.contains(id) { continue }

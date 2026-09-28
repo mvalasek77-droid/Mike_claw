@@ -78,14 +78,14 @@ struct DataSourcesView: View {
                             ? "Not configured (add TMDB_API_KEY in Info.plist)"
                             : "Connected — fetched client-side, no proxy.",
                           wired: !Config.tmdbAPIKey.isEmpty)
-                SourceRow(name: "IMDb Coming Soon",
-                          role: "Broader upcoming calendar, especially indies TMDB is late on.",
-                          status: "Aggregated by the backend at api.boxcall.com/upcoming (server-side scraper). Backend endpoint stubbed; degrades gracefully to TMDB.",
-                          wired: false)
-                SourceRow(name: "The Numbers — release schedule",
-                          role: "Weekend-by-weekend slate + wide vs limited flags.",
-                          status: "Same backend aggregator. Server-side scraper.",
-                          wired: false)
+                SourceRow(name: "BoxCall data feed",
+                          role: "New releases from TMDB's US calendar, rebuilt several times a day, so films appear without an app update.",
+                          status: "Published by the BoxCall Data workflow; the verified slate fills in if it's unreachable.",
+                          wired: true)
+                SourceRow(name: "Box Office Mojo / The Numbers — weekend charts",
+                          role: "Opening-weekend numbers that settle every trade.",
+                          status: "Read hourly on Sunday afternoons (US). Positions settle on the studios' Sunday estimate, the same figure for every player.",
+                          wired: true)
             }
             Group {
                 Text("Pre-release tracking (feeds the price setter)")

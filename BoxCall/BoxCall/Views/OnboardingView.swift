@@ -140,8 +140,8 @@ struct OnboardingView: View {
     private var settleSlide: some View {
         slide(step: 5,
               tab: nil,
-              title: "Results on Monday.",
-              body: "After opening weekend, BoxCall pulls the reported box-office number and settles every position automatically. Winners get paid for every $1M past their line.") {
+              title: "Results on Sunday.",
+              body: "On Sunday the studios report the weekend, and BoxCall settles every position on that number automatically. Winners get paid for every $1M past their line.") {
             MockCard {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
@@ -165,10 +165,10 @@ struct OnboardingView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     weekRow(day: "FRI", icon: "lock.fill", color: .orange,
                             text: "The movie opens. Trading on it locks.")
-                    weekRow(day: "SUN", icon: "arrow.uturn.backward.circle.fill", color: .red,
-                            text: "Weekly reset. Your 1,000 stake goes back — **you keep your profit**.")
-                    weekRow(day: "MON", icon: "checkmark.seal.fill", color: .green,
-                            text: "Results settle and winners get paid. **Everyone gets a fresh 1,000**, so a bad week never locks you out.")
+                    weekRow(day: "SUN", icon: "checkmark.seal.fill", color: .red,
+                            text: "Weekly reset: your 1,000 stake goes back — **you keep your profit**. Studios report the weekend and winners get paid.")
+                    weekRow(day: "MON", icon: "arrow.clockwise.circle.fill", color: .green,
+                            text: "**Everyone gets a fresh 1,000**, so a bad week never locks you out.")
                     Divider()
                     weekRow(day: "ALL", icon: "arrow.right.circle.fill", color: .blue,
                             text: "Trades on movies that haven't opened yet — like Avengers: Doomsday — keep running right through the reset.")
