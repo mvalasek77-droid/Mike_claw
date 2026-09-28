@@ -90,6 +90,7 @@ final class SettlementService: ObservableObject {
 
     private static let knownActuals: [String: Double] = [
         "m_practical_magic2": 30.0,
+        "m_resident_evil": 60.1,     // Sep 18–20, 2026 domestic opening
     ]
 
     // MARK: - Data fetching
