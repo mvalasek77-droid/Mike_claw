@@ -2,6 +2,7 @@ import Foundation
 import WatchConnectivity
 import Combine
 
+@MainActor
 final class WatchBridge: NSObject, ObservableObject, WCSessionDelegate {
     static let shared = WatchBridge()
 
@@ -60,13 +61,13 @@ final class WatchBridge: NSObject, ObservableObject, WCSessionDelegate {
 
     // MARK: - WCSessionDelegate
 
-    func session(_ session: WCSession,
-                 activationDidCompleteWith activationState: WCSessionActivationState,
-                 error: Error?) {
-        DispatchQueue.main.async { self.loadFromAppGroup() }
+    nonisolated func session(_ session: WCSession,
+                             activationDidCompleteWith activationState: WCSessionActivationState,
+                             error: Error?) {
+        Task { @MainActor in self.loadFromAppGroup() }
     }
 
-    func session(_ session: WCSession, didReceiveApplicationContext ctx: [String: Any]) {
-        DispatchQueue.main.async { self.loadFromAppGroup() }
+    nonisolated func session(_ session: WCSession, didReceiveApplicationContext ctx: [String: Any]) {
+        Task { @MainActor in self.loadFromAppGroup() }
     }
 }

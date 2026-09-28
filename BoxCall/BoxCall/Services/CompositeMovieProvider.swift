@@ -64,8 +64,8 @@ final class BoxCallBackendUpcomingProvider: MovieDataProvider {
     }
 
     func fetchUpcoming(windowDays: Int) async throws -> [Movie] {
-        var comps = URLComponents(url: baseURL.appendingPathComponent("upcoming"),
-                                  resolvingAgainstBaseURL: false)!
+        guard var comps = URLComponents(url: baseURL.appendingPathComponent("upcoming"),
+                                        resolvingAgainstBaseURL: false) else { return [] }
         comps.queryItems = [.init(name: "window_days", value: "\(windowDays)")]
         guard let url = comps.url else { return [] }
         do {

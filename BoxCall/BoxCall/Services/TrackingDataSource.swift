@@ -95,8 +95,8 @@ final class BoxCallBackendTrackingSource: TrackingDataSource {
     }
 
     func tracking(for movie: Movie) async -> Tracking? {
-        var comps = URLComponents(url: baseURL.appendingPathComponent("tracking"),
-                                  resolvingAgainstBaseURL: false)!
+        guard var comps = URLComponents(url: baseURL.appendingPathComponent("tracking"),
+                                        resolvingAgainstBaseURL: false) else { return nil }
         comps.queryItems = [.init(name: "movie_id", value: movie.id)]
         guard let url = comps.url else { return nil }
         do {
