@@ -1,0 +1,100 @@
+name: BoxCall iOS
+
+# Builds every BoxCall target with the newest Xcode on the runner and runs
+# the unit and UI tests on an iPhone simulator. Code signing is disabled:
+# simulator builds don't need it.
+
+on:
+  push:
+    branches: [claude/movie-betting-app-hspuu3]
+    paths:
+      - "BoxCall/**"
+      - ".github/workflows/boxcall-ios.yml"
+  pull_request:
+    paths:
+      - "BoxCall/**"
+  workflow_dispatch:
+
+concurrency:
+  group: boxcall-ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: macos-15
+    timeout-minutes: 75
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select the newest Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+          xcrun simctl list runtimes
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate the Xcode project
+        working-directory: BoxCall
+        run: xcodegen generate
+
+      - name: Pick an iPhone simulator
+        id: sim
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          best = None
+          for runtime, entries in devices.items():
+              if ".iOS-" not in runtime:
+                  continue
+              version = tuple(int(p) for p in runtime.split(".iOS-")[1].split("-"))
+              for d in entries:
+                  if not d["isAvailable"] or not d["name"].startswith("iPhone"):
+                      continue
+                  # Prefer the newest runtime, then a regular-size Pro model.
+                  score = (version, "Pro" in d["name"] and "Max" not in d["name"])
+                  if best is None or score > best[0]:
+                      best = (score, d["udid"], d["name"], runtime)
+          print(best[1])
+          print(best[2], best[3], file=sys.stderr)
+          ')
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+
+      - name: Build and run tests
+        working-directory: BoxCall
+        run: |
+          set +e
+          xcodebuild test \
+            -project BoxCall.xcodeproj \
+            -scheme BoxCall \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -resultBundlePath TestResults.xcresult \
+            CODE_SIGNING_ALLOWED=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            > xcodebuild.log 2>&1
+          STATUS=$?
+          grep -E "error:|Test Case .*(passed|failed)|Executed|\*\* (BUILD|TEST)" xcodebuild.log | sort -u | head -400
+          exit $STATUS
+
+      - name: Summarize failures
+        if: failure()
+        working-directory: BoxCall
+        run: |
+          echo "==== Compile errors ===="
+          grep -E "^/.*error:" xcodebuild.log | sort -u | head -150 || true
+          echo "==== Failed tests ===="
+          grep -E "Test Case .* failed|XCTAssert|error: -\[" xcodebuild.log | head -150 || true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BoxCall-TestResults
+          path: |
+            BoxCall/TestResults.xcresult
+            BoxCall/xcodebuild.log
+          if-no-files-found: ignore
