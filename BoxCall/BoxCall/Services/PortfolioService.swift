@@ -5,13 +5,50 @@ import Combine
 final class PortfolioService: ObservableObject {
     static let shared = PortfolioService()
 
-    @Published var user: User
-    @Published private(set) var positions: [Position] = []
+    @Published var user: User { didSet { persist() } }
+    @Published private(set) var positions: [Position] = [] { didSet { persist() } }
     @Published private(set) var leaderboard: [LeaderboardEntry] = []
 
+    private struct Saved: Codable {
+        var user: User
+        var positions: [Position]
+    }
+
+    private static var fileURL: URL {
+        URL.applicationSupportDirectory.appendingPathComponent("portfolio.json")
+    }
+
     private init() {
+        if let data = try? Data(contentsOf: Self.fileURL),
+           let saved = try? JSONDecoder().decode(Saved.self, from: data) {
+            self.user = saved.user
+            self.positions = saved.positions
+        } else {
+            self.user = Self.freshUser()
+        }
+        seedLeaderboard()
+        redeemWeeklyIfDue()
+    }
+
+    private func persist() {
+        guard let data = try? JSONEncoder().encode(Saved(user: user, positions: positions)) else { return }
+        try? FileManager.default.createDirectory(at: URL.applicationSupportDirectory,
+                                                 withIntermediateDirectories: true)
+        try? data.write(to: Self.fileURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+    }
+
+    /// Wipes every saved trade and returns the account to a brand-new state.
+    func eraseAllData() {
+        try? FileManager.default.removeItem(at: Self.fileURL)
+        positions = []
+        user = Self.freshUser()
+        seedLeaderboard()
+        redeemWeeklyIfDue()
+    }
+
+    private static func freshUser() -> User {
         // Every account starts identical. Paid tiers layer bonuses on top.
-        self.user = User(
+        User(
             handle: "you",
             reelCoins: StartingGrant.reelCoins,
             lifetimePnL: 0,
@@ -28,8 +65,6 @@ final class PortfolioService: ObservableObject {
             membership: .free,
             appleUserId: nil
         )
-        seedLeaderboard()
-        redeemWeeklyIfDue()
     }
 
     // MARK: - Membership

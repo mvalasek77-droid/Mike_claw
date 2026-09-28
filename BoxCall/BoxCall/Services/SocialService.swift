@@ -16,6 +16,14 @@ final class SocialService: ObservableObject {
         seedReviews()
     }
 
+    func removeCurrentUserContent() {
+        let me = PortfolioService.shared.user.handle
+        for i in feed.indices { feed[i].comments.removeAll { $0.authorHandle == me } }
+        feed.removeAll { $0.authorIsCurrentUser }
+        reviews.removeAll { $0.authorIsCurrentUser }
+        postByPositionId.removeAll()
+    }
+
     // MARK: - Reviews
 
     /// Latest reviews by the current top-5 leaderboard performers, in leaderboard order.

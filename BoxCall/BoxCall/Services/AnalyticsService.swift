@@ -1,10 +1,8 @@
 import Foundation
 
-/// One-line-per-event analytics wrapper. Ships two sinks:
-///   - `ConsoleAnalyticsSink` — always on in Debug for developer sanity
-///   - `BoxCallBackendSink` — POSTs to api.boxcall.com/analytics/events.
-///     Stubbed until the backend exists; fails silently and never blocks
-///     the caller.
+/// One-line-per-event analytics wrapper. Only the console sink is active:
+/// `BoxCallBackendSink` stays off until there is a backend we control and
+/// the App Store privacy label declares the upload.
 ///
 /// Events are anonymous (no PII). Sign-in status is tracked only as a
 /// bool flag on each event.
@@ -15,7 +13,7 @@ import Foundation
 final class AnalyticsService {
     static let shared = AnalyticsService()
 
-    var sinks: [AnalyticsSink] = [ConsoleAnalyticsSink(), BoxCallBackendSink()]
+    var sinks: [AnalyticsSink] = [ConsoleAnalyticsSink()]
     var isEnabled: Bool = true
 
     private init() {}

@@ -1,6 +1,7 @@
 import Foundation
 import AuthenticationServices
 import Combine
+import UserNotifications
 
 /// Sign in with Apple + guest mode. Persists the credential the OS
 /// hands back and hydrates User.handle / User.appleUserId. Guest
@@ -111,6 +112,24 @@ final class AuthService: NSObject, ObservableObject {
         UserDefaults.standard.removeObject(forKey: emailKey)
         PortfolioService.shared.mutateUser { $0.appleUserId = nil }
         AnalyticsService.shared.track(.signOut)
+    }
+
+    /// Permanently erases the account. All BoxCall data lives on this device,
+    /// so this wipes it here and returns the app to its first-launch state.
+    func deleteAccount() {
+        signOut()
+        OrderBookService.shared.eraseAllData()
+        SocialService.shared.removeCurrentUserContent()
+        PortfolioService.shared.eraseAllData()
+        UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+        UNUserNotificationCenter.current().removeAllDeliveredNotifications()
+        if let bundleId = Bundle.main.bundleIdentifier {
+            UserDefaults.standard.removePersistentDomain(forName: bundleId)
+        }
+        WidgetSyncService.sync()
+        // Set explicitly so @AppStorage observers flip back to the age gate.
+        UserDefaults.standard.set(false, forKey: "hasCompletedOnboarding")
+        UserDefaults.standard.set(false, forKey: "passedAgeGate")
     }
 
     private func checkExistingCredential() {

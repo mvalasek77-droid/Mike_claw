@@ -10,10 +10,35 @@ import Combine
 final class OrderBookService: ObservableObject {
     static let shared = OrderBookService()
 
-    @Published private(set) var openOrders: [LimitOrder] = []
+    @Published private(set) var openOrders: [LimitOrder] = [] {
+        didSet { if openOrders != oldValue { persist() } }
+    }
     @Published private(set) var filledOrders: [LimitOrder] = []
 
-    private init() {}
+    private static var fileURL: URL {
+        URL.applicationSupportDirectory.appendingPathComponent("open_orders.json")
+    }
+
+    private init() {
+        if let data = try? Data(contentsOf: Self.fileURL),
+           let saved = try? JSONDecoder().decode([LimitOrder].self, from: data) {
+            openOrders = saved
+        }
+    }
+
+    private func persist() {
+        guard let data = try? JSONEncoder().encode(openOrders) else { return }
+        try? FileManager.default.createDirectory(at: URL.applicationSupportDirectory,
+                                                 withIntermediateDirectories: true)
+        try? data.write(to: Self.fileURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+    }
+
+    /// Drops every order without refunding — used when the whole account is erased.
+    func eraseAllData() {
+        openOrders = []
+        filledOrders = []
+        try? FileManager.default.removeItem(at: Self.fileURL)
+    }
 
     enum PlaceError: LocalizedError {
         case insufficientFunds, invalidLimit, orderLimitReached

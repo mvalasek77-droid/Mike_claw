@@ -59,17 +59,17 @@ struct LegalView: View {
 
     private static let privacySections: [(title: String, body: String)] = [
         ("What we collect",
-         "Guest state stays on your device. If you Sign in with Apple, we store the Apple user ID and, if you provide it, your email — used only to sync your positions and reputation across your devices."),
+         "Everything you do in BoxCall — Reel Coins, trades, XP, posts and reviews — is stored only on your device. If you Sign in with Apple, the Apple user ID and, if you share it, your email are also stored only on your device. We do not run a server that holds your account."),
         ("What we do not collect",
          "We do not sell your data. We do not read your contacts. We do not track you across other apps or websites. We do not use third-party ad networks."),
         ("Analytics",
-         "We record anonymous product events (a trade was placed, a badge was unlocked, a screen was viewed) to improve the app. Events cannot be linked to your real identity."),
+         "BoxCall does not send analytics off your device."),
         ("Third-party services",
-         "TMDB delivers movie metadata directly to the app; YouTube's public API is used to fetch trailer view counts. These providers see the queries we send but not your identity."),
+         "TMDB delivers movie metadata directly to the app; YouTube's public API is used to fetch trailer view counts; opening-weekend results are downloaded from a public BoxCall data file hosted on GitHub Pages. These providers see the requests we send but not your identity."),
         ("Push notifications",
          "You can grant or deny notification permission at any time in iOS Settings. We only send transactional notifications (settlements, followers, badges, opening reminders)."),
         ("Data deletion",
-         "Sign out from the profile screen to erase local credentials. To have any server-stored state deleted, email privacy@boxcall.com."),
+         "Go to Profile › Delete account and data. This permanently erases your account, trades, posts, reviews and sign-in details from your device. Deleting the app also removes all of it."),
         ("Children",
          "BoxCall is 13+. If we learn we have collected data from a child under 13, we will delete it.")
     ]

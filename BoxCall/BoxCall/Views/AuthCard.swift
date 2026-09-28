@@ -8,6 +8,7 @@ struct AuthCard: View {
     @EnvironmentObject var portfolio: PortfolioService
     @ObservedObject var auth = AuthService.shared
     @Environment(\.colorScheme) private var colorScheme
+    @State private var confirmDelete = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -63,9 +64,26 @@ struct AuthCard: View {
             if let err = auth.lastError {
                 Text(err).font(.caption2).foregroundStyle(.red)
             }
+
+            Divider()
+
+            Button(role: .destructive) {
+                confirmDelete = true
+            } label: {
+                Label("Delete account and data", systemImage: "trash")
+                    .font(.caption.weight(.semibold))
+            }
+            .buttonStyle(.borderless)
+            .tint(.red)
         }
         .padding(12)
         .background(RoundedRectangle(cornerRadius: 12)
                         .fill(Color(.secondarySystemBackground)))
+        .alert("Delete your account?", isPresented: $confirmDelete) {
+            Button("Delete", role: .destructive) { auth.deleteAccount() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This permanently erases your Reel Coins, trades, XP, badges, posts and reviews, and signs you out. It can't be undone. Any paid membership keeps billing until you cancel it in Settings › Apple ID › Subscriptions.")
+        }
     }
 }

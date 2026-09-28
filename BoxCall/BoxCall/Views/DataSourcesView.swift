@@ -168,7 +168,7 @@ struct DataSourcesView: View {
     }
 
     private var disclaimer: some View {
-        Text("BoxCall is not affiliated with TMDB, IMDb, Amazon, Box Office Mojo, The Numbers, or Deadline. All trademarks belong to their respective owners. Data used under each provider's public terms.")
+        Text("This product uses the TMDB API but is not endorsed or certified by TMDB. BoxCall is not affiliated with TMDB, IMDb, Amazon, Box Office Mojo, The Numbers, or Deadline. All trademarks belong to their respective owners. Data used under each provider's public terms.")
             .font(.caption2)
             .foregroundStyle(.secondary)
             .padding(.top, 6)

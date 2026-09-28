@@ -100,7 +100,8 @@ Ship-ready test matrix. Run through this before every App Store submission. Auto
 - [ ] No PII in analytics event NDJSON on the backend. Only `signed_in` bool + membership + event name + props.
 - [ ] No secret keys shipped in the app binary — YouTube key is optional and read from Info.plist; X API key never leaves the backend.
 - [ ] Privacy Policy + ToS linked from Profile and match `appstore/category_and_rating.txt` App Privacy answers.
-- [ ] Delete-account path: sign out clears local credentials; server deletion via email per policy.
+- [ ] Delete-account path: Profile › Delete account and data wipes trades, coins, posts, reviews and sign-in, and returns to the age gate.
+- [ ] Force-quit and relaunch: coins, open/settled positions and resting limit orders are all still there.
 
 ## 13 · Market-making desk (sentiment-driven quotes)
 
