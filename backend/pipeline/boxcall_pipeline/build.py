@@ -367,7 +367,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", default="site/api/v1", help="Output directory.")
     parser.add_argument("--seed", default="backend/pipeline/seed_movies.json")
     parser.add_argument("--cache", default=".cache/trailer_ids.json")
-    parser.add_argument("--max-movies", type=int, default=40)
+    parser.add_argument("--max-movies", type=int, default=80)
     parser.add_argument(
         "--youtube-search-budget",
         type=int,

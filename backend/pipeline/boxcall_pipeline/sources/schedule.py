@@ -55,6 +55,8 @@ _DATE = re.compile(
 )
 # Special screenings and re-issues don't have a real opening weekend.
 _NOT_A_NEW_RELEASE = re.compile(r"re-?release|anniversary|special engagement|fathom", re.IGNORECASE)
+# Placeholder listings ("Untitled Disney Film") have nothing to trade on.
+_PLACEHOLDER = re.compile(r"^untitled\b", re.IGNORECASE)
 # Imprints that share a big studio's name but release small.
 _SMALL_IMPRINTS = ("lionsgate premiere",)
 _BLOCK = re.compile(r"<tr[^>]*>.*?</tr>|<h[1-6][^>]*>.*?</h[1-6]>", re.DOTALL | re.IGNORECASE)
@@ -151,7 +153,7 @@ def parse_calendar(page: str, *, source: str, today: dt.date, horizon_days: int)
 
         title = re.sub(r"\s*\((?:\d{4}|re-?release)\)\s*$", "", title, flags=re.IGNORECASE).strip()
         key = slug(title)
-        if not title or key in seen:
+        if not title or key in seen or _PLACEHOLDER.search(title):
             continue
         seen.add(key)
         out.append({
@@ -165,6 +167,19 @@ def parse_calendar(page: str, *, source: str, today: dt.date, horizon_days: int)
             "source": source,
         })
     return out
+
+
+def _same_film_listed(film: dict, listed) -> bool:
+    """The sites name some films differently ("Ramayana" / "Ramayana Part 1"):
+    same date, same studio, and one title extends the other."""
+    key = slug(film["title"])
+    for other in listed:
+        if other["releaseDate"] != film["releaseDate"] or other["distributor"] != film["distributor"]:
+            continue
+        other_key = slug(other["title"])
+        if key.startswith(other_key + "-") or other_key.startswith(key + "-"):
+            return True
+    return False
 
 
 def calendar_pages(today: dt.date, horizon_days: int) -> list[tuple[str, str]]:
@@ -210,7 +225,8 @@ def fetch_upcoming(client: httpx.Client, *, today: dt.date | None = None,
             sample = [_text(b)[:160] for b in _BLOCK.findall(response.text) if _LINK.search(b)][:15]
             print(f"[schedule] {url} parsed nothing; sample rows:", *sample, sep="\n  ")
         for film in parsed:
-            films.setdefault(film["id"], film)
+            if film["id"] not in films and not _same_film_listed(film, films.values()):
+                films[film["id"]] = film
 
     merged = sorted(films.values(), key=lambda f: f["releaseDate"])
     if not merged:

@@ -25,7 +25,7 @@ on:
       max_movies:
         description: "Titles to collect signals for"
         required: false
-        default: "40"
+        default: "80"
   push:
     branches: [claude/movie-betting-app-hspuu3]
     paths:
@@ -102,7 +102,7 @@ jobs:
             --seed "$GITHUB_WORKSPACE/backend/pipeline/seed_movies.json" \
             --cache "$GITHUB_WORKSPACE/.cache/trailer_ids.json" \
             --previous-actuals "$GITHUB_WORKSPACE/.prev/actuals.json" \
-            --max-movies "${{ github.event.inputs.max_movies || 40 }}"
+            --max-movies "${{ github.event.inputs.max_movies || 80 }}"
 
       - name: Save trailer id cache
         uses: actions/cache/save@v4

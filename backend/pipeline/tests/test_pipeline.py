@@ -589,6 +589,26 @@ class TestScheduleOnRealLayouts:
         assert any(u.endswith("/calendar/2026-12-21/") for u in client.urls)   # out to the horizon
         assert status.startswith("ok (3 wide releases") and "HTTP 404" in status
 
+    def test_placeholders_and_renamed_duplicates_are_dropped(self):
+        page = """<table>
+<tr><td>November 6</td><td><a href="/movie/a">Ramayana</a> (Wide)</td><td>Sony Pictures</td></tr>
+<tr><td></td><td><a href="/movie/b">Untitled Disney Film</a> (Wide)</td><td>Walt Disney</td></tr>
+</table>"""
+        other = page.replace(">Ramayana<", ">Ramayana Part 1<")
+
+        class Response:
+            status_code = 200
+
+            def __init__(self, text):
+                self.text = text
+
+        class Client:
+            def get(self, url, **_):
+                return Response(other if "the-numbers" in url else page)
+
+        films, _ = schedule.fetch_upcoming(Client(), today=self.TODAY)
+        assert [f["title"] for f in films] == ["Ramayana"]
+
     def test_year_rolls_over_for_early_months(self):
         assert schedule._parse_date("January 8", dt.date(2026, 11, 20)) == dt.date(2027, 1, 8)
         assert schedule._parse_date("September 30", dt.date(2026, 9, 28)) == dt.date(2026, 9, 30)
