@@ -25,7 +25,7 @@ import unicodedata
 import httpx
 
 from . import sentiment
-from .sources import bluesky, boxoffice, tmdb, wikipedia, youtube
+from .sources import bluesky, boxoffice, schedule, tmdb, wikipedia, youtube
 
 SCHEMA_VERSION = 1
 # Bluesky asks public clients to be gentle; a short pause between titles
@@ -173,20 +173,19 @@ def build(
         follow_redirects=True,
     ) as client:
         # --- Catalog -------------------------------------------------
-        movies = tmdb.fetch_upcoming(client, tmdb_key) if tmdb_key else []
-        if movies:
-            source_status["tmdb"] = f"ok ({len(movies)} titles)"
-        else:
-            movies = load_seed(seed_path)
-            source_status["tmdb"] = (
-                "not configured — using bundled seed"
-                if not tmdb_key
-                else "failed — using bundled seed"
-            )
+        # TMDB (with a key) and the public release calendars both list
+        # upcoming films; the bundled seed covers anything they miss.
+        tmdb_movies = tmdb.fetch_upcoming(client, tmdb_key) if tmdb_key else []
+        source_status["tmdb"] = (
+            f"ok ({len(tmdb_movies)} titles)" if tmdb_movies
+            else "not configured" if not tmdb_key else "failed"
+        )
+        calendar_movies, source_status["schedule"] = schedule.fetch_upcoming(client, today=now.date())
+        movies = merge_catalog(tmdb_movies, calendar_movies, load_seed(seed_path), today=now.date())
         movies = movies[:max_movies]
 
         if not movies:
-            raise SystemExit("No movies from TMDB and no seed file; nothing to build.")
+            raise SystemExit("No upcoming films from any source; nothing to build.")
 
         # --- Per-movie signals ---------------------------------------
         budget = [youtube_search_budget]
@@ -218,6 +217,14 @@ def build(
     )
 
     save_trailer_cache(cache_path, trailer_cache)
+
+    # Cold-start opening estimates for calendar films (TMDB entries carry
+    # popularity instead, which the app turns into its own estimate).
+    views = {sig["id"]: sig.get("wikipediaViews7d") for sig in signals}
+    for movie in movies:
+        baseline = movie.pop("baselineOpeningMillions", None)
+        if baseline is not None:
+            movie["estimatedOpeningMillions"] = schedule.estimate_opening(baseline, views.get(movie["id"]))
 
     # --- Box office actuals -----------------------------------------
     previous = load_previous_actuals(previous_actuals_path)
@@ -255,6 +262,31 @@ def build(
         },
     )
     return manifest
+
+
+def merge_catalog(*sources: list[dict], today: dt.date) -> list[dict]:
+    """Upcoming films from every source, one entry per title, soonest first.
+
+    Earlier sources win a title; later ones only fill fields it lacks
+    (a calendar entry adds the distributor a TMDB entry doesn't carry).
+    """
+    merged: dict[str, dict] = {}
+    for batch in sources:
+        for movie in batch:
+            if not movie.get("title") or not movie.get("releaseDate"):
+                continue
+            try:
+                if dt.date.fromisoformat(movie["releaseDate"][:10]) < today:
+                    continue
+            except ValueError:
+                continue
+            key = title_key(movie["title"])
+            if key in merged:
+                for field, value in movie.items():
+                    merged[key].setdefault(field, value)
+            else:
+                merged[key] = dict(movie)
+    return sorted(merged.values(), key=lambda m: m["releaseDate"])
 
 
 def title_key(title: str) -> str:

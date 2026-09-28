@@ -39,8 +39,9 @@ final class CompositeMovieProvider: MovieDataProvider {
 // MARK: - Published feed provider
 
 /// Upcoming releases from the BoxCall data feed (`upcoming.json`), which
-/// the BoxCall Data workflow rebuilds several times a day from TMDB's US
-/// release calendar. This is how new films reach the app without an update.
+/// the BoxCall Data workflow rebuilds several times a day from Box Office
+/// Mojo's and The Numbers' release calendars (and TMDB when a key is set).
+/// This is how new films reach the app without an update.
 final class PublishedCatalogProvider: MovieDataProvider {
     private let baseURL: URL
     private let session: URLSession
@@ -78,6 +79,9 @@ final class PublishedCatalogProvider: MovieDataProvider {
         let overview: String?
         let genre: String?
         let popularity: Double?
+        let distributor: String?
+        /// The pipeline's cold-start estimate for calendar films.
+        let estimatedOpeningMillions: Double?
 
         private static let dateFormatter: DateFormatter = {
             let f = DateFormatter()
@@ -89,18 +93,20 @@ final class PublishedCatalogProvider: MovieDataProvider {
 
         func movie() -> Movie? {
             guard let date = Self.dateFormatter.date(from: releaseDate) else { return nil }
-            // Same cold-start estimate as the direct TMDB path; tracking
-            // data refines it once the film is in the catalog.
+            // Prefer the pipeline's distributor-based estimate; otherwise the
+            // same popularity heuristic as the direct TMDB path. Trading
+            // moves the number from here.
             let popularity = min(200, max(1, self.popularity ?? 30))
+            let estimate = estimatedOpeningMillions ?? (2.0 + popularity / 3.5)
             return Movie(
                 id: id,
                 title: title,
-                studio: "—",
+                studio: distributor ?? "—",
                 releaseDate: date,
                 posterEmoji: TMDBMovieProvider.emojiForGenre(genre),
                 posterURL: posterURL,
                 tagline: overview?.split(separator: ".").first.map { String($0) + "." } ?? title,
-                consensusOpeningMillions: (2.0 + popularity / 3.5).rounded(),
+                consensusOpeningMillions: max(1, estimate.rounded()),
                 impliedVolPct: max(20.0, 80.0 - popularity * 0.25).rounded(),
                 genre: genre ?? "—",
                 addedAt: Date(),

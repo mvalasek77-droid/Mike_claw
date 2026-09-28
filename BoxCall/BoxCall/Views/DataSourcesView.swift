@@ -79,7 +79,7 @@ struct DataSourcesView: View {
                             : "Connected — fetched client-side, no proxy.",
                           wired: !Config.tmdbAPIKey.isEmpty)
                 SourceRow(name: "BoxCall data feed",
-                          role: "New releases from TMDB's US calendar, rebuilt several times a day, so films appear without an app update.",
+                          role: "Wide releases from the Box Office Mojo and The Numbers release calendars, rebuilt several times a day, so films appear without an app update.",
                           status: "Published by the BoxCall Data workflow; the verified slate fills in if it's unreachable.",
                           wired: true)
                 SourceRow(name: "Box Office Mojo / The Numbers — weekend charts",

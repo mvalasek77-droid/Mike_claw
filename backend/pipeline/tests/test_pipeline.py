@@ -15,7 +15,7 @@ import pytest
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
 from boxcall_pipeline import sentiment  # noqa: E402
-from boxcall_pipeline.sources import bluesky, boxoffice, tmdb, wikipedia, youtube  # noqa: E402
+from boxcall_pipeline.sources import bluesky, boxoffice, schedule, tmdb, wikipedia, youtube  # noqa: E402
 
 UTC = dt.timezone.utc
 NOW = dt.datetime(2026, 9, 8, 12, 0, tzinfo=UTC)
@@ -452,6 +452,80 @@ class TestBoxOffice:
         assert boxoffice.fetch_actuals(Boom(), today=dt.date(2026, 9, 27)) == []
 
 
+CALENDAR_FIXTURE = """
+<h3>October 2, 2026</h3>
+<table>
+<tr><th>Release</th><th>Distributor</th><th>Scale</th></tr>
+<tr><td><a href="/release/rl9/">Verity</a></td><td>Amazon MGM Studios</td><td>Wide</td></tr>
+<tr><td><a href="/release/rl8/">Neon Nights</a></td><td>Tiny Pictures</td><td>Limited</td></tr>
+<tr><td><a href="/release/rl7/">Small Film</a></td><td>A24</td><td>Limited</td></tr>
+</table>
+<h3>October 16, 2026</h3>
+<table>
+<tr><td><a href="/release/rl6/">Street Fighter</a></td><td>Paramount Pictures</td><td>Wide</td></tr>
+<tr><td><a href="/release/rl5/">Far Future (2027)</a></td><td>Walt Disney Studios</td><td>Wide</td></tr>
+</table>
+<h3>March 5, 2027</h3>
+<table>
+<tr><td><a href="/release/rl4/">Too Far Out</a></td><td>Universal Pictures</td><td>Wide</td></tr>
+</table>
+"""
+
+
+class TestSchedule:
+    TODAY = dt.date(2026, 9, 28)
+
+    def _parse(self):
+        return schedule.parse_calendar(CALENDAR_FIXTURE, source="boxofficemojo",
+                                       today=self.TODAY, horizon_days=90)
+
+    def test_wide_studio_releases_are_picked_up_with_their_dates(self):
+        films = {f["title"]: f for f in self._parse()}
+        assert films["Verity"]["releaseDate"] == "2026-10-02"
+        assert films["Street Fighter"]["releaseDate"] == "2026-10-16"
+        assert films["Street Fighter"]["distributor"] == "Paramount"
+
+    def test_limited_and_unknown_distributors_are_skipped(self):
+        titles = {f["title"] for f in self._parse()}
+        assert "Neon Nights" not in titles     # title must not count as the distributor
+        assert "Small Film" not in titles      # limited release
+
+    def test_year_suffix_is_stripped_and_horizon_respected(self):
+        titles = {f["title"] for f in self._parse()}
+        assert "Far Future" in titles
+        assert "Too Far Out" not in titles     # beyond 90 days
+
+    def test_estimate_scales_with_attention_within_bounds(self):
+        assert schedule.estimate_opening(20.0, None) == 20.0
+        assert schedule.estimate_opening(20.0, 40_000) == 20.0
+        assert schedule.estimate_opening(20.0, 10_000_000) == 50.0
+        assert schedule.estimate_opening(20.0, 1) == 10.0
+
+    def test_fetch_degrades_on_failure(self):
+        class Boom:
+            def get(self, *a, **k):
+                raise __import__("httpx").HTTPError("down")
+
+        films, status = schedule.fetch_upcoming(Boom(), today=self.TODAY)
+        assert films == [] and "HTTPError" in status
+
+
+class TestMergeCatalog:
+    def test_one_entry_per_title_first_source_wins_later_fill_gaps(self):
+        from boxcall_pipeline.build import merge_catalog
+        tmdb_movies = [{"id": "tmdb_1", "title": "Verity", "releaseDate": "2026-10-02", "popularity": 50}]
+        calendar = [{"id": "sched_verity", "title": "VERITY", "releaseDate": "2026-10-02",
+                     "distributor": "Amazon"}]
+        merged = merge_catalog(tmdb_movies, calendar, today=dt.date(2026, 9, 28))
+        assert len(merged) == 1
+        assert merged[0]["id"] == "tmdb_1" and merged[0]["distributor"] == "Amazon"
+
+    def test_films_that_already_opened_are_dropped(self):
+        from boxcall_pipeline.build import merge_catalog
+        seed = [{"id": "s", "title": "Resident Evil", "releaseDate": "2026-09-18"}]
+        assert merge_catalog(seed, today=dt.date(2026, 9, 28)) == []
+
+
 class TestActualsHistory:
     NOW = dt.datetime(2026, 9, 27, 20, tzinfo=dt.timezone.utc)
 
@@ -674,7 +748,7 @@ class TestBuild:
         ]))
         manifest = self._run(tmp_path, stub_httpx, tmdb_key="")
         assert manifest["movieCount"] == 1
-        assert "seed" in manifest["sources"]["tmdb"]
+        assert manifest["sources"]["tmdb"] == "not configured"
         signals = json.loads((tmp_path / "api" / "signals.json").read_text())
         assert "seed_a" in signals["signals"]
 
