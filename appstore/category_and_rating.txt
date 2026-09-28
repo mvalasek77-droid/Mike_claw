@@ -18,11 +18,8 @@ Contains ads: No.
 Uses ad tracking: No.
 Third-party ad networks: None.
 
-Privacy Practices — Data Not Collected:
-  Contact Info · Health & Fitness · Financial Info · Location · Sensitive Info
-  · Contacts · User Content (server-side moderation only) · Browsing History
-  · Search History · Identifiers used across other companies' apps
-
-Privacy Practices — Data Collected (Not Linked to You):
-  Apple User ID (only if user chooses Sign in with Apple)
-  Anonymous product analytics events (screen views, trade counts, tier progression)
+Privacy Practices — answer "No, we do not collect data from this app".
+  Everything (trades, coins, posts, reviews, the optional Apple user ID) is
+  stored only on the device and never transmitted to us. Analytics upload is
+  disabled. Requests to TMDB / YouTube / GitHub Pages carry no user data.
+  If a backend or analytics upload is ever turned on, this answer must change.

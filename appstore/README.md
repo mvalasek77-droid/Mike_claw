@@ -27,4 +27,5 @@ Everything App Store Connect needs.
 2. Export a 1024×1024 App Store icon (currently only the in-app AppIcon is defined).
 3. In App Store Connect: paste each `.txt` file into the corresponding field; upload screenshots; paste `review_notes.txt` into App Review notes.
 4. Answer the Data Privacy questionnaire using `category_and_rating.txt` as the source of truth.
-5. Submit for review. Include a note pointing App Review at the demo purchase fallback so they can test the paywall without StoreKit Configuration.
+5. Attach the three subscriptions to the version (In-App Purchases section) and submit for review. App Review tests purchases in the sandbox; there is no demo fallback in Release builds.
+6. Record the review video per `screen_recording_script.md`.
