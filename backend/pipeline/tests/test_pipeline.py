@@ -510,6 +510,56 @@ class TestSchedule:
         assert films == [] and "HTTPError" in status
 
 
+# Row shapes as the live pages returned them (September 2026).
+BOM_CALENDAR_REAL = """
+<table>
+<tr><th colspan="4">Friday, October 2, 2026</th></tr>
+<tr><td><a href="/title/tt1/"><img src="p.jpg"></a></td>
+<td><a href="/release/rl1/">Digger</a> Comedy Drama With: Tom Cruise, Riz Ahmed 2 hr 8 min
+<a href="/title/tt1/credits/">Cast, Crew, and Company Info</a></td><td>Warner Bros.</td><td>Wide</td></tr>
+<tr><td><a href="/title/tt2/"><img src="p.jpg"></a></td>
+<td><a href="/release/rl2/">Moonlight 10th Anniversary</a> Drama With: Mahershala Ali
+<a href="/title/tt2/credits/">Cast, Crew, and Company Info</a></td><td>A24</td><td>Limited</td></tr>
+</table>
+"""
+
+NUMBERS_CALENDAR_REAL = """
+<table>
+<tr><td>September 30</td><td><a href="/movie/a">Begotten</a> (Limited, re-release)</td><td>Kino Lorber</td></tr>
+<tr><td></td><td><a href="/movie/b">Linkin Park: Unshatter</a> (Limited)</td><td>CJ4DPlex</td></tr>
+<tr><td>Summer 2026</td><td><a href="/movie/c">The Last Temptation of Becky</a> (Limited)</td><td>Quiver</td></tr>
+<tr><td></td><td><a href="/movie/c2">Mystery Date Film</a> (Wide)</td><td>Universal</td></tr>
+<tr><td>October 2</td><td><a href="/movie/d">April X</a> (Wide)</td><td>Ahoy Associates Entertainment</td></tr>
+<tr><td></td><td><a href="/movie/e">Beware Boiúna</a> (Wide)</td><td>Lionsgate Premiere</td></tr>
+<tr><td></td><td><a href="/movie/f">Digger</a> (Wide)</td><td>Warner Bros.</td></tr>
+<tr><td></td><td><a href="/movie/g">Verity</a> (Wide)</td><td>Amazon MGM Studios</td></tr>
+</table>
+"""
+
+
+class TestScheduleOnRealLayouts:
+    TODAY = dt.date(2026, 9, 28)
+
+    def _titles(self, page, source):
+        return {f["title"]: f for f in schedule.parse_calendar(page, source=source,
+                                                               today=self.TODAY, horizon_days=90)}
+
+    def test_bom_poster_link_is_skipped_and_title_found(self):
+        films = self._titles(BOM_CALENDAR_REAL, "boxofficemojo")
+        assert set(films) == {"Digger"}
+        assert films["Digger"]["releaseDate"] == "2026-10-02"
+        assert films["Digger"]["distributor"] == "Warner"
+
+    def test_numbers_dates_without_a_year_and_vague_dates(self):
+        films = self._titles(NUMBERS_CALENDAR_REAL, "the-numbers")
+        assert set(films) == {"Digger", "Verity"}
+        assert films["Verity"]["releaseDate"] == "2026-10-02"
+
+    def test_year_rolls_over_for_early_months(self):
+        assert schedule._parse_date("January 8", dt.date(2026, 11, 20)) == dt.date(2027, 1, 8)
+        assert schedule._parse_date("September 30", dt.date(2026, 9, 28)) == dt.date(2026, 9, 30)
+
+
 class TestMergeCatalog:
     def test_one_entry_per_title_first_source_wins_later_fill_gaps(self):
         from boxcall_pipeline.build import merge_catalog

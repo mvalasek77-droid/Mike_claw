@@ -50,9 +50,13 @@ WIDE_DISTRIBUTORS: list[tuple[tuple[str, ...], float]] = [
 _MONTHS = ("january february march april may june july august september "
            "october november december").split()
 _DATE = re.compile(
-    r"\b(" + "|".join(m[:3] for m in _MONTHS) + r")[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})\b",
+    r"\b(" + "|".join(m[:3] for m in _MONTHS) + r")[a-z]*\.?\s+(\d{1,2})\b(?:,?\s+(\d{4}))?",
     re.IGNORECASE,
 )
+# Special screenings and re-issues don't have a real opening weekend.
+_NOT_A_NEW_RELEASE = re.compile(r"re-?release|anniversary|special engagement|fathom", re.IGNORECASE)
+# Imprints that share a big studio's name but release small.
+_SMALL_IMPRINTS = ("lionsgate premiere",)
 _BLOCK = re.compile(r"<tr[^>]*>.*?</tr>|<h[1-6][^>]*>.*?</h[1-6]>", re.DOTALL | re.IGNORECASE)
 _CELL = re.compile(r"<t[hd][^>]*>(.*?)</t[hd]>", re.DOTALL | re.IGNORECASE)
 _LINK = re.compile(r'<a[^>]+href="([^"]*(?:/release/|/title/|/movie/)[^"]*)"[^>]*>(.*?)</a>',
@@ -64,15 +68,26 @@ def _text(fragment: str) -> str:
     return re.sub(r"\s+", " ", html_lib.unescape(_TAG.sub(" ", fragment))).strip()
 
 
-def _parse_date(text: str) -> dt.date | None:
+def _parse_date(text: str, today: dt.date) -> dt.date | None:
+    """A month-day date, with or without a year.
+
+    Calendars often print "September 30" alone; the year is whichever
+    puts the date closest ahead of today (a date more than two months
+    past means next year).
+    """
     match = _DATE.search(text)
     if not match:
         return None
     month = next(i for i, m in enumerate(_MONTHS, 1) if m.startswith(match.group(1).lower()[:3]))
     try:
-        return dt.date(int(match.group(3)), month, int(match.group(2)))
+        if match.group(3):
+            return dt.date(int(match.group(3)), month, int(match.group(2)))
+        candidate = dt.date(today.year, month, int(match.group(2)))
     except ValueError:
         return None
+    if candidate < today - dt.timedelta(days=60):
+        candidate = candidate.replace(year=today.year + 1)
+    return candidate
 
 
 def distributor_baseline(text: str) -> tuple[str, float] | None:
@@ -102,25 +117,33 @@ def parse_calendar(page: str, *, source: str, today: dt.date, horizon_days: int)
     out: list[dict] = []
 
     for block in _BLOCK.findall(page):
-        links = _LINK.findall(block)
         cells = [_text(c) for c in _CELL.findall(block)] or [_text(block)]
-        if not links:
-            found = _parse_date(" ".join(cells))
+        # The first link with text is the title; a poster link has none.
+        titles = [t for t in (_text(label) for _, label in _LINK.findall(block))
+                  if t and "company info" not in t.lower()]
+        if not titles:
+            found = _parse_date(" ".join(cells), today)
             if found:
                 current = found
             continue
+        title = titles[0]
 
-        own_date = _parse_date(cells[0]) if cells else None
-        if own_date:
-            current = own_date
+        # A leading cell that isn't the title is the row's date: a real
+        # date, blank (same date as above), or vague ("Summer 2026",
+        # "3rd quarter") — which must not inherit the previous date.
+        lead = cells[0] if cells else ""
+        if lead and title not in lead:
+            current = _parse_date(lead, today)
         if current is None or not (today <= current <= horizon):
             continue
 
-        title = _text(links[0][1])
         # Everything in the row except the title, so a film called
         # "Neon Nights" isn't mistaken for a Neon release.
-        rest = " ".join(c for c in cells if c != title and title not in c)
-        if "limited" in rest.lower() and "wide" not in rest.lower():
+        rest = " ".join(cells).replace(title, " ", 1)
+        lowered = rest.lower()
+        if _NOT_A_NEW_RELEASE.search(rest) or any(i in lowered for i in _SMALL_IMPRINTS):
+            continue
+        if "limited" in lowered and "wide" not in lowered:
             continue
         studio = distributor_baseline(rest)
         if studio is None:
