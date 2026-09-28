@@ -555,6 +555,40 @@ class TestScheduleOnRealLayouts:
         assert set(films) == {"Digger", "Verity"}
         assert films["Verity"]["releaseDate"] == "2026-10-02"
 
+    def test_fetch_reads_every_page_and_merges_both_sites(self):
+        later = BOM_CALENDAR_REAL.replace("October 2, 2026", "November 20, 2026") \
+            .replace(">Digger<", ">The Hunger Games: Sunrise on the Reaping<") \
+            .replace("Warner Bros.", "Lionsgate")
+
+        class Response:
+            def __init__(self, text, code=200):
+                self.text, self.status_code = text, code
+
+        class Client:
+            def __init__(self):
+                self.urls = []
+
+            def get(self, url, **_):
+                self.urls.append(url)
+                if "the-numbers" in url:
+                    return Response(NUMBERS_CALENDAR_REAL)
+                if url.endswith("/calendar/"):
+                    return Response(BOM_CALENDAR_REAL)
+                if "2026-10-26" in url:
+                    return Response(later)
+                return Response("", 404)
+
+        client = Client()
+        films, status = schedule.fetch_upcoming(client, today=self.TODAY)
+        by_title = {f["title"]: f for f in films}
+        # BOM's first page, a later BOM page, and The Numbers all count.
+        assert set(by_title) == {"Digger", "Verity", "The Hunger Games: Sunrise on the Reaping"}
+        assert by_title["Digger"]["source"] == "boxofficemojo"   # first site wins a tie
+        assert by_title["Verity"]["source"] == "the-numbers"
+        assert [f["releaseDate"] for f in films] == sorted(f["releaseDate"] for f in films)
+        assert any(u.endswith("/calendar/2026-12-21/") for u in client.urls)   # out to the horizon
+        assert status.startswith("ok (3 wide releases") and "HTTP 404" in status
+
     def test_year_rolls_over_for_early_months(self):
         assert schedule._parse_date("January 8", dt.date(2026, 11, 20)) == dt.date(2027, 1, 8)
         assert schedule._parse_date("September 30", dt.date(2026, 9, 28)) == dt.date(2026, 9, 30)

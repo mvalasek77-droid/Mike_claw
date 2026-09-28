@@ -1,9 +1,9 @@
 """Upcoming wide releases from public release calendars (no API key).
 
-Primary: Box Office Mojo's release calendar. Fallback: The Numbers'
-release schedule. Both list upcoming films under date headings with the
-distributor alongside. Only films from studios that open wide get a
-market — a single-screen limited release has no opening weekend worth
+Box Office Mojo's release calendar, read in four-week pages out to the
+horizon, merged with The Numbers' release schedule. Both list upcoming
+films under date headings with the distributor alongside. Only films
+from studios that open wide get a market — a single-screen limited release has no opening weekend worth
 predicting.
 
 Each film gets a cold-start opening estimate from its distributor's
@@ -167,12 +167,34 @@ def parse_calendar(page: str, *, source: str, today: dt.date, horizon_days: int)
     return out
 
 
+def calendar_pages(today: dt.date, horizon_days: int) -> list[tuple[str, str]]:
+    """Every page to read, in priority order.
+
+    Box Office Mojo's calendar shows about four weeks from the date in its
+    URL, so it is read in four-week steps out to the horizon. The Numbers
+    lists the whole schedule on one page and fills in anything BOM lacks.
+    """
+    pages = [CALENDAR_SOURCES[0]]
+    for offset in range(28, horizon_days + 1, 28):
+        day = today + dt.timedelta(days=offset)
+        pages.append(("boxofficemojo", f"{CALENDAR_SOURCES[0][1]}{day.isoformat()}/"))
+    pages.extend(CALENDAR_SOURCES[1:])
+    return pages
+
+
 def fetch_upcoming(client: httpx.Client, *, today: dt.date | None = None,
                    horizon_days: int = 90) -> tuple[list[dict], str]:
-    """(films, status line). Never raises; falls through sources in order."""
+    """(films, status line). Never raises.
+
+    Reads every calendar page and merges them: a film listed by more than
+    one page keeps its first (Box Office Mojo) entry, so one site's gaps
+    are covered by the other and a single failing page costs little.
+    """
     today = today or dt.date.today()
+    films: dict[str, dict] = {}
+    read: dict[str, int] = {}
     notes: list[str] = []
-    for source, url in CALENDAR_SOURCES:
+    for source, url in calendar_pages(today, horizon_days):
         try:
             response = client.get(url, headers={"User-Agent": USER_AGENT}, timeout=20)
         except Exception as error:  # noqa: BLE001 — any transport failure degrades
@@ -181,14 +203,23 @@ def fetch_upcoming(client: httpx.Client, *, today: dt.date | None = None,
         if response.status_code != 200:
             notes.append(f"{source}: HTTP {response.status_code}")
             continue
-        films = parse_calendar(response.text, source=source, today=today, horizon_days=horizon_days)
-        if films:
-            return films, f"ok ({len(films)} wide releases from {source})"
-        notes.append(f"{source}: no wide releases parsed")
-        # Enough of the page's shape in the log to fix the parser from.
-        sample = [_text(b)[:160] for b in _BLOCK.findall(response.text) if _LINK.search(b)][:15]
-        print(f"[schedule] {source} parsed nothing; sample rows:", *sample, sep="\n  ")
-    return [], "; ".join(notes) or "no sources"
+        parsed = parse_calendar(response.text, source=source, today=today, horizon_days=horizon_days)
+        read[source] = read.get(source, 0) + 1
+        if not parsed:
+            # Enough of the page's shape in the log to fix the parser from.
+            sample = [_text(b)[:160] for b in _BLOCK.findall(response.text) if _LINK.search(b)][:15]
+            print(f"[schedule] {url} parsed nothing; sample rows:", *sample, sep="\n  ")
+        for film in parsed:
+            films.setdefault(film["id"], film)
+
+    merged = sorted(films.values(), key=lambda f: f["releaseDate"])
+    if not merged:
+        return [], "; ".join(notes) or "no wide releases parsed"
+    pages = ", ".join(f"{s} {n} page{'s' if n > 1 else ''}" for s, n in read.items())
+    status = f"ok ({len(merged)} wide releases from {pages})"
+    if notes:
+        status += "; " + "; ".join(notes)
+    return merged, status
 
 
 def estimate_opening(baseline: float, wiki_views_7d: int | None) -> float:
