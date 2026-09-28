@@ -12,7 +12,7 @@ import Foundation
 ///
 /// Positions wait for the reported number — settling early on a guess
 /// would permanently skew the profit leaderboard. Only if no number has
-/// been published a full week after the Monday settlement (the pipeline
+/// been published three weeks after opening (the pipeline
 /// is down, or the film had no reported opening) does the market
 /// simulation settle the movie, so nobody is left in limbo.
 @MainActor
@@ -82,8 +82,9 @@ final class SettlementService: ObservableObject {
         }
     }
 
-    /// Opening Friday + 10 days = one week after the normal Monday settlement.
-    private static let simulationFallbackAfter: TimeInterval = 10 * 86400
+    /// Three weeks after opening: long enough that a stalled data pipeline
+    /// gets fixed before anyone is settled on a guess.
+    private static let simulationFallbackAfter: TimeInterval = 21 * 86400
 
     // MARK: - Known actuals for seed movies
 

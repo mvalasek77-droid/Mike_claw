@@ -197,14 +197,17 @@ final class BuiltInSeedTests: XCTestCase {
 
     private var seed: [Movie] { VerifiedMovieProvider.builtInSeed() }
 
-    /// The bug that prompted this pass: Clayface was listed as opening
-    /// within days when the studio had moved it to late October.
-    func testEveryTitleOpensInTheFuture() {
-        for movie in seed {
-            XCTAssertGreaterThanOrEqual(
-                movie.daysToRelease, 0,
-                "\(movie.title) is dated in the past — a contract on it can never settle")
+    /// Titles stay in the seed after they open so held contracts can
+    /// settle, but nobody may open a new position on one.
+    func testTitlesThatAlreadyOpened_areLockedForTrading() {
+        for movie in seed where movie.daysToRelease < 0 {
+            XCTAssertFalse(movie.isTradingOpen,
+                           "\(movie.title) already opened but is still tradable")
         }
+    }
+
+    func testTheSlateStillHasMoviesToTrade() {
+        XCTAssertTrue(seed.contains(where: \.isTradingOpen))
     }
 
     func testNoDuplicateIdsOrTitles() {
@@ -219,7 +222,6 @@ final class BuiltInSeedTests: XCTestCase {
             XCTAssertGreaterThan(movie.consensusOpeningMillions, 0,
                                  "\(movie.title) has no number to strike against")
             XCTAssertGreaterThan(movie.impliedVolPct, 0)
-            XCTAssertFalse(movie.isSettled)
         }
     }
 

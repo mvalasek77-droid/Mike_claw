@@ -136,15 +136,19 @@ final class BoxCallUITests: XCTestCase {
             if scrollUntilVisible(row, in: app, maxSwipes: 6) {
                 row.tap()
 
+                // The first Call opens a one-time explainer over the trade sheet.
                 let gotIt = app.buttons["tutorial.gotIt"]
                 if gotIt.waitForExistence(timeout: 5) {
                     scrollUntilVisible(gotIt, in: app)
                     gotIt.tap()
+                    XCTAssertTrue(gotIt.waitForNonExistence(timeout: 5))
                 }
 
+                // The order button sits at the bottom of a lazily built Form,
+                // so it only exists once scrolled into view.
                 let submit = app.buttons["trade.submit"]
-                XCTAssertTrue(submit.waitForExistence(timeout: 5))
-                XCTAssertTrue(scrollUntilVisible(submit, in: app))
+                XCTAssertTrue(scrollUntilVisible(submit, in: app, maxSwipes: 15),
+                              "Couldn't reach the Buy button on the trade sheet")
                 submit.tap()
                 XCTAssertFalse(submit.waitForExistence(timeout: 2), "The trade sheet should close after buying")
                 return
