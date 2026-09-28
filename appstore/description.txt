@@ -9,7 +9,7 @@ THE LIVE MARKET
 Every contract has a mark that moves in real time. Your buys and sells shift the price. News events (tracking updates, reviews, trailer spikes) shock the whole chain. The implied opening estimate — the "consensus" — is a live crowd forecast derived from base tracking, YouTube trailer engagement, X mention velocity, and actual trade flow.
 
 WIN STATUS, NOT CASH
-Six reputation tiers from Rookie to Oracle. Badges for feats: Bomb Caller, Rocket, Contrarian, Sniper. Weekly streaks. Season titles you keep forever. The top-5 traders each week get their movie reviews spotlighted at the top of the Feed — winning literally becomes editorial voice.
+Six reputation tiers from Rookie to Oracle. Badges for feats: Bomb Caller, Rocket, Contrarian, Sniper. Weekly streaks. Season titles you keep forever. The leaderboard ranks everyone by total profit, which the weekly reset never touches. The top 5 get their movie reviews spotlighted at the top of the home screen, and #1 leads it — winning literally becomes editorial voice.
 
 WEEKLY RESET
 Every Sunday your weekly stake goes back and you keep your profit. Every Monday, as opening weekends settle, every account gets a fresh stake: 1,000 Reel Coins free, forever. Lose it all? You're back in on Monday. Trades on movies that haven't opened keep running right through the reset.
@@ -25,9 +25,9 @@ WHAT'S IN THE APP
 • Slate — every upcoming release with its live implied opening and consensus sparkline
 • Chain — five CALL and five PUT strikes per movie with live marks and S/R lines
 • Feed — shared calls from the community, with likes, comments, follow, and copy-trade
-• Featured Critics — top-5 traders each week get their movie reviews at the top of the Feed
+• Featured Critics — the top 5 traders by total profit get their movie reviews at the top of the home screen
 • Portfolio — open positions with live P&L, working limit orders, and one-tap close
-• Leaderboard — season-long ranking with color-coded tiers
+• Leaderboard — ranked by total profit; #1 at season's end is crowned Oracle
 • Home-screen widget — top position and next opening on your lock screen
 
 NOT REAL MONEY

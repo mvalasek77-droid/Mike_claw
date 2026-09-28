@@ -27,7 +27,7 @@ struct FeedView: View {
                             .padding(.horizontal)
 
                         MarqueeSectionLabel(title: "Featured critics",
-                                             kicker: "This week's top traders")
+                                             kicker: "Top 5 traders by total profit")
                             .padding(.horizontal)
                         FeaturedCritics()
                             .padding(.horizontal)

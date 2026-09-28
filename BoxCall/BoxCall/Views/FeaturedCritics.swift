@@ -2,6 +2,7 @@ import SwiftUI
 
 struct FeaturedCritics: View {
     @EnvironmentObject var social: SocialService
+    @EnvironmentObject var portfolio: PortfolioService
     @ObservedObject var moderation = ModerationService.shared
     @State private var expanded: Review?
 
@@ -9,22 +10,27 @@ struct FeaturedCritics: View {
     var winner: Review? { spotlight.first }
     var supporting: [Review] { Array(spotlight.dropFirst()) }
 
+    private func rank(_ r: Review) -> Int { social.rank(ofAuthorOf: r) ?? 0 }
+    private func profit(_ r: Review) -> Double? {
+        social.rank(ofAuthorOf: r).map { portfolio.leaderboard[$0 - 1].profit }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if let winner {
-                WinnerReviewCard(review: winner, rank: 1) {
+                WinnerReviewCard(review: winner, rank: rank(winner), profit: profit(winner)) {
                     expanded = winner
                 }
             } else {
-                Text("No reviews yet — top-5 traders' reviews will appear here.")
+                Text("No reviews yet — the top 5 traders by profit get their reviews shown here.")
                     .font(.caption)
                     .foregroundStyle(Theme.cream.opacity(0.6))
             }
             if !supporting.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
-                        ForEach(Array(supporting.enumerated()), id: \.element.id) { i, r in
-                            SupportingReviewCard(review: r, rank: i + 2) {
+                        ForEach(supporting) { r in
+                            SupportingReviewCard(review: r, rank: rank(r)) {
                                 expanded = r
                             }
                         }
@@ -32,9 +38,30 @@ struct FeaturedCritics: View {
                     .padding(.horizontal, 2)
                 }
             }
+            yourStandingNote
         }
         .sheet(item: $expanded) { review in
             ReviewDetailSheet(review: review)
+        }
+    }
+
+    @ViewBuilder
+    private var yourStandingNote: some View {
+        if let myRank = portfolio.myRank {
+            let text: String = {
+                if myRank <= 5 && !social.hasCurrentUserReview {
+                    return "You're #\(myRank) in profit. Write a review from any movie page and it goes up here."
+                } else if myRank > 5 {
+                    let fifth = portfolio.leaderboard[min(4, portfolio.leaderboard.count - 1)].profit
+                    let gap = max(0, fifth - portfolio.user.lifetimePnL)
+                    return "You're #\(myRank) in profit — \(Int(gap.rounded(.up)) + 1) RC more to reach the top 5 and get your review spotlighted."
+                } else {
+                    return "You're #\(myRank) in profit — your latest review is in the spotlight."
+                }
+            }()
+            Text(text)
+                .font(.caption)
+                .foregroundStyle(Theme.marqueeGold.opacity(0.85))
         }
     }
 }
@@ -44,6 +71,7 @@ struct FeaturedCritics: View {
 struct WinnerReviewCard: View {
     let review: Review
     let rank: Int
+    var profit: Double? = nil
     let onRead: () -> Void
     @EnvironmentObject var market: MarketService
 
@@ -69,6 +97,11 @@ struct WinnerReviewCard: View {
                 Label("\(review.likes)", systemImage: "heart.fill")
                     .font(.caption)
                     .foregroundStyle(Theme.marqueeGold)
+                if let profit {
+                    Text("\(profit >= 0 ? "+" : "")\(Int(profit)) RC profit")
+                        .font(.caption.weight(.semibold).monospacedDigit())
+                        .foregroundStyle(profit >= 0 ? Color.green : .red)
+                }
                 Spacer()
                 Button(action: onRead) {
                     Text("Read review  →")

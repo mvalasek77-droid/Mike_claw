@@ -10,10 +10,11 @@ import Foundation
 /// actual for a movie the user holds a position on, the position is
 /// settled at that number.
 ///
-/// Fallback: if the data set has no actual yet (the Action hasn't run,
-/// or the movie opened too recently), movies whose `isSettled` flag is
-/// true (3+ days post-release) are settled using the market simulation
-/// so users aren't left in limbo.
+/// Positions wait for the reported number — settling early on a guess
+/// would permanently skew the profit leaderboard. Only if no number has
+/// been published a full week after the Monday settlement (the pipeline
+/// is down, or the film had no reported opening) does the market
+/// simulation settle the movie, so nobody is left in limbo.
 @MainActor
 final class SettlementService: ObservableObject {
     static let shared = SettlementService()
@@ -66,9 +67,11 @@ final class SettlementService: ObservableObject {
                 ?? Self.knownActuals[movie.id]
             if let actual {
                 portfolio.settle(movieId: movie.id, actualMillions: actual)
-            } else {
+            } else if Date() > movie.opensAt.addingTimeInterval(Self.simulationFallbackAfter) {
                 let simulated = market.simulatedActualOW(for: movie)
                 portfolio.settle(movieId: movie.id, actualMillions: simulated)
+            } else {
+                continue
             }
             count += 1
         }
@@ -78,6 +81,9 @@ final class SettlementService: ObservableObject {
             portfolio.refreshLeaderboard()
         }
     }
+
+    /// Opening Friday + 10 days = one week after the normal Monday settlement.
+    private static let simulationFallbackAfter: TimeInterval = 10 * 86400
 
     // MARK: - Known actuals for seed movies
 
@@ -92,7 +98,8 @@ final class SettlementService: ObservableObject {
         do {
             var request = URLRequest(url: url)
             request.timeoutInterval = 10
-            request.cachePolicy = .useProtocolCachePolicy
+            // Results land Monday; a cached copy from Sunday would hide them.
+            request.cachePolicy = .reloadIgnoringLocalCacheData
             let (data, response) = try await session.data(for: request)
             guard let http = response as? HTTPURLResponse,
                   (200..<300).contains(http.statusCode) else {

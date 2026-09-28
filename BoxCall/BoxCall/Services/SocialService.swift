@@ -6,14 +6,46 @@ import Combine
 final class SocialService: ObservableObject {
     static let shared = SocialService()
 
-    @Published private(set) var feed: [SocialPost] = []
-    @Published private(set) var reviews: [Review] = []
+    @Published private(set) var feed: [SocialPost] = [] { didSet { persist() } }
+    @Published private(set) var reviews: [Review] = [] { didSet { persist() } }
     /// Position id -> post id, so settlement can update the outcome on the post.
-    private var postByPositionId: [UUID: UUID] = [:]
+    private var postByPositionId: [UUID: UUID] = [:] { didSet { persist() } }
+
+    /// The current user's own posts and reviews. Rivals' content is re-seeded each launch.
+    private struct Saved: Codable {
+        var posts: [SocialPost]
+        var reviews: [Review]
+        var postByPositionId: [UUID: UUID]
+    }
+
+    private static var fileURL: URL {
+        URL.applicationSupportDirectory.appendingPathComponent("social.json")
+    }
+
+    /// Blocks writes until the saved file is merged in, so seeding can't overwrite it.
+    private var isLoaded = false
 
     private init() {
         seedFeed()
         seedReviews()
+        if let data = try? Data(contentsOf: Self.fileURL),
+           let saved = try? JSONDecoder().decode(Saved.self, from: data) {
+            feed = saved.posts + feed
+            reviews = saved.reviews + reviews
+            postByPositionId = saved.postByPositionId
+        }
+        isLoaded = true
+    }
+
+    private func persist() {
+        guard isLoaded else { return }
+        let saved = Saved(posts: feed.filter(\.authorIsCurrentUser),
+                          reviews: reviews.filter(\.authorIsCurrentUser),
+                          postByPositionId: postByPositionId)
+        guard let data = try? JSONEncoder().encode(saved) else { return }
+        try? FileManager.default.createDirectory(at: URL.applicationSupportDirectory,
+                                                 withIntermediateDirectories: true)
+        try? data.write(to: Self.fileURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
     }
 
     func removeCurrentUserContent() {
@@ -26,20 +58,28 @@ final class SocialService: ObservableObject {
 
     // MARK: - Reviews
 
-    /// Latest reviews by the current top-5 leaderboard performers, in leaderboard order.
-    /// Falls back to any reviews if no leaderboard match.
+    /// Latest review by each of the top 5 traders by total profit, in rank
+    /// order — the most profitable trader with a review leads the homepage.
     func spotlightedReviews() -> [Review] {
-        let topHandles = PortfolioService.shared.leaderboard.prefix(5).map(\.handle)
-        var picked: [Review] = []
-        for handle in topHandles {
-            if let r = reviews
-                .filter({ $0.authorHandle == handle })
-                .sorted(by: { $0.createdAt > $1.createdAt })
-                .first {
-                picked.append(r)
-            }
-        }
-        return picked
+        PortfolioService.shared.leaderboard.prefix(5).compactMap { latestReview(for: $0) }
+    }
+
+    /// Leaderboard rank (1-based) of a review's author, if they're ranked.
+    func rank(ofAuthorOf review: Review) -> Int? {
+        PortfolioService.shared.leaderboard.firstIndex { entry in
+            entry.isCurrentUser ? review.authorIsCurrentUser
+                                : (!review.authorIsCurrentUser && entry.handle == review.authorHandle)
+        }.map { $0 + 1 }
+    }
+
+    var hasCurrentUserReview: Bool { reviews.contains(where: \.authorIsCurrentUser) }
+
+    private func latestReview(for entry: LeaderboardEntry) -> Review? {
+        // Match the current user by flag, not handle: signing in can rename them.
+        reviews
+            .filter { entry.isCurrentUser ? $0.authorIsCurrentUser
+                                          : (!$0.authorIsCurrentUser && $0.authorHandle == entry.handle) }
+            .max { $0.createdAt < $1.createdAt }
     }
 
     func submitReview(movie: Movie, headline: String, body: String, rating: Int) {

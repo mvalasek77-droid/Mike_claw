@@ -11,6 +11,9 @@ struct User: Codable, Hashable {
     var lastResetAt: Date?
     /// Stake still riding on trades at the last reset, repaid from their proceeds.
     var stakeOwed: Double?
+    var lastStreakBumpAt: Date?
+    /// Season the app last checked, so the Oracle crown is awarded once at rollover.
+    var lastSeasonChecked: String?
 
     // Reputation (earned, not bought)
     var xp: Int
@@ -42,10 +45,12 @@ struct User: Codable, Hashable {
 }
 
 struct LeaderboardEntry: Identifiable, Codable, Hashable {
-    let id: String        // handle
+    let id: String
     let handle: String
     let tier: Tier
-    let reelCoins: Double
+    /// Total realized trading profit — the ranking metric. Stakes,
+    /// subscription bonuses and referral coins never count.
+    let profit: Double
     let weeklyPnL: Double
     let winRate: Double
     let isCurrentUser: Bool

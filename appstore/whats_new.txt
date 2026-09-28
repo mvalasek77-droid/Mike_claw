@@ -2,7 +2,7 @@ Launch release.
 
 • Live 24/7 market with support/resistance-aware market makers
 • YouTube + X social signals shift the implied consensus
-• Featured Critics — top-5 traders' reviews spotlighted on the Feed
+• Featured Critics — the top 5 traders by total profit get their reviews spotlighted on the home screen
 • Custom prop markets for Mogul-tier members
 • Home-screen widget for your top position + next opening
 • Sign in with Apple for cross-device sync

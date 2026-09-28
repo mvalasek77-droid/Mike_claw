@@ -5,7 +5,7 @@ struct OnboardingView: View {
     @State private var page: Int = 0
     @State private var showFullGuide = false
 
-    private let lastPage = 6
+    private let lastPage = 7
 
     var body: some View {
         VStack(spacing: 0) {
@@ -17,6 +17,7 @@ struct OnboardingView: View {
                 trackSlide.tag(4)
                 settleSlide.tag(5)
                 weekSlide.tag(6)
+                goalSlide.tag(7)
             }
             .tabViewStyle(.page(indexDisplayMode: .always))
             .indexViewStyle(.page(backgroundDisplayMode: .always))
@@ -172,11 +173,46 @@ struct OnboardingView: View {
                             text: "Trades on movies that haven't opened yet — like Avengers: Doomsday — keep running right through the reset.")
                 }
             }
-            Text("Wins earn XP, badges and a spot on the Box Office leaderboard. Replay this tour any time from Profile.")
+        }
+    }
+
+    private var goalSlide: some View {
+        slide(step: nil,
+              tab: ("trophy", "Box Office"),
+              title: "The goal: most profit.",
+              body: "The leaderboard ranks everyone by total profit — the weekly reset never touches it, and only winning trades move you up. The top 5 get their movie review spotlighted on the home screen, and #1 leads it.") {
+            MockCard {
+                VStack(alignment: .leading, spacing: 8) {
+                    mockRankRow("🥇", "you", "+2,410", highlighted: true)
+                    mockRankRow("🥈", "popcornshark", "+2,180", highlighted: false)
+                    mockRankRow("🥉", "indieyoda", "+1,305", highlighted: false)
+                    Divider()
+                    HStack(alignment: .top, spacing: 8) {
+                        mockTag("#1", .orange)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("\u{201C}Consensus is fifteen million light.\u{201D}")
+                                .font(.caption.weight(.semibold))
+                            Text("@you · featured on the Marquee home screen")
+                                .font(.caption2).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+            Text("Be #1 when the season ends to be crowned its Oracle. Replay this tour any time from Profile.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 24)
+        }
+    }
+
+    private func mockRankRow(_ medal: String, _ handle: String, _ profit: String, highlighted: Bool) -> some View {
+        HStack {
+            Text(medal)
+            Text("@\(handle)").font(.subheadline.weight(highlighted ? .bold : .regular))
+                .foregroundStyle(highlighted ? Color.orange : .primary)
+            Spacer()
+            Text(profit).font(.subheadline.weight(.semibold).monospacedDigit())
         }
     }
 
@@ -216,12 +252,14 @@ struct OnboardingView: View {
         ScrollView {
             VStack(spacing: 16) {
                 header()
-                if let step {
+                if step != nil || tab != nil {
                     HStack(spacing: 8) {
-                        Text("STEP \(step) OF 5")
-                            .font(.caption2.weight(.heavy))
-                            .tracking(1.2)
-                            .foregroundStyle(.orange)
+                        if let step {
+                            Text("STEP \(step) OF 5")
+                                .font(.caption2.weight(.heavy))
+                                .tracking(1.2)
+                                .foregroundStyle(.orange)
+                        }
                         if let tab {
                             Label(tab.name, systemImage: tab.icon)
                                 .font(.caption2.weight(.semibold))

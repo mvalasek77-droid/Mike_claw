@@ -1,7 +1,7 @@
 import Foundation
 
 /// A short-form written take on a movie — Letterboxd-style.
-/// Top-5 leaderboard performers get their latest review spotlighted.
+/// The top 5 traders by total profit get their latest review spotlighted.
 struct Review: Identifiable, Codable, Hashable {
     let id: UUID
     let authorHandle: String

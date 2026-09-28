@@ -6,7 +6,7 @@ struct LeaderboardView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("This season") {
+                Section {
                     ForEach(Array(portfolio.leaderboard.enumerated()), id: \.element.id) { idx, entry in
                         HStack {
                             Text(rankGlyph(idx + 1))
@@ -35,61 +35,41 @@ struct LeaderboardView: View {
                             }
                             Spacer()
                             VStack(alignment: .trailing) {
-                                Text(entry.reelCoins, format: .number.precision(.fractionLength(0)))
+                                Text(entry.profit, format: .number.precision(.fractionLength(0)).sign(strategy: .always()))
                                     .monospacedDigit()
                                     .fontWeight(.semibold)
-                                Text(entry.weeklyPnL, format: .number.precision(.fractionLength(0)).sign(strategy: .always()))
+                                    .foregroundStyle(entry.profit >= 0 ? Color.primary : .red)
+                                Text("\(entry.weeklyPnL >= 0 ? "+" : "")\(Int(entry.weeklyPnL)) this wk")
                                     .font(.caption2)
                                     .monospacedDigit()
                                     .foregroundStyle(entry.weeklyPnL >= 0 ? .green : .red)
                             }
                         }
                         .padding(.vertical, 2)
+                        .listRowBackground(idx < 5 ? Color.orange.opacity(0.06) : nil)
                         .accessibilityElement(children: .combine)
-                        .accessibilityLabel("Rank \(idx + 1), \(entry.handle), \(entry.tier.name), \(Int(entry.reelCoins)) Reel Coins, win rate \(Int(entry.winRate * 100)) percent")
+                        .accessibilityLabel("Rank \(idx + 1), \(entry.handle), \(entry.tier.name), total profit \(Int(entry.profit)) Reel Coins, win rate \(Int(entry.winRate * 100)) percent")
                     }
+                } header: {
+                    Text("Total profit")
+                } footer: {
+                    Text("Ranked by total trading profit — the weekly reset never touches it, and coins from subscriptions or invites don't count. The top 5 get their latest review spotlighted on the Marquee home screen.")
                 }
                 Section {
-                    Text("Season ends \(seasonEndString). #1 is crowned Oracle of \(seasonName).")
+                    Text("\(Season.name(at: Date())) ends \(seasonEndString). Whoever is #1 in total profit then is crowned its Oracle.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
             .navigationTitle("Leaderboard")
+            .onAppear { portfolio.refreshLeaderboard() }
         }
-    }
-
-    private var seasonName: String {
-        let cal = Calendar.current
-        let month = cal.component(.month, from: Date())
-        let year = cal.component(.year, from: Date())
-        let name: String
-        switch month {
-        case 1...3:  name = "Winter"
-        case 4...6:  name = "Spring"
-        case 7...9:  name = "Summer"
-        default:     name = "Fall"
-        }
-        return "\(name) \(year)"
     }
 
     private var seasonEndString: String {
-        let cal = Calendar.current
-        let month = cal.component(.month, from: Date())
-        let endMonth: Int
-        switch month {
-        case 1...3:  endMonth = 4
-        case 4...6:  endMonth = 7
-        case 7...9:  endMonth = 10
-        default:     endMonth = 1
-        }
-        let year = cal.component(.year, from: Date()) + (endMonth == 1 ? 1 : 0)
-        guard let end = cal.date(from: DateComponents(year: year, month: endMonth, day: 1)) else {
-            return "soon"
-        }
-        let days = cal.dateComponents([.day], from: Date(), to: end).day ?? 0
-        if days <= 0 { return "soon" }
-        return "in \(days) days"
+        guard let end = Season.end(after: Date()) else { return "soon" }
+        let days = Calendar.current.dateComponents([.day], from: Date(), to: end).day ?? 0
+        return days <= 0 ? "soon" : "in \(days) days"
     }
 
     private func rankGlyph(_ n: Int) -> String {

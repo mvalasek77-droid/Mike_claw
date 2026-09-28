@@ -590,13 +590,22 @@ struct RewardsSection: View {
         VStack(alignment: .leading, spacing: 12) {
             LearnHeader(index: 12, title: LearnSection.rewards.title)
             LearnParagraph("Reel Coins are the fuel — a fresh stake every Monday, profit kept, and you never buy or redeem them. What actually accrues is status.")
+            VStack(alignment: .leading, spacing: 6) {
+                Text("The goal: the most total profit")
+                    .font(.subheadline.weight(.bold))
+                Text("The Box Office leaderboard ranks everyone by total trading profit. The weekly reset never touches it, and coins from subscriptions or invites don't count — only winning trades move you up. The top 5 get their latest movie review spotlighted on the Marquee home screen, and #1's review leads it. Whoever is #1 when the season ends is crowned its Oracle.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 10).fill(Color.orange.opacity(0.10)))
             HStack(alignment: .top, spacing: 10) {
                 pillar("🎯", "XP & tiers", "Wins grant XP proportional to profit. Six tiers unlock functional social power — verified checkmark, gold username, ability to create custom markets, pinned posts.")
                 pillar("🏅", "Badges", "Feats trigger badges: Sniper (5 in a row), Bomb Caller (put that hits by 30%+), Rocket (call that beats by 40%+), Contrarian (win far from consensus).")
             }
             HStack(alignment: .top, spacing: 10) {
                 pillar("👥", "Followers", "Winning public calls bring 3–12 new followers each. Reach compounds.")
-                pillar("🏆", "Season titles", "Finish #1 for a season and earn a permanent \"Oracle · Summer 2026\" title on your trophy shelf.")
+                pillar("🏆", "Season titles", "Be #1 in total profit when a season ends and earn a permanent \"Oracle · Fall 2026\" title on your trophy shelf.")
             }
         }
     }

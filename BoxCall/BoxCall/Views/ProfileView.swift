@@ -88,7 +88,7 @@ struct ProfileView: View {
                 }
             }
             if myReviews.isEmpty {
-                Text("Write a review from any movie's detail page. Land in the top-5 leaderboard and your latest gets spotlighted on the Feed.")
+                Text("Write a review from any movie's detail page. Reach the top 5 in total profit and your latest review is spotlighted on the Marquee home screen — #1 leads it.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(10)

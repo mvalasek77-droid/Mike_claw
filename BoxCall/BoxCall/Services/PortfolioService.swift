@@ -234,9 +234,13 @@ final class PortfolioService: ObservableObject {
             return existing
         }
 
-        if wonAny && !lostAny {
+        // A streak counts weeks, not movies: bump at most once per Monday cycle.
+        let thisWeek = RefillClock.lastMonday()
+        let alreadyBumped = (user.lastStreakBumpAt ?? .distantPast) >= thisWeek
+        if wonAny && !lostAny && !alreadyBumped {
             RewardsService.shared.bumpWeeklyStreak()
-        } else if lostAny && !wonAny {
+            mutateUser { $0.lastStreakBumpAt = thisWeek }
+        } else if lostAny && !wonAny && !alreadyBumped {
             RewardsService.shared.resetStreak()
         }
 
@@ -286,6 +290,9 @@ final class PortfolioService: ObservableObject {
                 u.lastAllowanceAt = monday
             }
         }
+
+        refreshLeaderboard(now: now)
+        checkSeasonRollover(now: now)
     }
 
     /// A trade that was running at the last Sunday reset pays back the
@@ -310,42 +317,51 @@ final class PortfolioService: ObservableObject {
         positions.append(p)
     }
 
-    // MARK: - Leaderboard mock
+    // MARK: - Leaderboard
 
     private func seedLeaderboard() {
-        let others: [(String, Tier, Double, Double, Double)] = [
-            ("popcornshark",  .studioHead, 8420, 1830, 0.62),
-            ("indieyoda",     .producer,   5210,  940, 0.58),
-            ("openingnight",  .insider,    3100,  410, 0.51),
-            ("marqueemaven",  .insider,    2745, -220, 0.47),
-            ("greenlight",    .analyst,    1980,  120, 0.54),
-            ("trailerbait",   .analyst,    1420, -310, 0.42)
-        ]
-        var entries = others.map {
-            LeaderboardEntry(id: $0.0, handle: $0.0, tier: $0.1,
-                             reelCoins: $0.2, weeklyPnL: $0.3, winRate: $0.4,
-                             isCurrentUser: false)
-        }
-        entries.append(.init(id: user.handle, handle: user.handle, tier: user.tier,
-                             reelCoins: user.reelCoins, weeklyPnL: 0,
-                             winRate: 0, isCurrentUser: true))
-        entries.sort { $0.reelCoins > $1.reelCoins }
-        leaderboard = entries
+        refreshLeaderboard()
     }
 
-    func refreshLeaderboard() {
+    /// Ranked by total trading profit (`lifetimePnL`). The weekly reset,
+    /// subscription bonuses and referral coins never move it, so the top
+    /// spot — and the homepage review spotlight — can only be won by trading.
+    func refreshLeaderboard(now: Date = Date()) {
         let settled = positions.filter { !$0.isOpen }
         let wins = settled.filter { ($0.settledPayout ?? 0) > $0.cost }.count
         let rate = settled.isEmpty ? 0 : Double(wins) / Double(settled.count)
-        let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+        let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: now) ?? now
         let weekly = settled
             .filter { $0.openedAt >= weekAgo }
             .reduce(0.0) { $0 + ($1.settledPayout ?? 0) - $1.cost }
-        leaderboard = leaderboard.map { entry in
-            guard entry.isCurrentUser else { return entry }
-            return .init(id: entry.id, handle: entry.handle, tier: user.tier,
-                         reelCoins: user.reelCoins, weeklyPnL: weekly,
-                         winRate: rate, isCurrentUser: true)
-        }.sorted { $0.reelCoins > $1.reelCoins }
+
+        var entries = RivalLeague.rivals.map { r in
+            LeaderboardEntry(id: "rival:\(r.handle)", handle: r.handle, tier: r.tier,
+                             profit: RivalLeague.profit(r, at: now),
+                             weeklyPnL: RivalLeague.lastWeekPnL(r, at: now),
+                             winRate: r.winRate, isCurrentUser: false)
+        }
+        entries.append(.init(id: "me", handle: user.handle, tier: user.tier,
+                             profit: user.lifetimePnL, weeklyPnL: weekly,
+                             winRate: rate, isCurrentUser: true))
+        entries.sort { $0.profit > $1.profit }
+        leaderboard = entries
+    }
+
+    var myRank: Int? {
+        leaderboard.firstIndex(where: \.isCurrentUser).map { $0 + 1 }
+    }
+
+    /// At a season rollover, the trader who is #1 by total profit takes
+    /// the previous season's Oracle title.
+    private func checkSeasonRollover(now: Date) {
+        let current = Season.name(at: now)
+        guard let previous = user.lastSeasonChecked else {
+            mutateUser { $0.lastSeasonChecked = current }
+            return
+        }
+        guard previous != current else { return }
+        if myRank == 1 { RewardsService.shared.crownSeasonOracle(seasonName: previous) }
+        mutateUser { $0.lastSeasonChecked = current }
     }
 }

@@ -34,6 +34,7 @@ struct BoxCallApp: App {
                     .environmentObject(rewards)
             }
             .task {
+                await store.refreshEntitlements()
                 // Before settlement, so this weekend's payouts repay any stake riding on them.
                 portfolio.applyWeeklyCycle()
                 AnalyticsService.shared.installCrashHandler()
@@ -47,7 +48,10 @@ struct BoxCallApp: App {
                 WidgetSyncService.sync()
             }
             .onChange(of: scenePhase) { _, phase in
-                if phase == .active { portfolio.applyWeeklyCycle() }
+                if phase == .active {
+                    portfolio.applyWeeklyCycle()
+                    Task { await settlement.checkAndSettle() }
+                }
             }
             .onReceive(weeklyTick) { _ in portfolio.applyWeeklyCycle() }
             .sheet(item: $coordinator.pendingCopy) { intent in
