@@ -9,6 +9,7 @@ struct ConfettiBurst: View {
 
     @State private var particles: [Particle] = []
     @State private var startedAt: Date?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private struct Particle: Identifiable {
         let id = UUID()
@@ -50,6 +51,9 @@ struct ConfettiBurst: View {
     }
 
     private func fire() {
+        Haptics.won(large: true)
+        // The win still lands through the haptic; skip the particle storm.
+        guard !reduceMotion else { return }
         let palette: [Color] = [Theme.marqueeGold, Theme.bulbGlow, Theme.cream,
                                 Theme.bull, Theme.velvetRed, .white]
         particles = (0..<count).map { _ in
@@ -63,7 +67,6 @@ struct ConfettiBurst: View {
             )
         }
         startedAt = Date()
-        Haptics.won(large: true)
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: UInt64((duration + 0.1) * 1_000_000_000))
             particles = []
@@ -76,6 +79,7 @@ struct ConfettiBurst: View {
 struct StreakFlame: View {
     let weeks: Int
     @State private var pulse = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: 4) {
@@ -92,7 +96,10 @@ struct StreakFlame: View {
         .padding(.horizontal, 8).padding(.vertical, 4)
         .background(Capsule().fill(Theme.velvetRed.opacity(0.35)))
         .overlay(Capsule().stroke(Theme.bulbGlow.opacity(0.5), lineWidth: 1))
-        .onAppear { withAnimation(Theme.Motion.breathe) { pulse = weeks > 0 } }
+        .onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(Theme.Motion.breathe) { pulse = weeks > 0 }
+        }
         .accessibilityLabel("\(weeks)-week winning streak")
     }
 }

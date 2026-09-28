@@ -73,19 +73,19 @@ struct MarqueeTicker: View {
             ForEach(items) { item in
                 HStack(spacing: 6) {
                     Text(item.title.uppercased())
-                        .font(.system(size: 11, weight: .heavy, design: .monospaced))
+                        .scaledFont(11, weight: .heavy, design: .monospaced)
                         .foregroundStyle(Theme.cream)
                         .lineLimit(1)
                     Text(item.side.plain)
-                        .font(.system(size: 9, weight: .black, design: .monospaced))
+                        .scaledFont(9, weight: .black, design: .monospaced)
                         .padding(.horizontal, 4).padding(.vertical, 1)
                         .background(Capsule().fill((item.side == .call ? Theme.bull : Theme.bear).opacity(0.25)))
                         .foregroundStyle(item.side == .call ? Theme.bull : Theme.bear)
                     Text(item.mark, format: .number.precision(.fractionLength(2)))
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .scaledFont(11, weight: .bold, design: .monospaced)
                         .foregroundStyle(Theme.bulbGlow)
                     Text(item.delta, format: .percent.precision(.fractionLength(1)).sign(strategy: .always()))
-                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                        .scaledFont(10, weight: .semibold, design: .monospaced)
                         .foregroundStyle(item.delta >= 0 ? Theme.bull : Theme.bear)
                 }
                 .fixedSize()

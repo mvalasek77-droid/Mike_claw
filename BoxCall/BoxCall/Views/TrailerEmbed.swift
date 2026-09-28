@@ -25,14 +25,14 @@ struct TrailerEmbed: View {
                     )
                 VStack(spacing: 9) {
                     Image(systemName: "play.fill")
-                        .font(.system(size: 30, weight: .black))
+                        .scaledFont(30, weight: .black)
                         .foregroundStyle(Theme.marqueeGold)
                     Text("WATCH THE OFFICIAL TRAILER")
-                        .font(.system(size: 13, weight: .black, design: .monospaced))
+                        .scaledFont(13, weight: .black, design: .monospaced)
                         .tracking(1.1)
                         .foregroundStyle(Theme.cream)
                     Text("OPENS YOUTUBE")
-                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .scaledFont(9, weight: .bold, design: .monospaced)
                         .tracking(1)
                         .foregroundStyle(Theme.marqueeGold.opacity(0.75))
                 }

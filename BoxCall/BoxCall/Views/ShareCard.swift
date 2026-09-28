@@ -37,7 +37,7 @@ struct ShareCard: View {
 
     private var header: some View {
         HStack {
-            Text(poster).font(.system(size: 56))
+            Text(poster).scaledFont(56)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.title2.bold())
                 Text("BoxCall — opening-weekend options")
@@ -52,7 +52,7 @@ struct ShareCard: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 Text(side.display)
-                    .font(.system(size: 44, weight: .heavy))
+                    .scaledFont(44, weight: .heavy)
                     .foregroundStyle(sideColor)
                 Text("$\(Int(strikeMillions))M strike")
                     .font(.title2.weight(.semibold))

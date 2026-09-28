@@ -39,6 +39,8 @@ struct BoxCallApp: App {
                 }
             }
             .preferredColorScheme(.dark)
+            // Dense quote tables can't reflow past this; everything below it scales.
+            .dynamicTypeSize(...DynamicTypeSize.accessibility3)
             .overlay(alignment: .top) {
                 RewardToastOverlay()
                     .environmentObject(rewards)

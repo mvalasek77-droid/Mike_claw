@@ -93,7 +93,7 @@ struct PortfolioView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Reel Coins").font(.caption).foregroundStyle(.secondary)
             Text(portfolio.user.reelCoins, format: .number.precision(.fractionLength(0)))
-                .font(.system(size: 34, weight: .bold, design: .rounded))
+                .scaledFont(34, weight: .bold, design: .rounded)
                 .monospacedDigit()
             HStack {
                 Label("Lifetime", systemImage: "chart.line.uptrend.xyaxis")

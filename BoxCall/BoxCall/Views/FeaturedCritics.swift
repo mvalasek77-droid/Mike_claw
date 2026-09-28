@@ -162,7 +162,7 @@ struct WinnerReviewCard: View {
                         .foregroundStyle(Theme.marqueeGold)
                     if review.authorIsCurrentUser { MemberFlair() }
                     Text((tier ?? review.authorTier).name.uppercased())
-                        .font(.system(size: 8, weight: .bold, design: .monospaced))
+                        .scaledFont(8, weight: .bold, design: .monospaced)
                         .tracking(0.5)
                         .foregroundStyle((tier ?? review.authorTier).color)
                     }
@@ -186,7 +186,7 @@ struct SupportingReviewCard: View {
             HStack(spacing: 6) {
                 rankBadge(rank)
                 Text((tier ?? review.authorTier).name.uppercased())
-                    .font(.system(size: 8, weight: .bold, design: .monospaced))
+                    .scaledFont(8, weight: .bold, design: .monospaced)
                     .foregroundStyle((tier ?? review.authorTier).color)
                     .lineLimit(1)
                 Spacer()
@@ -241,7 +241,7 @@ struct SupportingReviewCard: View {
                 .foregroundStyle(Theme.cream)
                 .lineLimit(1)
             Image(systemName: "chevron.right")
-                .font(.system(size: 8, weight: .bold))
+                .scaledFont(8, weight: .bold)
                 .foregroundStyle(Theme.marqueeGold)
         }
     }

@@ -63,7 +63,7 @@ struct FeedView: View {
                                 .foregroundStyle(notifications.unreadCount > 0 ? Theme.marqueeGold : Theme.cream)
                             if notifications.unreadCount > 0 {
                                 Text("\(min(notifications.unreadCount, 99))")
-                                    .font(.system(size: 9, weight: .bold))
+                                    .scaledFont(9, weight: .bold)
                                     .foregroundStyle(.white)
                                     .padding(.horizontal, 4)
                                     .padding(.vertical, 2)
@@ -100,20 +100,20 @@ struct MarqueeBoxOfficeHeader: View {
             HStack(spacing: 10) {
                 rule
                 Text("BOXCALL PRESENTS")
-                    .font(.system(size: 9, weight: .black, design: .monospaced))
+                    .scaledFont(9, weight: .black, design: .monospaced)
                     .tracking(2.4)
                     .foregroundStyle(Theme.bulbGlow)
                     .fixedSize()
                 rule
             }
             Text("THE BOX OFFICE")
-                .font(.system(size: 31, weight: .black, design: .serif))
+                .scaledFont(31, weight: .black, design: .serif)
                 .tracking(1.2)
                 .foregroundStyle(Theme.cream)
                 .minimumScaleFactor(0.8)
                 .lineLimit(1)
             Text("OPENING WEEKEND FORECAST MARKET")
-                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .scaledFont(10, weight: .bold, design: .monospaced)
                 .tracking(1.4)
                 .foregroundStyle(Theme.marqueeGold)
         }
@@ -161,7 +161,7 @@ struct BoxOfficeForecastBoard: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("OPENING WEEKEND BOARD")
-                        .font(.system(size: 12, weight: .black, design: .monospaced))
+                        .scaledFont(12, weight: .black, design: .monospaced)
                         .tracking(1.1)
                         .foregroundStyle(Theme.cream)
                     Text("Live audience-implied grosses")
@@ -170,7 +170,7 @@ struct BoxOfficeForecastBoard: View {
                 }
                 Spacer()
                 Text("FORECAST")
-                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .scaledFont(9, weight: .bold, design: .monospaced)
                     .tracking(1)
                     .foregroundStyle(Theme.marqueeGold)
             }
@@ -210,7 +210,7 @@ struct BoxOfficeForecastBoard: View {
         let delta = market.consensusDeltaPct(for: movie.id)
         return HStack(spacing: 10) {
             Text("\(rank)")
-                .font(.system(size: 19, weight: .bold, design: .serif))
+                .scaledFont(19, weight: .bold, design: .serif)
                 .foregroundStyle(Theme.marqueeGold)
                 .frame(width: 23, alignment: .leading)
             VStack(alignment: .leading, spacing: 2) {
@@ -251,14 +251,14 @@ struct MarqueeSectionLabel: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
             Text(title.uppercased())
-                .font(.system(size: 13, weight: .black, design: .serif))
+                .scaledFont(13, weight: .black, design: .serif)
                 .tracking(1.1)
                 .foregroundStyle(Theme.cream)
             Rectangle()
                 .fill(Theme.marqueeGold.opacity(0.55))
                 .frame(height: 1)
             Text(kicker.uppercased())
-                .font(.system(size: 8, weight: .bold, design: .monospaced))
+                .scaledFont(8, weight: .bold, design: .monospaced)
                 .tracking(0.7)
                 .foregroundStyle(Theme.marqueeGold)
                 .lineLimit(1)
@@ -585,7 +585,7 @@ struct CommentSheet: View {
         social.feed.first(where: { $0.id == post.id }) ?? post
     }
 
-    var filteredComments: [SocialPost.Comment] {
+    var filteredComments: [Comment] {
         moderation.filter(comments: live.comments)
     }
 

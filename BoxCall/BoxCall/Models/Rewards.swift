@@ -33,12 +33,12 @@ enum Tier: Int, Codable, CaseIterable, Comparable {
 
     var color: Color {
         switch self {
-        case .rookie:     return .gray
-        case .analyst:    return .blue
-        case .insider:    return .yellow
-        case .producer:   return .purple
-        case .studioHead: return .pink
-        case .legend:     return .orange
+        case .rookie:     return Theme.tierRookie
+        case .analyst:    return Theme.tierAnalyst
+        case .insider:    return Theme.tierInsider
+        case .producer:   return Theme.tierProducer
+        case .studioHead: return Theme.tierStudioHead
+        case .legend:     return Theme.tierLegend
         }
     }
 

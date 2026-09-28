@@ -104,7 +104,7 @@ struct SentimentGauge: View {
 
             VStack(spacing: 1) {
                 Text(String(format: "%+.2f", pulse.score))
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .scaledFont(22, weight: .bold, design: .rounded)
                     .monospacedDigit()
                     .foregroundStyle(mood.color)
                 Text(mood.label.uppercased())
@@ -192,7 +192,7 @@ struct InsideMarketCard: View {
 
             VStack(spacing: 2) {
                 Text("SPREAD")
-                    .font(.system(size: 9, weight: .heavy))
+                    .scaledFont(9, weight: .heavy)
                     .tracking(1)
                     .foregroundStyle(.secondary)
                 Text(String(format: "%.2f", book.nbbo.spread))
@@ -219,11 +219,11 @@ struct InsideMarketCard: View {
                             alignment: HorizontalAlignment) -> some View {
         VStack(alignment: alignment, spacing: 2) {
             Text(label)
-                .font(.system(size: 9, weight: .heavy))
+                .scaledFont(9, weight: .heavy)
                 .tracking(1)
                 .foregroundStyle(.secondary)
             Text(size > 0 ? String(format: "%.2f", price) : "—")
-                .font(.system(size: 26, weight: .bold, design: .rounded))
+                .scaledFont(26, weight: .bold, design: .rounded)
                 .monospacedDigit()
                 .foregroundStyle(size > 0 ? tint : Color.secondary)
                 .contentTransition(.numericText())
@@ -232,7 +232,7 @@ struct InsideMarketCard: View {
                 .foregroundStyle(.secondary)
             if let who, size > 0 {
                 Text(who)
-                    .font(.system(size: 9, weight: .semibold))
+                    .scaledFont(9, weight: .semibold)
                     .foregroundStyle(tint.opacity(0.8))
                     .lineLimit(1)
             }
@@ -314,7 +314,7 @@ struct AgentQuoteRow: View {
 
     private var stanceBadge: some View {
         Text(quote.stance.label)
-            .font(.system(size: 9, weight: .heavy))
+            .scaledFont(9, weight: .heavy)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
             .background(Capsule().fill(quote.stance.color.opacity(0.20)))
@@ -389,13 +389,13 @@ struct QuoteStrip: View {
     var body: some View {
         HStack(spacing: Theme.Space.md) {
             VStack(alignment: .leading, spacing: 1) {
-                Text("BID").font(.system(size: 8, weight: .heavy)).foregroundStyle(.secondary)
+                Text("BID").scaledFont(8, weight: .heavy).foregroundStyle(.secondary)
                 Text(String(format: "%.2f", book.nbbo.bid))
                     .font(.callout.weight(.bold).monospacedDigit())
                     .foregroundStyle(Theme.bull)
             }
             VStack(alignment: .leading, spacing: 1) {
-                Text("ASK").font(.system(size: 8, weight: .heavy)).foregroundStyle(.secondary)
+                Text("ASK").scaledFont(8, weight: .heavy).foregroundStyle(.secondary)
                 Text(String(format: "%.2f", book.nbbo.ask))
                     .font(.callout.weight(.bold).monospacedDigit())
                     .foregroundStyle(Theme.bear)
@@ -405,7 +405,7 @@ struct QuoteStrip: View {
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(book.nbbo.liquidityGrade.label.uppercased())
-                    .font(.system(size: 8, weight: .heavy))
+                    .scaledFont(8, weight: .heavy)
                     .foregroundStyle(book.nbbo.liquidityGrade.color)
                 Text(String(format: "%.1f%% wide", book.nbbo.spreadPct * 100))
                     .font(.caption2.monospacedDigit())
@@ -444,7 +444,7 @@ struct SentimentEventRow: View {
                     .font(.caption)
                     .fixedSize(horizontal: false, vertical: true)
                 Text(event.source.label)
-                    .font(.system(size: 9, weight: .semibold))
+                    .scaledFont(9, weight: .semibold)
                     .foregroundStyle(.tertiary)
             }
             Spacer(minLength: 4)

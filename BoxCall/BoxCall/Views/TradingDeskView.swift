@@ -103,7 +103,7 @@ struct TradingDeskView: View {
                 .font(.caption.weight(.bold).monospacedDigit())
                 .foregroundStyle(tint)
             Text(label)
-                .font(.system(size: 9, weight: .semibold))
+                .scaledFont(9, weight: .semibold)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
@@ -303,7 +303,7 @@ struct DeskSummaryCard: View {
                 .font(.caption.weight(.bold).monospacedDigit())
                 .foregroundStyle(tint)
             Text(label)
-                .font(.system(size: 9))
+                .scaledFont(9)
                 .foregroundStyle(.secondary)
         }
     }

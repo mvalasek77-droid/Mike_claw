@@ -34,8 +34,7 @@ struct OnboardingView: View {
                         .frame(maxWidth: .infinity)
                         .fontWeight(.semibold)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.orange)
+                .primaryActionStyle()
                 .controlSize(.large)
                 .accessibilityIdentifier("tour.next")
 
@@ -241,7 +240,7 @@ struct OnboardingView: View {
 
     private func slide(step: Int?, emoji: String, title: String, body: String) -> some View {
         slide(step: step, tab: nil, title: title, body: body, header: {
-            Text(emoji).font(.system(size: 72))
+            Text(emoji).scaledFont(72)
         }, extra: { EmptyView() })
     }
 

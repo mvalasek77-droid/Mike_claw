@@ -183,6 +183,19 @@ struct MovieRow: View {
             }
         }
         .padding(.vertical, 4)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilitySummary(implied: implied, delta: delta))
+    }
+
+    private func accessibilitySummary(implied: Double, delta: Double) -> String {
+        let opens: String
+        switch movie.daysToRelease {
+        case ..<1:  opens = "Opened, trading locked until results"
+        case 1:     opens = "Opens tomorrow"
+        default:    opens = "Opens in \(movie.daysToRelease) days"
+        }
+        let direction = delta >= 0 ? "up" : "down"
+        return "\(movie.title), \(movie.studio). \(opens). Crowd predicts \(Int(implied.rounded())) million, \(direction) \(String(format: "%.1f", abs(delta * 100))) percent."
     }
 }
 

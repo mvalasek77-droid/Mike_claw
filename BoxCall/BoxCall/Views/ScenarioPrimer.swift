@@ -181,8 +181,7 @@ struct FirstTradeTutorial: View {
                     } label: {
                         Text("Got it — show me the trade").frame(maxWidth: .infinity).fontWeight(.semibold)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(color)
+                    .primaryActionStyle(tint: color)
                     .padding(.top, 8)
                     .accessibilityIdentifier("tutorial.gotIt")
                 }

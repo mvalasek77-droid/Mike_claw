@@ -222,7 +222,7 @@ struct ProfileView: View {
                     .fill(user.tier.color.opacity(0.25))
                     .frame(width: 72, height: 72)
                 Text(String(user.handle.prefix(1)).uppercased())
-                    .font(.system(size: 32, weight: .bold))
+                    .scaledFont(32, weight: .bold)
                     .foregroundStyle(user.tier.color)
             }
             .overlay(
@@ -322,7 +322,7 @@ struct ProfileView: View {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 88))], spacing: 12) {
                     ForEach(user.badges) { badge in
                         VStack(spacing: 4) {
-                            Text(badge.emoji).font(.system(size: 34))
+                            Text(badge.emoji).scaledFont(34)
                             Text(badge.name).font(.caption2.weight(.semibold))
                                 .multilineTextAlignment(.center)
                         }

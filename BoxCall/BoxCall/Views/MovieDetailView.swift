@@ -158,7 +158,7 @@ struct MovieDetailView: View {
             }
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text("$\(implied, specifier: "%.1f")M")
-                    .font(.system(size: 36, weight: .bold, design: .rounded))
+                    .scaledFont(36, weight: .bold, design: .rounded)
                     .monospacedDigit()
                 deltaTag(delta)
                 Spacer()
@@ -194,7 +194,7 @@ struct MovieDetailView: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 5) {
                     Image(systemName: "newspaper.fill")
-                        .font(.system(size: 9))
+                        .scaledFont(9)
                         .foregroundStyle(Theme.marqueeGold)
                     Text(projection.attribution)
                         .font(.caption2.weight(.semibold))
@@ -257,7 +257,7 @@ struct MovieDetailView: View {
     private func factRow(_ label: String, _ value: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(label.uppercased())
-                .font(.system(size: 9, weight: .black, design: .monospaced))
+                .scaledFont(9, weight: .black, design: .monospaced)
                 .tracking(1.5)
                 .foregroundStyle(Theme.marqueeGold)
                 .frame(width: 84, alignment: .leading)
@@ -444,12 +444,14 @@ struct MovieDetailView: View {
 
 struct LivePulse: View {
     @State private var on = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
         Rectangle()
             .fill(Theme.marqueeGold)
             .frame(width: 10, height: 3)
-            .opacity(on ? 1.0 : 0.35)
-            .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: on)
+            .opacity(on || reduceMotion ? 1.0 : 0.35)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: on)
             .onAppear { on = true }
+            .accessibilityHidden(true)
     }
 }

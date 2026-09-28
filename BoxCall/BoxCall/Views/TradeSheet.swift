@@ -353,8 +353,7 @@ struct TradeSheet: View {
                     .frame(maxWidth: .infinity)
                     .fontWeight(.semibold)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(.orange)
+            .primaryActionStyle()
             .accessibilityLabel(orderAccessibilityLabel)
             .accessibilityIdentifier("trade.submit")
         }

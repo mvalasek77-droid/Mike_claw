@@ -45,7 +45,7 @@ struct WeekendRecap: View {
                 .accessibilityLabel("Dismiss weekend recap")
             }
             Text("WEEKEND RECAP")
-                .font(.system(size: 11, weight: .black, design: .monospaced))
+                .scaledFont(11, weight: .black, design: .monospaced)
                 .tracking(3)
                 .foregroundStyle(Theme.bulbGlow)
             Text(headline)

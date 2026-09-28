@@ -22,7 +22,7 @@ struct OpeningNightHero: View {
                     VStack(alignment: .leading, spacing: 8) {
                         MarqueeBulbs(count: 14)
                         Text("OPENING NIGHT")
-                            .font(.system(size: 11, weight: .black, design: .monospaced))
+                            .scaledFont(11, weight: .black, design: .monospaced)
                             .tracking(3)
                             .foregroundStyle(Theme.bulbGlow)
                         Text(movie.title)
@@ -84,7 +84,7 @@ struct OpeningNightHero: View {
             LinearGradient(colors: [Theme.velvetRed, Theme.stageBlack],
                            startPoint: .topLeading, endPoint: .bottomTrailing)
             Text(movie.posterEmoji)
-                .font(.system(size: 160))
+                .scaledFont(160)
                 .opacity(0.22)
                 .offset(x: 80, y: -30)
                 .rotationEffect(.degrees(-12))
@@ -110,7 +110,7 @@ struct OpeningNightHero: View {
 
     private var colon: some View {
         Text(":")
-            .font(.system(size: 22, weight: .heavy, design: .monospaced))
+            .scaledFont(22, weight: .heavy, design: .monospaced)
             .foregroundStyle(Theme.marqueeGold)
             .offset(y: -6)
     }
@@ -118,12 +118,12 @@ struct OpeningNightHero: View {
     private func unit(_ n: Int, _ label: String) -> some View {
         VStack(spacing: 1) {
             Text(String(format: "%02d", n))
-                .font(.system(size: 26, weight: .heavy, design: .monospaced))
+                .scaledFont(26, weight: .heavy, design: .monospaced)
                 .foregroundStyle(Theme.cream)
                 .contentTransition(.numericText())
                 .animation(.snappy, value: n)
             Text(label)
-                .font(.system(size: 8, weight: .bold, design: .monospaced))
+                .scaledFont(8, weight: .bold, design: .monospaced)
                 .tracking(1.5)
                 .foregroundStyle(Theme.marqueeGold)
         }

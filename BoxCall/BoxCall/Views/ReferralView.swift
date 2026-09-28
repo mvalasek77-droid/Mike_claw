@@ -31,8 +31,7 @@ struct ReferralView: View {
                         .frame(maxWidth: .infinity)
                         .fontWeight(.semibold)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.orange)
+                .primaryActionStyle()
                 .controlSize(.large)
             }
             .padding()

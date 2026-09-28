@@ -50,7 +50,7 @@ struct NowPlayingBoard: View {
     private var header: some View {
         HStack(alignment: .center, spacing: Theme.Space.sm) {
             Text("ON THE BOARD")
-                .font(.system(size: 11, weight: .heavy))
+                .scaledFont(11, weight: .heavy)
                 .tracking(2)
                 .foregroundStyle(Theme.marqueeGold)
             Rectangle()
@@ -89,7 +89,7 @@ struct BoardTile: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             Text(movie.studio)
-                .font(.system(size: 9, weight: .semibold))
+                .scaledFont(9, weight: .semibold)
                 .tracking(0.5)
                 .foregroundStyle(.tertiary)
                 .lineLimit(1)
@@ -110,7 +110,7 @@ struct BoardTile: View {
 
     private var countdownPill: some View {
         Text(days == 0 ? "TONIGHT" : "\(days)d")
-            .font(.system(size: 9, weight: .heavy))
+            .scaledFont(9, weight: .heavy)
             .tracking(0.5)
             .padding(.horizontal, 5)
             .padding(.vertical, 2)
@@ -132,23 +132,23 @@ struct BoardTile: View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text("$\(implied, specifier: "%.0f")M")
-                    .font(.system(size: 19, weight: .bold, design: .rounded))
+                    .scaledFont(19, weight: .bold, design: .rounded)
                     .monospacedDigit()
                     .contentTransition(.numericText())
                 if abs(deltaPct) >= 0.005 {
                     Text("\(deltaPct >= 0 ? "▲" : "▼")\(abs(deltaPct) * 100, specifier: "%.0f")%")
-                        .font(.system(size: 9, weight: .heavy).monospacedDigit())
+                        .scaledFont(9, weight: .heavy).monospacedDigit()
                         .foregroundStyle(deltaPct >= 0 ? Theme.marqueeGold : Theme.bear)
                 }
             }
             if let projection = movie.tradeProjection, projection.isPublished {
                 Text("Trades: $\(Int(projection.lowMillions))–\(Int(projection.highMillions))M")
-                    .font(.system(size: 9, weight: .medium).monospacedDigit())
+                    .scaledFont(9, weight: .medium).monospacedDigit()
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             } else {
                 Text("Opening weekend est.")
-                    .font(.system(size: 9))
+                    .scaledFont(9)
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
             }

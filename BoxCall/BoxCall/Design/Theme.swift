@@ -37,7 +37,7 @@ enum Theme {
     static let tierInsider     = marqueeGold
     static let tierProducer    = Color(red: 0.76, green: 0.52, blue: 0.24)  // brass
     static let tierStudioHead  = Color(red: 0.70, green: 0.22, blue: 0.26)  // velvet rope
-    static let tierOracle      = bulbGlow
+    static let tierLegend      = bulbGlow
 
     // MARK: - Radii (continuous curves — no sharp corners in a movie palace)
     enum Radius {
@@ -133,6 +133,7 @@ extension View {
 struct MarqueeBulbs: View {
     var count: Int = 12
     @State private var flicker = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: 6) {
@@ -150,7 +151,8 @@ struct MarqueeBulbs: View {
                     )
             }
         }
-        .onAppear { flicker.toggle() }
+        .onAppear { if !reduceMotion { flicker.toggle() } }
+        .accessibilityHidden(true)
     }
 }
 
@@ -190,5 +192,61 @@ struct DepthButtonStyle: ButtonStyle {
                     radius: configuration.isPressed ? 4 : 10,
                     y: configuration.isPressed ? 2 : 6)
             .animation(Theme.Motion.snap, value: configuration.isPressed)
+    }
+}
+
+// MARK: - Primary action (Liquid Glass on iOS 26)
+
+extension View {
+    /// The app's main call-to-action look: prominent Liquid Glass on
+    /// iOS 26, the system's bordered-prominent style before it. Labels are
+    /// near-black: white on marquee gold is ~2.2:1 contrast, black is ~9:1.
+    @ViewBuilder
+    func primaryActionStyle(tint: Color = Theme.marqueeGold) -> some View {
+        #if compiler(>=6.2)
+        if #available(iOS 26.0, *) {
+            self.buttonStyle(.glassProminent).tint(tint).foregroundStyle(Theme.stageBlack)
+        } else {
+            self.buttonStyle(.borderedProminent).tint(tint).foregroundStyle(Theme.stageBlack)
+        }
+        #else
+        self.buttonStyle(.borderedProminent).tint(tint).foregroundStyle(Theme.stageBlack)
+        #endif
+    }
+}
+
+// MARK: - Dynamic Type for fixed-size marquee type
+
+/// A system font designed at a fixed point size that still follows the
+/// user's text-size setting: identical at the default size, larger (or
+/// smaller) as Dynamic Type changes.
+private struct ScaledSystemFont: ViewModifier {
+    @ScaledMetric private var size: CGFloat
+    private let weight: Font.Weight
+    private let design: Font.Design
+
+    init(size: CGFloat, weight: Font.Weight, design: Font.Design) {
+        let style: Font.TextStyle
+        switch size {
+        case ..<12:  style = .caption2
+        case ..<14:  style = .footnote
+        case ..<18:  style = .body
+        case ..<25:  style = .title2
+        default:     style = .largeTitle
+        }
+        _size = ScaledMetric(wrappedValue: size, relativeTo: style)
+        self.weight = weight
+        self.design = design
+    }
+
+    func body(content: Content) -> some View {
+        content.font(.system(size: size, weight: weight, design: design))
+    }
+}
+
+extension View {
+    func scaledFont(_ size: CGFloat, weight: Font.Weight = .regular,
+                    design: Font.Design = .default) -> some View {
+        modifier(ScaledSystemFont(size: size, weight: weight, design: design))
     }
 }

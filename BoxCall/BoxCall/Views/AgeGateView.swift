@@ -12,7 +12,7 @@ struct AgeGateView: View {
         VStack(spacing: 22) {
             Spacer()
             Image(systemName: "person.badge.shield.checkmark")
-                .font(.system(size: 64))
+                .scaledFont(64)
                 .foregroundStyle(.orange)
             Text("Quick check")
                 .font(.title.bold())
@@ -36,8 +36,7 @@ struct AgeGateView: View {
             } label: {
                 Text("Confirm").frame(maxWidth: 240).fontWeight(.semibold)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(.orange)
+            .primaryActionStyle()
             .controlSize(.large)
             .accessibilityIdentifier("ageGate.confirm")
             Spacer()
