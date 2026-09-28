@@ -5,6 +5,7 @@ struct ProfileView: View {
     @EnvironmentObject var social: SocialService
     @State private var showPaywall = false
     @State private var showPosterUnlock = false
+    @State private var showTour = false
 
     var user: User { portfolio.user }
     var myReviews: [Review] {
@@ -34,6 +35,12 @@ struct ProfileView: View {
             }
             .sheet(isPresented: $showPosterUnlock) {
                 PosterUnlockSheet()
+            }
+            .fullScreenCover(isPresented: $showTour) {
+                OnboardingView(hasCompleted: Binding(
+                    get: { !showTour },
+                    set: { if $0 { showTour = false } }
+                ))
             }
         }
     }
@@ -108,6 +115,13 @@ struct ProfileView: View {
     private var learnLinks: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Learn the game").font(.headline)
+            Button {
+                showTour = true
+            } label: {
+                learnRow(icon: "play.rectangle", title: "Replay the app tour",
+                         subtitle: "Five steps: pick a movie, pick a side, buy, track, settle.")
+            }
+            .buttonStyle(.plain)
             Button {
                 showPosterUnlock = true
             } label: {
