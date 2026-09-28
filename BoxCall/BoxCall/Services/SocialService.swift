@@ -74,6 +74,14 @@ final class SocialService: ObservableObject {
 
     var hasCurrentUserReview: Bool { reviews.contains(where: \.authorIsCurrentUser) }
 
+    /// A trader's rank now. Ranks move with profit, so the rank saved on an
+    /// old post or review is only a fallback for handles off the leaderboard.
+    func liveTier(handle: String, isCurrentUser: Bool, saved: Tier) -> Tier {
+        let portfolio = PortfolioService.shared
+        if isCurrentUser { return portfolio.user.tier }
+        return portfolio.leaderboard.first { !$0.isCurrentUser && $0.handle == handle }?.tier ?? saved
+    }
+
     private func latestReview(for entry: LeaderboardEntry) -> Review? {
         // Match the current user by flag, not handle: signing in can rename them.
         reviews

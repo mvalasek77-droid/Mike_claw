@@ -1,8 +1,8 @@
 import Foundation
 import Combine
 
-/// Grants XP, badges, streaks, and followers when trades settle.
-/// Everything here is play-status: no cash, no IAP.
+/// Badges, streaks, followers and rank-up moments. Everything here is
+/// play-status earned by trading: no cash, no IAP.
 @MainActor
 final class RewardsService: ObservableObject {
     static let shared = RewardsService()
@@ -21,16 +21,16 @@ final class RewardsService: ObservableObject {
 
     // MARK: - Public API
 
-    func grant(xp amount: Int, reason: String) {
-        let before = PortfolioService.shared.user.tier
-        PortfolioService.shared.mutateUser { $0.xp += amount }
-        toast("+\(amount) XP", subtitle: reason, emoji: "⚡️")
-        let after = PortfolioService.shared.user.tier
-        if after > before {
-            NotificationsService.shared.notifyTier(after)
-            AnalyticsService.shared.track(.tierPromoted(to: after.name))
-            Haptics.tierUp()
-        }
+    func celebrate(_ title: String, subtitle: String, emoji: String) {
+        toast(title, subtitle: subtitle, emoji: emoji)
+    }
+
+    /// Called by PortfolioService whenever best total profit crosses a rank threshold.
+    func rankUp(to tier: Tier) {
+        toast("You're now a \(tier.name)", subtitle: tier.perks.first ?? "New rank unlocked", emoji: "⭐️")
+        NotificationsService.shared.notifyTier(tier)
+        AnalyticsService.shared.track(.tierPromoted(to: tier.name))
+        Haptics.tierUp()
     }
 
     func award(badge: Badge) {
@@ -50,18 +50,10 @@ final class RewardsService: ObservableObject {
     }
 
     func recordWin(position: Position, actual: Double, netProfit: Double) {
-        // Base XP scaled by profit; magnitude bonus for calling something far from consensus.
-        let baseXP = Int(min(500, max(25, netProfit)))
         let followersGained = Int.random(in: 3...12)
-        let tierBefore = PortfolioService.shared.user.tier
-        PortfolioService.shared.mutateUser { u in
-            u.xp += baseXP
-            u.followerCount += followersGained
-        }
-        toast("+\(baseXP) XP", subtitle: "Winning \(position.side.display) settled — new followers", emoji: "🎯")
+        PortfolioService.shared.mutateUser { $0.followerCount += followersGained }
+        toast("+\(Int(netProfit)) RC profit", subtitle: "Winning \(position.side.display) settled — new followers", emoji: "🎯")
         NotificationsService.shared.notifyFollowers(gained: followersGained)
-        let tierAfter = PortfolioService.shared.user.tier
-        if tierAfter > tierBefore { NotificationsService.shared.notifyTier(tierAfter) }
 
         recentWinsInARow += 1
         if recentWinsInARow == 5, let b = Badge.make("sniper") { award(badge: b) }
@@ -84,8 +76,6 @@ final class RewardsService: ObservableObject {
 
     func recordLoss(position: Position) {
         recentWinsInARow = 0
-        // A tiny XP grant so losing still feels like progress; you learned something.
-        PortfolioService.shared.mutateUser { $0.xp += 5 }
     }
 
     func bumpWeeklyStreak() {

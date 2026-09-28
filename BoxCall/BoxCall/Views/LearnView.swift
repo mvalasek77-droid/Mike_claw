@@ -478,12 +478,7 @@ struct LosingCoinsSection: View {
             LearnParagraph("Trades still running on Sunday — this weekend's opener, or a movie that hasn't opened yet like Avengers: Doomsday — are never closed by the reset. If part of your stake is riding on one, that trade pays the stake back out of its winnings when it settles or you sell it, and you keep everything above that. If it loses, nothing is owed. Unfilled limit orders are cancelled and refunded just before the reset.")
 
             HStack(spacing: 10) {
-                resetBullet("1,000", "Free tier",           .gray)
-                resetBullet("1,500",   "Backstage",           .blue)
-            }
-            HStack(spacing: 10) {
-                resetBullet("4,000",   "Producer's Pass",     .purple)
-                resetBullet("10,000",  "Mogul",               .orange)
+                resetBullet("1,000", "Every player's weekly stake — free or paid", .orange)
             }
 
             VStack(alignment: .leading, spacing: 6) {
@@ -593,14 +588,14 @@ struct RewardsSection: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("The goal: the most total profit")
                     .font(.subheadline.weight(.bold))
-                Text("The Box Office leaderboard ranks everyone by total trading profit. The weekly reset never touches it, and coins from subscriptions or invites don't count — only winning trades move you up. The top 5 get their latest movie review spotlighted on the Marquee home screen, and #1's review leads it. Whoever is #1 when the season ends is crowned its Oracle.")
+                Text("The Box Office leaderboard ranks everyone by total trading profit. The weekly reset never touches it and subscription coins don't count — only winning trades move you up. The top 5 get their latest movie review spotlighted on the Marquee home screen, and #1's review leads it. Whoever is #1 when the season ends is crowned its Oracle.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(RoundedRectangle(cornerRadius: 10).fill(Color.orange.opacity(0.10)))
             HStack(alignment: .top, spacing: 10) {
-                pillar("🎯", "XP & tiers", "Wins grant XP proportional to profit. Six tiers unlock functional social power — verified checkmark, gold username, ability to create custom markets, pinned posts.")
+                pillar("🎯", "Trader ranks", "Rookie → Analyst (250 RC profit) → Insider (750) → Producer (1,500) → Studio Head (3,000) → Legend (7,500). Earned only by your best total profit — never bought. Each adds a mark: checkmark, gold name, avatar ring, gold-framed takes, Legend rosette.")
                 pillar("🏅", "Badges", "Feats trigger badges: Sniper (5 in a row), Bomb Caller (put that hits by 30%+), Rocket (call that beats by 40%+), Contrarian (win far from consensus).")
             }
             HStack(alignment: .top, spacing: 10) {

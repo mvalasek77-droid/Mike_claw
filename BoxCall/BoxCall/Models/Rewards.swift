@@ -1,8 +1,12 @@
 import Foundation
 import SwiftUI
 
+/// Trader rank. Earned only by trading profit — never bought, never
+/// granted for activity — so a rank on a review means that person has
+/// actually won. Based on the best total profit a trader has reached,
+/// so one bad weekend doesn't take a rank away.
 enum Tier: Int, Codable, CaseIterable, Comparable {
-    case rookie = 0, analyst, insider, producer, studioHead, oracle
+    case rookie = 0, analyst, insider, producer, studioHead, legend
 
     var name: String {
         switch self {
@@ -11,18 +15,19 @@ enum Tier: Int, Codable, CaseIterable, Comparable {
         case .insider:    return "Insider"
         case .producer:   return "Producer"
         case .studioHead: return "Studio Head"
-        case .oracle:     return "Oracle"
+        case .legend:     return "Legend"
         }
     }
 
-    var minXP: Int {
+    /// Best total profit (RC) needed to hold this rank.
+    var minProfit: Double {
         switch self {
         case .rookie:     return 0
-        case .analyst:    return 500
-        case .insider:    return 2_000
-        case .producer:   return 5_000
-        case .studioHead: return 15_000
-        case .oracle:     return 50_000
+        case .analyst:    return 250
+        case .insider:    return 750
+        case .producer:   return 1_500
+        case .studioHead: return 3_000
+        case .legend:     return 7_500
         }
     }
 
@@ -33,25 +38,26 @@ enum Tier: Int, Codable, CaseIterable, Comparable {
         case .insider:    return .yellow
         case .producer:   return .purple
         case .studioHead: return .pink
-        case .oracle:     return .orange
+        case .legend:     return .orange
         }
     }
 
+    /// Every perk listed here is shown in the app — nothing aspirational.
     var perks: [String] {
         switch self {
-        case .rookie:     return ["Trade the chain", "React to public calls"]
-        case .analyst:    return ["Verified checkmark", "Post to the public feed"]
-        case .insider:    return ["Gold username", "Boost one call/week to top of a movie page"]
-        case .producer:   return ["Create custom markets", "Animated avatar frame"]
-        case .studioHead: return ["Pin any post for 24h", "Custom victory animation"]
-        case .oracle:     return ["Seasonal Oracle title", "Quoted on the home feed"]
+        case .rookie:     return ["Trade every market", "Write reviews and hot takes"]
+        case .analyst:    return ["Verified checkmark next to your name"]
+        case .insider:    return ["Gold username everywhere"]
+        case .producer:   return ["Rank ring around your avatar"]
+        case .studioHead: return ["Gold frame on your hot takes in the feed"]
+        case .legend:     return ["Legend rosette beside your name on the leaderboard"]
         }
     }
 
     static func < (lhs: Tier, rhs: Tier) -> Bool { lhs.rawValue < rhs.rawValue }
 
-    static func forXP(_ xp: Int) -> Tier {
-        Tier.allCases.reversed().first { xp >= $0.minXP } ?? .rookie
+    static func forProfit(_ profit: Double) -> Tier {
+        Tier.allCases.reversed().first { profit >= $0.minProfit } ?? .rookie
     }
 }
 

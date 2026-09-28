@@ -19,7 +19,6 @@ struct PaywallView: View {
                                  price: store.displayPrice(for: tier),
                                  isBuying: store.purchaseInFlight == tier) {
                             Task { await store.buy(tier) }
-                            if !tier.isPaid { return }
                         }
                     }
                     if currentMembership.isPaid {
@@ -51,10 +50,10 @@ struct PaywallView: View {
 
     private var header: some View {
         VStack(spacing: 8) {
-            Text("Trade bigger. See more. Stand out.")
+            Text("Better tools. A badge by your name.")
                 .font(.title2.bold())
                 .multilineTextAlignment(.center)
-            Text("Every account gets a fresh 1,000 RC stake every Monday and keeps its profit — always free. Subscribers unlock bigger allowances, early market access, advanced tools, and profile flair. Leaderboard rank and status are still earned by winning calls, never bought.")
+            Text("Every player — free or paid — trades the same 1,000 RC stake each week, so the leaderboard measures skill. Memberships add early access to new markets, limit orders, performance stats, custom markets and a badge next to your name.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -65,7 +64,7 @@ struct PaywallView: View {
         HStack(spacing: 10) {
             Image(systemName: "scale.3d")
                 .foregroundStyle(.orange)
-            Text("Status is not for sale. Tiers, badges, followers, and Featured Critics slots are still earned entirely on your calls.")
+            Text("Status is not for sale. No plan adds Reel Coins. Trader ranks like Insider and Studio Head, leaderboard spots and the review spotlight are earned only by trading profit.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -137,7 +136,6 @@ private struct TierCard: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                grantChip
             }
 
             VStack(alignment: .leading, spacing: 6) {
@@ -172,16 +170,5 @@ private struct TierCard: View {
                 .stroke(isCurrent ? tier.accentColor : tier.accentColor.opacity(0.35),
                         lineWidth: isCurrent ? 2 : 1)
         )
-    }
-
-    private var grantChip: some View {
-        VStack(alignment: .trailing, spacing: 1) {
-            Text("+\(Int(tier.startingBonus)) RC")
-                .font(.caption.weight(.bold))
-                .foregroundStyle(tier.accentColor)
-            Text("\(Int(tier.weeklyAllowance)) / wk")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        }
     }
 }

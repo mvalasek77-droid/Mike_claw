@@ -1,10 +1,10 @@
 import Foundation
 import SwiftUI
 
-/// Subscription tier. Free is the default; three paid tiers unlock
-/// more Reel Coins, exclusive features, and a larger weekly
-/// allowance. Status (tiers, badges, leaderboard rank) is still
-/// earned by winning calls, never bought.
+/// Subscription plan. Paid plans add tools (early access, limit orders,
+/// stats, custom markets) and a name badge — never extra Reel Coins, so
+/// every player trades the same bankroll and profit, rank and the review
+/// spotlight stay a measure of skill.
 enum Membership: String, Codable, CaseIterable, Identifiable {
     case free
     case backstage
@@ -31,24 +31,10 @@ enum Membership: String, Codable, CaseIterable, Identifiable {
         }
     }
 
-    /// Reel Coins granted on activation.
-    var startingBonus: Double {
-        switch self {
-        case .free:           return 0
-        case .backstage:      return 5_000
-        case .producersPass:  return 15_000
-        case .mogul:          return 40_000
-        }
-    }
-
     /// The weekly stake: lands Monday, taken back the next Sunday (profit stays).
     var weeklyAllowance: Double {
-        switch self {
-        case .free:           return 1_000
-        case .backstage:      return 1_500
-        case .producersPass:  return 4_000
-        case .mogul:          return 10_000
-        }
+        // Same for every plan: profit is only comparable when everyone trades the same bankroll.
+        StartingGrant.reelCoins
     }
 
     /// Simultaneous resting limit orders allowed.
@@ -89,30 +75,26 @@ enum Membership: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .free:
             return [
-                "1,000 starting Reel Coins",
-                "Fresh 1,000 RC stake every Monday, forever — you keep your profit",
-                "Full access to every market, feed, and reward"
+                "1,000 RC stake every Monday — the same as every player",
+                "Every market, the feed, reviews and the leaderboard",
+                "Earn trader ranks and the review spotlight"
             ]
         case .backstage:
             return [
-                "5,000 RC starting bonus",
-                "1,500 RC weekly stake",
+                "Ticket badge next to your name",
                 "24-hour early access to new markets",
-                "Up to 3 simultaneous limit orders",
-                "Subscriber badge on your profile"
+                "Up to 3 simultaneous limit orders"
             ]
         case .producersPass:
             return [
-                "15,000 RC starting bonus",
-                "4,000 RC weekly stake",
+                "Star badge next to your name",
                 "Portfolio performance stats",
                 "Up to 10 simultaneous limit orders",
                 "Everything in Backstage"
             ]
         case .mogul:
             return [
-                "40,000 RC starting bonus",
-                "10,000 RC weekly stake",
+                "Crown badge next to your name",
                 "Create custom prop markets",
                 "Unlimited limit orders",
                 "Everything in Producer's Pass"

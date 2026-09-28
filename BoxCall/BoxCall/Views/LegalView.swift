@@ -59,7 +59,7 @@ struct LegalView: View {
 
     private static let privacySections: [(title: String, body: String)] = [
         ("What we collect",
-         "Everything you do in BoxCall — Reel Coins, trades, XP, posts and reviews — is stored only on your device. If you Sign in with Apple, the Apple user ID and, if you share it, your email are also stored only on your device. We do not run a server that holds your account."),
+         "Everything you do in BoxCall — Reel Coins, trades, rank, posts and reviews — is stored only on your device. If you Sign in with Apple, the Apple user ID and, if you share it, your email are also stored only on your device. We do not run a server that holds your account."),
         ("What we do not collect",
          "We do not sell your data. We do not read your contacts. We do not track you across other apps or websites. We do not use third-party ad networks."),
         ("Analytics",

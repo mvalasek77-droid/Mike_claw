@@ -67,7 +67,7 @@ final class StoreService: ObservableObject {
                 switch result {
                 case .success(let verification):
                     if case .verified(let tx) = verification {
-                        PortfolioService.shared.activateMembership(tier)
+                        PortfolioService.shared.activateMembership(tier, isNewPurchase: true)
                         await tx.finish()
                     } else {
                         lastError = "Purchase could not be verified."
@@ -93,7 +93,7 @@ final class StoreService: ObservableObject {
             // Development only, so the tier flow stays testable without a
             // StoreKit configuration attached. Never compiled into a
             // Release build, and so never reachable by App Review.
-            PortfolioService.shared.activateMembership(tier)
+            PortfolioService.shared.activateMembership(tier, isNewPurchase: true)
             #else
             lastError = "Subscriptions are unavailable right now. Please check your connection and try again."
             #endif
@@ -105,7 +105,7 @@ final class StoreService: ObservableObject {
             try await AppStore.sync()
             let best = await bestEntitlement()
             if best.isPaid {
-                PortfolioService.shared.activateMembership(best, grantStartingBonus: false)
+                PortfolioService.shared.activateMembership(best)
             }
         } catch {
             lastError = error.localizedDescription
@@ -119,7 +119,7 @@ final class StoreService: ObservableObject {
         let current = PortfolioService.shared.user.membership
         if best.isPaid {
             if best != current {
-                PortfolioService.shared.activateMembership(best, grantStartingBonus: false)
+                PortfolioService.shared.activateMembership(best)
             }
         } else if current.isPaid {
             #if !DEBUG
@@ -152,7 +152,7 @@ final class StoreService: ObservableObject {
                 if tx.revocationDate != nil {
                     PortfolioService.shared.downgradeToFree()
                 } else {
-                    PortfolioService.shared.activateMembership(tier, grantStartingBonus: false)
+                    PortfolioService.shared.activateMembership(tier)
                 }
             }
             await tx.finish()

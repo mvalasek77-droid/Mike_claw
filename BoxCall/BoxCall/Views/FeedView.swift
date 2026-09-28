@@ -352,11 +352,17 @@ struct PostCard: View {
                 )
         )
         .overlay {
+            // Studio Head and above earn a gold frame on their hot takes.
             RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
-                .stroke(Theme.marqueeGold.opacity(0.28), lineWidth: 1)
+                .stroke(Theme.marqueeGold.opacity(authorTier >= .studioHead ? 0.9 : 0.28),
+                        lineWidth: authorTier >= .studioHead ? 2 : 1)
         }
         .animation(Theme.Motion.smooth, value: post.outcome)
         .animation(Theme.Motion.snap, value: post.isLikedByMe)
+    }
+
+    private var authorTier: Tier {
+        social.liveTier(handle: post.authorHandle, isCurrentUser: post.authorIsCurrentUser, saved: post.authorTier)
     }
 
     private var headerRow: some View {
@@ -366,14 +372,15 @@ struct PostCard: View {
                 HStack(spacing: 4) {
                     Text("@\(post.authorHandle)")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Theme.cream)
-                    if post.authorTier >= .analyst {
+                        .foregroundStyle(authorTier >= .insider ? Theme.marqueeGold : Theme.cream)
+                    if authorTier >= .analyst {
                         Image(systemName: "checkmark")
                             .foregroundStyle(Theme.marqueeGold)
                             .font(.caption)
                     }
+                    if post.authorIsCurrentUser { MemberFlair() }
                 }
-                Text("\(post.authorTier.name) · \(relativeTime(post.createdAt))")
+                Text("\(authorTier.name) · \(relativeTime(post.createdAt))")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -635,7 +642,11 @@ private struct CommentRow: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
                 Text("@\(comment.authorHandle)").font(.caption.weight(.semibold))
-                Text(comment.authorTier.name).font(.caption2).foregroundStyle(.secondary)
+                if isOwnComment { MemberFlair() }
+                Text(SocialService.shared.liveTier(handle: comment.authorHandle,
+                                                   isCurrentUser: isOwnComment,
+                                                   saved: comment.authorTier).name)
+                    .font(.caption2).foregroundStyle(.secondary)
             }
             Text(comment.body).font(.callout)
         }

@@ -38,6 +38,20 @@ final class RivalLeagueTests: XCTestCase {
         XCTAssertEqual(Calendar.current.component(.month, from: end), 10)
     }
 
+    func testRanks_followProfitThresholds() {
+        XCTAssertEqual(Tier.forProfit(-50), .rookie)
+        XCTAssertEqual(Tier.forProfit(249), .rookie)
+        XCTAssertEqual(Tier.forProfit(250), .analyst)
+        XCTAssertEqual(Tier.forProfit(750), .insider)
+        XCTAssertEqual(Tier.forProfit(3_000), .studioHead)
+        XCTAssertEqual(Tier.forProfit(10_000), .legend)
+    }
+
+    func testEveryPlan_tradesTheSameStake() {
+        let stakes = Set(Membership.allCases.map(\.weeklyAllowance))
+        XCTAssertEqual(stakes, [StartingGrant.reelCoins])
+    }
+
     func testSeasonName() {
         XCTAssertEqual(Season.name(at: date(2026, 9, 28)), "Summer 2026")
         XCTAssertEqual(Season.name(at: date(2026, 10, 1)), "Fall 2026")

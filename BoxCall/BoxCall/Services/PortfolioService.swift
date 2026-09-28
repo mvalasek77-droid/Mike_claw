@@ -5,7 +5,12 @@ import Combine
 final class PortfolioService: ObservableObject {
     static let shared = PortfolioService()
 
-    @Published var user: User { didSet { persist() } }
+    @Published var user: User {
+        didSet {
+            if user.tier > oldValue.tier { RewardsService.shared.rankUp(to: user.tier) }
+            persist()
+        }
+    }
     @Published private(set) var positions: [Position] = [] { didSet { persist() } }
     @Published private(set) var leaderboard: [LeaderboardEntry] = []
 
@@ -56,7 +61,6 @@ final class PortfolioService: ObservableObject {
             lastAllowanceAt: RefillClock.lastMonday(),
             weeklyStake: StartingGrant.reelCoins,
             lastResetAt: RefillClock.lastSunday(),
-            xp: 0,
             currentStreakWeeks: 0,
             longestStreakWeeks: 0,
             followerCount: 0,
@@ -71,20 +75,17 @@ final class PortfolioService: ObservableObject {
 
     // MARK: - Membership
 
-    /// Called by StoreService on successful purchase or restore.
-    /// Applies the tier's one-time starting bonus (once per upgrade) and
-    /// switches the weekly allowance to the tier's rate.
-    func activateMembership(_ new: Membership, grantStartingBonus: Bool = true) {
+    /// Called by StoreService on purchase, restore, or a renewal update.
+    func activateMembership(_ new: Membership, isNewPurchase: Bool = false) {
         let previous = user.membership
         mutateUser { u in
             u.membership = new
             u.weeklyAllowance = new.weeklyAllowance
         }
-        if grantStartingBonus, new.isPaid, new != previous, new.startingBonus > 0 {
-            mutateUser { $0.reelCoins += new.startingBonus }
-            RewardsService.shared.grant(
-                xp: 50,
-                reason: "Welcome to \(new.displayName) — +\(Int(new.startingBonus)) RC")
+        if isNewPurchase, new.isPaid, new != previous {
+            RewardsService.shared.celebrate("Welcome to \(new.displayName)",
+                                            subtitle: "Your badge and tools are live",
+                                            emoji: "🎟️")
             AnalyticsService.shared.track(.membershipPurchased(tier: new.rawValue))
         }
     }
@@ -104,7 +105,7 @@ final class PortfolioService: ObservableObject {
         var errorDescription: String? {
             switch self {
             case .insufficientFunds:
-                return "Not enough Reel Coins to cover the premium. Reduce the quantity, wait for your weekly refill, or upgrade for a larger allowance."
+                return "Not enough Reel Coins to cover the premium. Reduce the quantity or wait for Monday's fresh stake."
             case .notFound:
                 return "That contract vanished."
             case .alreadySettled:
@@ -151,7 +152,6 @@ final class PortfolioService: ObservableObject {
         AnalyticsService.shared.track(.tradePlaced(
             movieId: contract.movieId, side: contract.side.rawValue,
             strike: contract.strikeMillions, qty: quantity, cost: cost))
-        RewardsService.shared.grant(xp: 10, reason: "Placed a trade")
         if user.badges.first(where: { $0.id == "first_call" }) == nil,
            let badge = Badge.make("first_call") {
             RewardsService.shared.award(badge: badge)
@@ -308,7 +308,11 @@ final class PortfolioService: ObservableObject {
     // MARK: - Social hooks used by RewardsService
 
     func mutateUser(_ transform: (inout User) -> Void) {
-        transform(&user)
+        var u = user
+        transform(&u)
+        // Rank follows the best total profit ever reached.
+        if u.lifetimePnL > (u.bestProfit ?? 0) { u.bestProfit = u.lifetimePnL }
+        user = u
     }
 
     /// Used by OrderBookService to spawn a position from a filled
@@ -323,8 +327,8 @@ final class PortfolioService: ObservableObject {
         refreshLeaderboard()
     }
 
-    /// Ranked by total trading profit (`lifetimePnL`). The weekly reset,
-    /// subscription bonuses and referral coins never move it, so the top
+    /// Ranked by total trading profit (`lifetimePnL`). The weekly reset
+    /// and subscription bonuses never move it, so the top
     /// spot — and the homepage review spotlight — can only be won by trading.
     func refreshLeaderboard(now: Date = Date()) {
         let settled = positions.filter { !$0.isOpen }
@@ -335,9 +339,11 @@ final class PortfolioService: ObservableObject {
             .filter { $0.openedAt >= weekAgo }
             .reduce(0.0) { $0 + ($1.settledPayout ?? 0) - $1.cost }
 
-        var entries = RivalLeague.rivals.map { r in
-            LeaderboardEntry(id: "rival:\(r.handle)", handle: r.handle, tier: r.tier,
-                             profit: RivalLeague.profit(r, at: now),
+        var entries = RivalLeague.rivals.map { r -> LeaderboardEntry in
+            let profit = RivalLeague.profit(r, at: now)
+            return LeaderboardEntry(id: "rival:\(r.handle)", handle: r.handle,
+                             tier: Tier.forProfit(profit),
+                             profit: profit,
                              weeklyPnL: RivalLeague.lastWeekPnL(r, at: now),
                              winRate: r.winRate, isCurrentUser: false)
         }

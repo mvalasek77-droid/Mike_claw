@@ -154,13 +154,13 @@ struct ProfileView: View {
                 LearnView(initialSection: .losingCoins)
             } label: {
                 learnRow(icon: "exclamationmark.shield", title: "Losing coins",
-                         subtitle: "What happens when a trade goes wrong. Max loss, weekly refills, no negative balance.")
+                         subtitle: "What happens when a trade goes wrong. Max loss, the weekly reset, no negative balance.")
             }
             NavigationLink {
                 ReferralView()
             } label: {
-                learnRow(icon: "person.2.badge.gearshape", title: "Invite friends",
-                         subtitle: "Share your code — both sides get 500 Reel Coins.")
+                learnRow(icon: "person.2.badge.gearshape", title: "Challenge friends",
+                         subtitle: "Send BoxCall to your group chat and see who out-trades who.")
             }
             NavigationLink {
                 CustomMarketsView()
@@ -262,22 +262,31 @@ struct ProfileView: View {
     private var tierProgressCard: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("\(user.xp) XP")
-                    .font(.subheadline.weight(.semibold))
-                    .monospacedDigit()
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Trader rank: \(user.tier.name)")
+                        .font(.subheadline.weight(.semibold))
+                    Text("Best total profit \(Int(user.rankProfit)) RC\(portfolio.myRank.map { " · #\($0) on the leaderboard" } ?? "")")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
                 Spacer()
                 if let next = Tier(rawValue: user.tier.rawValue + 1) {
-                    Text("\(next.minXP - user.xp) to \(next.name)")
+                    Text("\(Int((next.minProfit - user.rankProfit).rounded(.up))) RC profit to \(next.name)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.trailing)
                 } else {
-                    Text("Max tier reached")
+                    Text("Top rank reached")
                         .font(.caption)
                         .foregroundStyle(.orange)
                 }
             }
             ProgressView(value: user.tierProgress)
                 .tint(user.tier.color)
+            Text("Ranks are earned only by trading profit — they can't be bought.")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
         }
         .padding()
         .background(RoundedRectangle(cornerRadius: 12).fill(Color(.secondarySystemBackground)))
@@ -349,7 +358,7 @@ struct ProfileView: View {
 
     private var perksCard: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("\(user.tier.name) perks").font(.headline)
+            Text("\(user.tier.name) rank perks").font(.headline)
             ForEach(user.tier.perks, id: \.self) { perk in
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "sparkle").foregroundStyle(user.tier.color)

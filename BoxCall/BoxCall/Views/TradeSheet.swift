@@ -333,11 +333,6 @@ struct TradeSheet: View {
             if shareAsPost {
                 TextField("Say why — 280 chars", text: $hotTake, axis: .vertical)
                     .lineLimit(2...4)
-                if portfolio.user.tier < .analyst {
-                    Text("Rookies post to their followers only. Reach Analyst to hit the public feed.")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
             }
         }
     }

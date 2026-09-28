@@ -180,19 +180,19 @@ struct OnboardingView: View {
         slide(step: nil,
               tab: ("trophy", "Box Office"),
               title: "The goal: most profit.",
-              body: "The leaderboard ranks everyone by total profit — the weekly reset never touches it, and only winning trades move you up. The top 5 get their movie review spotlighted on the home screen, and #1 leads it.") {
+              body: "Everyone trades the same 1,000 stake, and the leaderboard ranks by total profit — the weekly reset never touches it. Profit earns ranks like Insider and Studio Head, and the top 5 get their movie review spotlighted on the home screen, #1 first.") {
             MockCard {
                 VStack(alignment: .leading, spacing: 8) {
-                    mockRankRow("🥇", "you", "+2,410", highlighted: true)
-                    mockRankRow("🥈", "popcornshark", "+2,180", highlighted: false)
-                    mockRankRow("🥉", "indieyoda", "+1,305", highlighted: false)
+                    mockRankRow("🥇", "you", "Studio Head", "+3,410", highlighted: true)
+                    mockRankRow("🥈", "popcornshark", "Studio Head", "+3,180", highlighted: false)
+                    mockRankRow("🥉", "indieyoda", "Producer", "+1,905", highlighted: false)
                     Divider()
                     HStack(alignment: .top, spacing: 8) {
                         mockTag("#1", .orange)
                         VStack(alignment: .leading, spacing: 2) {
                             Text("\u{201C}Consensus is fifteen million light.\u{201D}")
                                 .font(.caption.weight(.semibold))
-                            Text("@you · featured on the Marquee home screen")
+                            Text("#1 trader @you · featured on the Marquee home screen")
                                 .font(.caption2).foregroundStyle(.secondary)
                         }
                     }
@@ -206,11 +206,15 @@ struct OnboardingView: View {
         }
     }
 
-    private func mockRankRow(_ medal: String, _ handle: String, _ profit: String, highlighted: Bool) -> some View {
+    private func mockRankRow(_ medal: String, _ handle: String, _ rank: String, _ profit: String,
+                             highlighted: Bool) -> some View {
         HStack {
             Text(medal)
-            Text("@\(handle)").font(.subheadline.weight(highlighted ? .bold : .regular))
-                .foregroundStyle(highlighted ? Color.orange : .primary)
+            VStack(alignment: .leading, spacing: 0) {
+                Text("@\(handle)").font(.subheadline.weight(highlighted ? .bold : .regular))
+                    .foregroundStyle(highlighted ? Color.orange : .primary)
+                Text(rank).font(.caption2).foregroundStyle(.secondary)
+            }
             Spacer()
             Text(profit).font(.subheadline.weight(.semibold).monospacedDigit())
         }

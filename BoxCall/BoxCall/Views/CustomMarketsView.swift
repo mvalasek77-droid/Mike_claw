@@ -26,7 +26,7 @@ struct CustomMarketsView: View {
                             VStack(alignment: .leading, spacing: 3) {
                                 Text("Propose your own market — Mogul only")
                                     .font(.subheadline.weight(.semibold))
-                                Text("Upgrade to Mogul to write custom prop markets. Everyone can trade them.")
+                                Text("Upgrade to Mogul to write your own prop markets.")
                                     .font(.caption).foregroundStyle(.secondary)
                             }
                         }

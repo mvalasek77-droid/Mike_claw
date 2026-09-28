@@ -76,7 +76,6 @@ enum AnalyticsEvent {
     case badgeUnlocked(id: String)
     case tierPromoted(to: String)
     case membershipPurchased(tier: String)
-    case referralRedeemed(code: String)
     case reportSubmitted(kind: String, reason: String)
     case signIn(method: String)
     case signOut
@@ -95,7 +94,6 @@ enum AnalyticsEvent {
         case .badgeUnlocked: return "badge_unlocked"
         case .tierPromoted: return "tier_promoted"
         case .membershipPurchased: return "membership_purchased"
-        case .referralRedeemed: return "referral_redeemed"
         case .reportSubmitted: return "report_submitted"
         case .signIn: return "sign_in"
         case .signOut: return "sign_out"
@@ -121,7 +119,6 @@ enum AnalyticsEvent {
         case .badgeUnlocked(let id): return ["badge_id": id]
         case .tierPromoted(let t): return ["tier": t]
         case .membershipPurchased(let t): return ["tier": t]
-        case .referralRedeemed(let c): return ["code": c]
         case .reportSubmitted(let kind, let reason):
             return ["kind": kind, "reason": reason]
         case .signIn(let m): return ["method": m]

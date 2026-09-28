@@ -2,11 +2,9 @@ import SwiftUI
 
 /// Reminder shown on Portfolio + Slate when a user is running out of coins.
 /// Losses are real — coins deplete — but a fresh stake lands every Monday.
-/// The banner surfaces the exact countdown and (if applicable) an
-/// Upgrade CTA for users who don't want to wait.
+/// The banner surfaces the exact countdown to Monday's stake.
 struct LowBalanceBanner: View {
     @EnvironmentObject var portfolio: PortfolioService
-    @State private var showPaywall = false
     @State private var ticker: Date = Date()
 
     /// Show below this balance. 100 RC ≈ 10% of the free starting grant.
@@ -30,18 +28,6 @@ struct LowBalanceBanner: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     refillRow
-                    if !portfolio.user.membership.isPaid || isBroke {
-                        Button {
-                            showPaywall = true
-                        } label: {
-                            Label(portfolio.user.membership.isPaid ? "Manage plan" : "Upgrade to skip the wait",
-                                  systemImage: "star.circle")
-                                .font(.caption.weight(.semibold))
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(.orange)
-                        .controlSize(.small)
-                    }
                 }
                 Spacer()
             }
@@ -51,9 +37,6 @@ struct LowBalanceBanner: View {
                 RoundedRectangle(cornerRadius: 12)
                     .stroke((isBroke ? Color.red : .orange).opacity(0.35), lineWidth: 1)
             )
-            .sheet(isPresented: $showPaywall) {
-                PaywallView()
-            }
             .onReceive(tick) { ticker = $0 }
         }
     }

@@ -9,17 +9,17 @@ THE LIVE MARKET
 Every contract has a mark that moves in real time. Your buys and sells shift the price. News events (tracking updates, reviews, trailer spikes) shock the whole chain. The implied opening estimate — the "consensus" — is a live crowd forecast derived from base tracking, YouTube trailer engagement, X mention velocity, and actual trade flow.
 
 WIN STATUS, NOT CASH
-Six reputation tiers from Rookie to Oracle. Badges for feats: Bomb Caller, Rocket, Contrarian, Sniper. Weekly streaks. Season titles you keep forever. The leaderboard ranks everyone by total profit, which the weekly reset never touches. The top 5 get their movie reviews spotlighted at the top of the home screen, and #1 leads it — winning literally becomes editorial voice.
+Six trader ranks from Rookie to Studio Head and Legend, earned only by total profit — never bought. Badges for feats: Bomb Caller, Rocket, Contrarian, Sniper. Weekly streaks. Season titles you keep forever. The leaderboard ranks everyone by total profit, which the weekly reset never touches. The top 5 get their movie reviews spotlighted at the top of the home screen, and #1 leads it — winning literally becomes editorial voice.
 
 WEEKLY RESET
 Every Sunday your weekly stake goes back and you keep your profit. Every Monday, as opening weekends settle, every account gets a fresh stake: 1,000 Reel Coins free, forever. Lose it all? You're back in on Monday. Trades on movies that haven't opened keep running right through the reset.
 
-SUBSCRIPTIONS UNLOCK MORE COINS, NOT MORE STATUS
-Three optional tiers add more Reel Coins and quality-of-life perks. Leaderboards, badges, and Featured Critics slots stay earned.
+SUBSCRIPTIONS ADD TOOLS AND FLAIR, NEVER COINS
+Every player trades the same 1,000 RC weekly stake, so the leaderboard measures skill. Optional memberships add tools and a badge next to your name. Ranks, leaderboard spots and the review spotlight stay earned.
 
-  Backstage — $3.99/mo — 5,000 RC bonus + 1,500 RC weekly stake + ad-free
-  Producer's Pass — $9.99/mo — 15,000 RC bonus + 4,000 RC weekly + advanced analytics
-  Mogul — $24.99/mo — 40,000 RC bonus + 10,000 RC weekly + create custom prop markets
+  Backstage — $3.99/mo — ticket badge, 24-hour early access to new markets, 3 limit orders
+  Producer's Pass — $9.99/mo — star badge, portfolio performance stats, 10 limit orders
+  Mogul — $24.99/mo — crown badge, create custom prop markets, unlimited limit orders
 
 WHAT'S IN THE APP
 • Slate — every upcoming release with its live implied opening and consensus sparkline

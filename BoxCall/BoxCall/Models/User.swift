@@ -16,7 +16,8 @@ struct User: Codable, Hashable {
     var lastSeasonChecked: String?
 
     // Reputation (earned, not bought)
-    var xp: Int
+    /// Highest total profit ever reached — sets the trader rank.
+    var bestProfit: Double?
     var currentStreakWeeks: Int
     var longestStreakWeeks: Int
     var followerCount: Int
@@ -31,16 +32,16 @@ struct User: Codable, Hashable {
     // Identity (nil when browsing as a guest)
     var appleUserId: String?
 
-    var tier: Tier { Tier.forXP(xp) }
+    var rankProfit: Double { max(bestProfit ?? 0, lifetimePnL) }
 
-    /// XP progress inside the current tier (0.0 - 1.0).
+    var tier: Tier { Tier.forProfit(rankProfit) }
+
+    /// Progress from the current rank to the next (0.0 - 1.0).
     var tierProgress: Double {
         let current = tier
-        let next = Tier(rawValue: current.rawValue + 1) ?? current
-        guard next != current else { return 1.0 }
-        let base = current.minXP
-        let span = next.minXP - base
-        return min(1.0, max(0.0, Double(xp - base) / Double(span)))
+        guard let next = Tier(rawValue: current.rawValue + 1) else { return 1.0 }
+        let span = next.minProfit - current.minProfit
+        return min(1.0, max(0.0, (rankProfit - current.minProfit) / span))
     }
 }
 
@@ -49,7 +50,7 @@ struct LeaderboardEntry: Identifiable, Codable, Hashable {
     let handle: String
     let tier: Tier
     /// Total realized trading profit — the ranking metric. Stakes,
-    /// subscription bonuses and referral coins never count.
+    /// subscription bonuses never count.
     let profit: Double
     let weeklyPnL: Double
     let winRate: Double
@@ -57,7 +58,7 @@ struct LeaderboardEntry: Identifiable, Codable, Hashable {
 }
 
 /// Every account starts here. Enforced at creation — no promo codes,
-/// no referrals, no way for a free user to start with more than another
+/// no way for a free user to start with more than another
 /// free user. Paid tiers layer on top via Membership.
 enum StartingGrant {
     static let reelCoins: Double = 1_000

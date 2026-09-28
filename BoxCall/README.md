@@ -15,25 +15,25 @@ Open the app and you're standing under a marquee:
 - **Haptics everywhere.** Medium tap on buy, rigid tap on close, a rising-into-thump Core Haptics celebration on big wins, error on losses, double-thump on badges.
 - **Streak fire.** A pulsing flame badge next to your handle when you've won consecutive weeks. Users trade play-money **Call / Put contracts** on upcoming movies, and their calls become **posts in a public feed** where the community likes, comments, and follows the sharpest analysts.
 
-No real money changes hands. Winning is measured in **status**: XP, tier progression, badges, followers, and season titles.
+No real money changes hands. Winning is measured in **status**: total profit, trader rank, the homepage review spotlight, badges, followers, and season titles.
 
 ## The reward stack
 
 Winning gets you:
 
-- **XP + tier progression** (Rookie → Analyst → Insider → Producer → Studio Head → Oracle)
-- **Badges** for specific feats — Bomb Caller, Rocket, Contrarian, Sniper (5 in a row), Seasonal Oracle
-- **Followers** — a winning public call brings 3–12 new followers per settlement
-- **Social power that unlocks with tier:**
-  - Analyst: verified checkmark, post to the public feed
-  - Insider: gold username, boost one call/week to the top of a movie's page
-  - Producer: create custom markets ("Villeneuve's next opens above $X"), animated avatar frame
-  - Studio Head: pin any post 24h, custom victory animation
-  - Oracle: seasonal title, quoted on home feed
-- **Streaks** (weekly, Duolingo-style) with milestone badges at 3 and 10 weeks
-- **Trophy shelf** on profile — "Oracle · Summer 2026"
+- **Total profit** — the one leaderboard number. Only settled or sold trades move it; the weekly reset and subscriptions never do.
+- **The review spotlight** — the top 5 by total profit get their latest movie review on the Marquee home screen; #1 leads it.
+- **Trader ranks**, earned only by best total profit (never bought, never lost in a bad week):
+  - Analyst (250 RC): verified checkmark
+  - Insider (750): gold username
+  - Producer (1,500): rank ring around the avatar
+  - Studio Head (3,000): gold frame on hot takes in the feed
+  - Legend (7,500): Legend rosette on the leaderboard
+- **Season Oracle** — #1 in total profit when a quarter ends gets "Oracle · Fall 2026" on the trophy shelf
+- **Badges** for specific feats — Bomb Caller, Rocket, Contrarian, Sniper (5 in a row)
+- **Streaks** — winning weeks in a row, with badges at 3 and 10
 
-The core loop: bold call → hits → your post goes viral → you gain followers → tier up → more social power → make bolder calls.
+The core loop: bold call → it hits → profit → rank and leaderboard climb → your review goes up on the home screen.
 
 ## How it's different from Kalshi
 
@@ -50,13 +50,13 @@ BoxCall/
     │   ├── Movie.swift
     │   ├── Contract.swift          # Call/Put + intrinsic payoff
     │   ├── Position.swift
-    │   ├── User.swift              # xp, tier, streak, followers, badges, trophies
+    │   ├── User.swift              # profit, rank, streak, followers, badges, trophies
     │   ├── Rewards.swift           # Tier + Badge catalog
     │   └── SocialPost.swift        # posts, comments, outcomes
     ├── Services/
     │   ├── MarketService.swift     # verified catalog + chain pricing
     │   ├── PortfolioService.swift  # buy/close/settle
-    │   ├── RewardsService.swift    # XP, badges, streaks, follower bumps
+    │   ├── RewardsService.swift    # rank-ups, badges, streaks, follower bumps
     │   └── SocialService.swift     # feed, follow, like, comment
     ├── Views/
     │   ├── RootView.swift          # 5 tabs: Feed · Slate · Portfolio · Leaders · Profile
@@ -179,10 +179,9 @@ Losses are real: coins deplete, and if you burn through your balance you can't t
 **Zero-balance UX:**
 - Trading pauses; you can still watch, read the feed, comment, and write reviews.
 - Push notification fires the moment a settlement drops the balance to zero: "You're out of Reel Coins. Trading pauses until Monday morning."
-- Low-balance banner shows a live countdown ("Next refill: **Monday** · in 2d 14h") on Portfolio + Slate.
-- Balance card in Portfolio always shows the next Monday reset chip with amount.
+- Low-balance banner shows a live countdown ("Fresh stake: **Monday** · in 2d 14h") on Portfolio + Slate.
+- Balance card in Portfolio shows the Sunday reset countdown and Monday's stake.
 - TradeSheet risk card includes the countdown in the loss warning.
-- Subscribers get an "Upgrade to skip the wait" CTA — a bigger starting bonus lands immediately.
 
 ## Risk-awareness (you can lose coins)
 
@@ -190,23 +189,23 @@ Every entry point sets expectations clearly:
 
 - **Trade Sheet risk card** — a red-bordered "You could lose up to X RC" section spelling out exactly which opening-weekend outcome makes the contract expire worthless, plus a reminder that coins refill weekly.
 - **Onboarding slide** — the play-money-real-status slide now explicitly says losing trades cost coins and names the premium as the max loss.
-- **Low-balance banner** on Portfolio and Slate — appears when balance drops under 100 RC. Shows countdown to the next refill and offers an Upgrade CTA. A separate "you're out" state kicks in at 0.
-- **Insufficient-funds error** — friendly wording that suggests reducing quantity, waiting for the refill, or upgrading.
+- **Low-balance banner** on Portfolio and Slate — appears when balance drops under 100 RC. Shows the countdown to Monday's stake. A separate "you're out" state kicks in at 0.
+- **Insufficient-funds error** — friendly wording that suggests reducing quantity or waiting for Monday's stake.
 - **LearnView "Losing coins" section** — dedicated block covering: max loss = premium, mark can drop pre-settlement, you never go negative, weekly refills are automatic, and none of this is real money.
 - **Profile deep link** — "Losing coins" is one of the featured Learn links, alongside Calls and Puts.
 
 ## Fairness + monetization (3 IAP tiers)
 
-**Every free account starts identical**: 1,000 Reel Coins on sign-up, 500 RC refilled every week, forever. No promo codes, no referral boosts, no way for one free user to start ahead of another. `StartingGrant.reelCoins` is the single source of truth and `PortfolioService.init` enforces it.
+**Every account trades the same bankroll**: a 1,000 RC stake every week, free or paid. Profit only measures skill when nobody can buy a bigger bankroll, so no plan adds coins. `StartingGrant.reelCoins` is the single source of truth.
 
-Three optional subscription tiers unlock more coins — nothing else. Leaderboards, badges, tier progression (Rookie → Oracle), Featured Critics slots, and every feature stay earned by winning calls, never bought. Status is not for sale.
+Subscriptions sell tools and a name badge. Trader ranks, leaderboard spots and the review spotlight stay earned by trading profit.
 
-| Membership | Price | Starting bonus | Weekly allowance | Extras |
-|---|---|---|---|---|
-| **Free** | — | 0 (1,000 base) | 500 RC | — |
-| **Backstage** | $3.99/mo | +5,000 RC | 1,500 RC | Ad-free, extended news ticker |
-| **Producer's Pass** | $9.99/mo | +15,000 RC | 4,000 RC | Advanced analytics (IV history, demand heatmap), priority contest slots, profile badge |
-| **Mogul** | $24.99/mo | +40,000 RC | 10,000 RC | Create custom markets, pin a post 24h/week, gold avatar frame |
+| Membership | Price | Badge | Tools |
+|---|---|---|---|
+| **Free** | — | — | 1 limit order |
+| **Backstage** | $3.99/mo | ticket | 24-hour early access to new markets, 3 limit orders |
+| **Producer's Pass** | $9.99/mo | star | Portfolio performance stats, 10 limit orders |
+| **Mogul** | $24.99/mo | crown | Create custom prop markets, unlimited limit orders |
 
 Implementation:
 - `Models/Membership.swift` — the four cases with pricing, perks, colors, product IDs

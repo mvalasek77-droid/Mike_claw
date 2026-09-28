@@ -11,14 +11,18 @@ struct FeaturedCritics: View {
     var supporting: [Review] { Array(spotlight.dropFirst()) }
 
     private func rank(_ r: Review) -> Int { social.rank(ofAuthorOf: r) ?? 0 }
-    private func profit(_ r: Review) -> Double? {
-        social.rank(ofAuthorOf: r).map { portfolio.leaderboard[$0 - 1].profit }
+    private func entry(_ r: Review) -> LeaderboardEntry? {
+        social.rank(ofAuthorOf: r).map { portfolio.leaderboard[$0 - 1] }
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            Text("Only the five most profitable traders on BoxCall get a review up here. Out-trade them to take their spot.")
+                .font(.caption)
+                .foregroundStyle(Theme.cream.opacity(0.7))
             if let winner {
-                WinnerReviewCard(review: winner, rank: rank(winner), profit: profit(winner)) {
+                WinnerReviewCard(review: winner, rank: rank(winner),
+                                 profit: entry(winner)?.profit, tier: entry(winner)?.tier) {
                     expanded = winner
                 }
             } else {
@@ -30,7 +34,8 @@ struct FeaturedCritics: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
                         ForEach(supporting) { r in
-                            SupportingReviewCard(review: r, rank: rank(r)) {
+                            SupportingReviewCard(review: r, rank: rank(r),
+                                                 profit: entry(r)?.profit, tier: entry(r)?.tier) {
                                 expanded = r
                             }
                         }
@@ -72,6 +77,7 @@ struct WinnerReviewCard: View {
     let review: Review
     let rank: Int
     var profit: Double? = nil
+    var tier: Tier? = nil
     let onRead: () -> Void
     @EnvironmentObject var market: MarketService
 
@@ -154,10 +160,11 @@ struct WinnerReviewCard: View {
                     Text("@\(review.authorHandle)")
                         .font(.caption)
                         .foregroundStyle(Theme.marqueeGold)
-                    Text(review.authorTier.name.uppercased())
+                    if review.authorIsCurrentUser { MemberFlair() }
+                    Text((tier ?? review.authorTier).name.uppercased())
                         .font(.system(size: 8, weight: .bold, design: .monospaced))
                         .tracking(0.5)
-                        .foregroundStyle(Theme.cream.opacity(0.55))
+                        .foregroundStyle((tier ?? review.authorTier).color)
                     }
                 }
         }
@@ -169,13 +176,19 @@ struct WinnerReviewCard: View {
 struct SupportingReviewCard: View {
     let review: Review
     let rank: Int
+    var profit: Double? = nil
+    var tier: Tier? = nil
     let onRead: () -> Void
     @EnvironmentObject var market: MarketService
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack {
+            HStack(spacing: 6) {
                 rankBadge(rank)
+                Text((tier ?? review.authorTier).name.uppercased())
+                    .font(.system(size: 8, weight: .bold, design: .monospaced))
+                    .foregroundStyle((tier ?? review.authorTier).color)
+                    .lineLimit(1)
                 Spacer()
                 Text(review.stars).font(.caption2).foregroundStyle(Theme.marqueeGold)
             }
@@ -184,10 +197,16 @@ struct SupportingReviewCard: View {
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(Theme.cream)
                 .lineLimit(2)
-            HStack {
+            HStack(spacing: 4) {
                 Text("@\(review.authorHandle)")
                     .font(.caption2)
                     .foregroundStyle(Theme.marqueeGold)
+                    .lineLimit(1)
+                if let profit {
+                    Text("\(profit >= 0 ? "+" : "")\(Int(profit))")
+                        .font(.caption2.weight(.semibold).monospacedDigit())
+                        .foregroundStyle(profit >= 0 ? Color.green : .red)
+                }
                 Spacer()
                 Button("Review", action: onRead)
                     .font(.caption2.weight(.semibold))
@@ -230,7 +249,7 @@ struct SupportingReviewCard: View {
 
 @ViewBuilder
 private func rankBadge(_ n: Int) -> some View {
-    Text("#\(n)")
+    Text("#\(n) TRADER")
         .font(.caption2.weight(.heavy))
         .padding(.horizontal, 6).padding(.vertical, 2)
         .background(RoundedRectangle(cornerRadius: 4).fill(Theme.marqueeGold.opacity(0.18)))
@@ -314,6 +333,18 @@ struct ReviewDetailSheet: View {
         }
     }
 
+    private var authorTier: Tier {
+        social.liveTier(handle: review.authorHandle, isCurrentUser: review.authorIsCurrentUser,
+                        saved: review.authorTier)
+    }
+
+    /// e.g. "Studio Head · #2 trader · +3,162 RC profit"
+    private var standing: String {
+        guard let rank = social.rank(ofAuthorOf: review) else { return authorTier.name }
+        let profit = PortfolioService.shared.leaderboard[rank - 1].profit
+        return "\(authorTier.name) · #\(rank) trader · \(profit >= 0 ? "+" : "")\(Int(profit)) RC profit"
+    }
+
     private func reviewHeader(movie: Movie?) -> some View {
         HStack(spacing: 12) {
             MarqueeMovieMark(title: movie?.title ?? review.movieTitle, width: 72, height: 100)
@@ -331,13 +362,14 @@ struct ReviewDetailSheet: View {
                     Text("@\(review.authorHandle)")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Theme.marqueeGold)
-                    if review.authorTier >= .analyst {
+                    if authorTier >= .analyst {
                         Image(systemName: "checkmark")
                             .foregroundStyle(Theme.marqueeGold)
                             .font(.caption)
                     }
+                    if review.authorIsCurrentUser { MemberFlair() }
                 }
-                Text(review.authorTier.name).font(.caption).foregroundStyle(.secondary)
+                Text(standing).font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
         }

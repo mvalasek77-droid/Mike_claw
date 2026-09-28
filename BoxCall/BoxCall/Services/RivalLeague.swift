@@ -6,7 +6,6 @@ import Foundation
 enum RivalLeague {
     struct Rival {
         let handle: String
-        let tier: Tier
         let startingProfit: Double
         /// Average weekly result; each week swings around it.
         let weeklyEdge: Double
@@ -16,12 +15,12 @@ enum RivalLeague {
     static let rivals: [Rival] = [
         // Tuned so the top 5 takes a good weekend or two (+300–500 RC) and
         // #1 takes a sustained run of winning weeks.
-        .init(handle: "popcornshark", tier: .studioHead, startingProfit: 2_400, weeklyEdge: 95, winRate: 0.62),
-        .init(handle: "indieyoda",    tier: .producer,   startingProfit: 1_500, weeklyEdge: 75, winRate: 0.58),
-        .init(handle: "openingnight", tier: .insider,    startingProfit: 1_100, weeklyEdge: 55, winRate: 0.51),
-        .init(handle: "greenlight",   tier: .analyst,    startingProfit: 680,   weeklyEdge: 40, winRate: 0.54),
-        .init(handle: "marqueemaven", tier: .insider,    startingProfit: 520,   weeklyEdge: 35, winRate: 0.47),
-        .init(handle: "trailerbait",  tier: .analyst,    startingProfit: 300,   weeklyEdge: 25, winRate: 0.42),
+        .init(handle: "popcornshark", startingProfit: 2_400, weeklyEdge: 95, winRate: 0.62),
+        .init(handle: "indieyoda",    startingProfit: 1_500, weeklyEdge: 75, winRate: 0.58),
+        .init(handle: "openingnight", startingProfit: 1_100, weeklyEdge: 55, winRate: 0.51),
+        .init(handle: "greenlight",   startingProfit: 680,   weeklyEdge: 40, winRate: 0.54),
+        .init(handle: "marqueemaven", startingProfit: 520,   weeklyEdge: 35, winRate: 0.47),
+        .init(handle: "trailerbait",  startingProfit: 300,   weeklyEdge: 25, winRate: 0.42),
     ]
 
     /// League week 0 began Monday, Sept 7 2026.

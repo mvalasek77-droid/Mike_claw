@@ -21,8 +21,8 @@ struct AuthCard: View {
                     Text(auth.isSignedIn ? "Signed in with Apple" : "Playing as a guest")
                         .font(.subheadline.weight(.bold))
                     Text(auth.isSignedIn
-                         ? (auth.signedInEmail ?? "Your positions and status sync across devices.")
-                         : "Sign in to sync positions, XP, and badges across devices.")
+                         ? (auth.signedInEmail ?? "Your trader handle is linked to your Apple ID.")
+                         : "Optional: sign in to use your Apple ID name as your trader handle.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -83,7 +83,7 @@ struct AuthCard: View {
             Button("Delete", role: .destructive) { auth.deleteAccount() }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This permanently erases your Reel Coins, trades, XP, badges, posts and reviews, and signs you out. It can't be undone. Any paid membership keeps billing until you cancel it in Settings › Apple ID › Subscriptions.")
+            Text("This permanently erases your Reel Coins, trades, rank, badges, posts and reviews, and signs you out. It can't be undone. Any paid membership keeps billing until you cancel it in Settings › Apple ID › Subscriptions.")
         }
     }
 }

@@ -115,7 +115,7 @@ struct ScenarioPrimer: View {
     private var rewardLine: some View {
         HStack(alignment: .top, spacing: 6) {
             Image(systemName: "sparkles").foregroundStyle(.orange).font(.caption)
-            Text("Winning grants XP toward your next tier, and if you share the call publicly and it hits, followers.")
+            Text("Winning adds to your total profit — the number that sets your trader rank and your spot on the leaderboard.")
                 .font(.caption2).foregroundStyle(.secondary)
         }
         .padding(.top, 2)

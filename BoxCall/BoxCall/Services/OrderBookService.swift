@@ -137,7 +137,9 @@ final class OrderBookService: ObservableObject {
                 PortfolioService.shared.appendPosition(position)
                 MarketService.shared.recordBuy(contractId: order.contractId,
                                                quantity: order.quantity)
-                RewardsService.shared.grant(xp: 10, reason: "Limit order filled")
+                RewardsService.shared.celebrate("Limit order filled",
+                                                subtitle: "\(order.quantity) \(order.side.display) at \(String(format: "%.2f", fillPrice))",
+                                                emoji: "✅")
 
                 var filled = order
                 filled.status = .filled

@@ -23,6 +23,13 @@ struct LeaderboardView: View {
                                             .foregroundStyle(entry.tier.color)
                                             .font(.caption)
                                     }
+                                    if entry.tier == .legend {
+                                        Image(systemName: "rosette")
+                                            .foregroundStyle(Tier.legend.color)
+                                            .font(.caption)
+                                            .accessibilityLabel("Legend")
+                                    }
+                                    if entry.isCurrentUser { MemberFlair() }
                                 }
                                 HStack(spacing: 6) {
                                     Text(entry.tier.name)
@@ -53,7 +60,7 @@ struct LeaderboardView: View {
                 } header: {
                     Text("Total profit")
                 } footer: {
-                    Text("Ranked by total trading profit — the weekly reset never touches it, and coins from subscriptions or invites don't count. The top 5 get their latest review spotlighted on the Marquee home screen.")
+                    Text("Ranked by total trading profit — the weekly reset never touches it and subscription coins don't count. Ranks from Analyst to Legend are earned the same way. The top 5 get their latest review spotlighted on the Marquee home screen.")
                 }
                 Section {
                     Text("\(Season.name(at: Date())) ends \(seasonEndString). Whoever is #1 in total profit then is crowned its Oracle.")
