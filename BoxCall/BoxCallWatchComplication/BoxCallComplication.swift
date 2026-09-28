@@ -27,10 +27,10 @@ struct ComplicationProvider: TimelineProvider {
         ComplicationEntry(date: Date(), snapshot: nil)
     }
     func getSnapshot(in ctx: Context, completion: @escaping (ComplicationEntry) -> Void) {
-        completion(ComplicationEntry(date: Date(), snapshot: WatchBridge.shared.snapshot))
+        completion(ComplicationEntry(date: Date(), snapshot: WatchBridge.cachedSnapshot()))
     }
     func getTimeline(in ctx: Context, completion: @escaping (Timeline<ComplicationEntry>) -> Void) {
-        let entry = ComplicationEntry(date: Date(), snapshot: WatchBridge.shared.snapshot)
+        let entry = ComplicationEntry(date: Date(), snapshot: WatchBridge.cachedSnapshot())
         completion(Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(15 * 60))))
     }
 }
@@ -41,11 +41,12 @@ struct ComplicationView: View {
 
     var body: some View {
         let s = entry.snapshot
+        let top = s?.topOpenPosition
         switch family {
         case .accessoryCircular:
             VStack(spacing: 0) {
                 Text(s?.nextMoviePoster ?? "🎬").font(.title3)
-                if let pnl = s?.topPositionPnL {
+                if let pnl = top?.pnl {
                     Text(pnl, format: .number.precision(.fractionLength(0)).sign(strategy: .always()))
                         .font(.caption2.monospacedDigit())
                         .foregroundStyle(pnl >= 0 ? .green : .red)
@@ -57,9 +58,9 @@ struct ComplicationView: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 4) {
                     Text(s?.nextMoviePoster ?? "🎬")
-                    Text(s?.topPositionMovie ?? s?.nextMovieTitle ?? "BoxCall").font(.caption).lineLimit(1)
+                    Text(top?.movieTitle ?? s?.nextMovieTitle ?? "BoxCall").font(.caption).lineLimit(1)
                 }
-                if let pnl = s?.topPositionPnL, let side = s?.topPositionSideLabel {
+                if let pnl = top?.pnl, let side = top?.sideLabel {
                     HStack {
                         Text(side).font(.caption2.weight(.bold))
                             .foregroundStyle(side.hasPrefix("CALL") ? .green : .red)
@@ -73,7 +74,7 @@ struct ComplicationView: View {
                 }
             }
         default:
-            if let pnl = s?.topPositionPnL {
+            if let pnl = top?.pnl {
                 Text("BoxCall  \(pnl, specifier: "%+.2f") RC")
             } else if let d = s?.nextMovieOpensIn {
                 Text("BoxCall  opens in \(d)d")

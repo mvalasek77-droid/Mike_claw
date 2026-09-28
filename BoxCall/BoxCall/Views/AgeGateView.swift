@@ -25,6 +25,7 @@ struct AgeGateView: View {
                 .keyboardType(.numberPad)
                 .multilineTextAlignment(.center)
                 .textFieldStyle(.roundedBorder)
+                .accessibilityIdentifier("ageGate.year")
                 .padding(.horizontal, 60)
                 .frame(maxWidth: 320)
             if let err {
@@ -38,6 +39,7 @@ struct AgeGateView: View {
             .buttonStyle(.borderedProminent)
             .tint(.orange)
             .controlSize(.large)
+            .accessibilityIdentifier("ageGate.confirm")
             Spacer()
             Text("You can't change your birth year later without contacting support.")
                 .font(.caption2)

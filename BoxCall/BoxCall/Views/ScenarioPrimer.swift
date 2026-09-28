@@ -184,6 +184,7 @@ struct FirstTradeTutorial: View {
                     .buttonStyle(.borderedProminent)
                     .tint(color)
                     .padding(.top, 8)
+                    .accessibilityIdentifier("tutorial.gotIt")
                 }
                 .padding()
             }

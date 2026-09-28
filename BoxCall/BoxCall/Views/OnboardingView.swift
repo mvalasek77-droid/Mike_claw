@@ -37,11 +37,13 @@ struct OnboardingView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(.orange)
                 .controlSize(.large)
+                .accessibilityIdentifier("tour.next")
 
                 HStack(spacing: 24) {
                     Button("Read the full guide") { showFullGuide = true }
                     if page < lastPage {
                         Button("Skip") { hasCompleted = true }
+                            .accessibilityIdentifier("tour.skip")
                     }
                 }
                 .font(.footnote)

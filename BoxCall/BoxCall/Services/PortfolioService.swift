@@ -271,7 +271,9 @@ final class PortfolioService: ObservableObject {
                     u.reelCoins = result.cash
                     u.stakeOwed = result.owed
                     u.weeklyStake = 0
-                    u.lastResetAt = sunday
+                    // The moment it ran, not the boundary: every trade open right
+                    // now counted toward the reset, so every one must repay it.
+                    u.lastResetAt = now
                 }
             }
         } else {

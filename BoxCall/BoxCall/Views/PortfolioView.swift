@@ -239,6 +239,8 @@ struct PositionRow: View {
             }
         }
         .padding(.vertical, 4)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("position.row")
     }
 
     @MainActor

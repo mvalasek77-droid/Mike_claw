@@ -17,6 +17,16 @@ struct BoxCallApp: App {
     @Environment(\.scenePhase) private var scenePhase
     private let weeklyTick = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
+    init() {
+        UITestSupport.prepareIfNeeded()
+    }
+
+    /// The system permission alert would block UI tests mid-flow.
+    private func requestNotificationsIfAppropriate() {
+        guard hasCompletedOnboarding, !UITestSupport.isUITesting else { return }
+        notifications.requestAuthorizationIfNeeded()
+    }
+
     var body: some Scene {
         WindowGroup {
             Group {
@@ -40,7 +50,7 @@ struct BoxCallApp: App {
                 AnalyticsService.shared.installCrashHandler()
                 AnalyticsService.shared.track(.appOpen)
                 Haptics.warmUp()
-                if hasCompletedOnboarding { notifications.requestAuthorizationIfNeeded() }
+                requestNotificationsIfAppropriate()
                 market.startMarket()
                 await market.refreshCatalog()
                 market.startAutoRefresh()
@@ -54,6 +64,10 @@ struct BoxCallApp: App {
                 }
             }
             .onReceive(weeklyTick) { _ in portfolio.applyWeeklyCycle() }
+            // Ask right after the tour, not on some later launch.
+            .onChange(of: hasCompletedOnboarding) { _, done in
+                if done { requestNotificationsIfAppropriate() }
+            }
             .sheet(item: $coordinator.pendingCopy) { intent in
                 TradeSheet(contract: intent.contract, movie: intent.movie)
             }

@@ -6,9 +6,6 @@ import WatchConnectivity
 final class WatchSyncService: NSObject {
     static let shared = WatchSyncService()
 
-    private static let appGroup = "group.com.boxcall.shared"
-    private static let storageKey = "watch.snapshot.v2"
-
     #if canImport(WatchConnectivity)
     private var session: WCSession?
 
@@ -20,19 +17,17 @@ final class WatchSyncService: NSObject {
         session?.activate()
     }
 
+    /// Sends the latest portfolio to the watch. Application context keeps
+    /// only the newest value and is delivered whenever the watch can take it.
     @MainActor
     func push() {
-        let snapshot = buildSnapshot()
-        writeToAppGroup(snapshot)
-        guard let session, session.isPaired, session.isWatchAppInstalled else { return }
-        if let data = try? JSONEncoder().encode(snapshot) {
-            try? session.updateApplicationContext(["snapshot": data])
-        }
+        guard let session, session.activationState == .activated,
+              session.isPaired, session.isWatchAppInstalled,
+              let data = try? JSONEncoder().encode(buildSnapshot()) else { return }
+        try? session.updateApplicationContext(["snapshot": data])
     }
     #else
-    @MainActor func push() {
-        writeToAppGroup(buildSnapshot())
-    }
+    @MainActor func push() {}
     #endif
 
     // MARK: - Snapshot model (mirrors WatchBridge.Snapshot)
@@ -103,19 +98,20 @@ final class WatchSyncService: NSObject {
             positions: positionSnaps
         )
     }
-
-    private func writeToAppGroup(_ snapshot: Snapshot) {
-        guard let defaults = UserDefaults(suiteName: Self.appGroup),
-              let data = try? JSONEncoder().encode(snapshot) else { return }
-        defaults.set(data, forKey: Self.storageKey)
-    }
 }
 
 #if canImport(WatchConnectivity)
 extension WatchSyncService: WCSessionDelegate {
+    // Pushes made before activation finished were dropped; send again now.
     func session(_ session: WCSession,
                  activationDidCompleteWith activationState: WCSessionActivationState,
-                 error: Error?) {}
+                 error: Error?) {
+        guard activationState == .activated else { return }
+        Task { @MainActor in self.push() }
+    }
+    func sessionWatchStateDidChange(_ session: WCSession) {
+        Task { @MainActor in self.push() }
+    }
     func sessionDidBecomeInactive(_ session: WCSession) {}
     func sessionDidDeactivate(_ session: WCSession) { session.activate() }
 }

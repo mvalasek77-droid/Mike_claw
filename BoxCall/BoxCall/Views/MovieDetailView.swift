@@ -425,6 +425,8 @@ struct MovieDetailView: View {
                     .padding(.vertical, 10)
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("chain.row")
+                .accessibilityLabel("\(contract.side.display) at $\(Int(contract.strikeMillions)) million strike, \(String(format: "%.2f", contract.premium)) Reel Coins. Buy.")
                 Divider()
             }
         }

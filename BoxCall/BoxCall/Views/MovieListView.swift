@@ -34,6 +34,7 @@ struct MovieListView: View {
                             NavigationLink(value: movie) {
                                 MovieRow(movie: movie)
                             }
+                            .accessibilityIdentifier("movie.row")
                         }
                     } header: {
                         catalogHeader

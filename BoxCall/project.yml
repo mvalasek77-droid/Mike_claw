@@ -90,6 +90,8 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.boxcall.app.watchkitapp
+        # Shares the last snapshot with the complication on the watch.
+        CODE_SIGN_ENTITLEMENTS: BoxCallWatch/BoxCallWatch.entitlements
         # The watch app needs its own icon or the archive will not
         # validate, even though it ships inside the iOS submission.
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -117,6 +119,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.boxcall.app.watchkitapp.boxcallcomplication
+        CODE_SIGN_ENTITLEMENTS: BoxCallWatchComplication/BoxCallWatchComplication.entitlements
         INFOPLIST_KEY_NSExtensionPointIdentifier: com.apple.widgetkit-extension
   BoxCallTests:
     type: bundle.unit-test
@@ -131,6 +134,18 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         BUNDLE_LOADER: "$(TEST_HOST)"
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/BoxCall.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/BoxCall"
+  BoxCallUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: BoxCallUITests
+    dependencies:
+      - target: BoxCall
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.boxcall.app.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: BoxCall
 schemes:
   BoxCall:
     build:
@@ -140,6 +155,7 @@ schemes:
         BoxCallWatch: all
         BoxCallWatchComplication: all
         BoxCallTests: [test]
+        BoxCallUITests: [test]
     run:
       config: Debug
       storeKitConfiguration: BoxCall/Products.storekit
@@ -147,3 +163,4 @@ schemes:
       config: Debug
       targets:
         - BoxCallTests
+        - BoxCallUITests

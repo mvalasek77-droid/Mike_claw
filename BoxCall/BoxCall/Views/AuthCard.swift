@@ -75,6 +75,7 @@ struct AuthCard: View {
             }
             .buttonStyle(.borderless)
             .tint(.red)
+            .accessibilityIdentifier("account.delete")
         }
         .padding(12)
         .background(RoundedRectangle(cornerRadius: 12)

@@ -356,6 +356,7 @@ struct TradeSheet: View {
             .buttonStyle(.borderedProminent)
             .tint(.orange)
             .accessibilityLabel(orderAccessibilityLabel)
+            .accessibilityIdentifier("trade.submit")
         }
     }
 
