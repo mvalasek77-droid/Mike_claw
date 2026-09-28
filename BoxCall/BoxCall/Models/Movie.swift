@@ -76,6 +76,12 @@ struct Movie: Identifiable, Codable, Hashable {
         Date() > releaseDate.addingTimeInterval(3 * 86400)
     }
 
+    /// Contracts can be bought and sold until the movie opens; then they
+    /// lock until Monday settlement.
+    var isTradingOpen: Bool {
+        Date() < opensAt
+    }
+
     var isNewlyAdded: Bool {
         Date().timeIntervalSince(addedAt) < 48 * 3600
     }

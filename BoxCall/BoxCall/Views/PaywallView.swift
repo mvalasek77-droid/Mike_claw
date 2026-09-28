@@ -54,7 +54,7 @@ struct PaywallView: View {
             Text("Trade bigger. See more. Stand out.")
                 .font(.title2.bold())
                 .multilineTextAlignment(.center)
-            Text("Every account gets 1,000 RC and 500 RC refilled weekly — always free. Subscribers unlock bigger allowances, early market access, advanced tools, and profile flair. Leaderboard rank and status are still earned by winning calls, never bought.")
+            Text("Every account gets a fresh 1,000 RC stake every Monday and keeps its profit — always free. Subscribers unlock bigger allowances, early market access, advanced tools, and profile flair. Leaderboard rank and status are still earned by winning calls, never bought.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

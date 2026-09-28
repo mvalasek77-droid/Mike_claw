@@ -164,10 +164,12 @@ The primer answers three questions before every buy: what am I actually buying, 
 
 Losses are real: coins deplete, and if you burn through your balance you can't trade until the reset. But the reset is generous, automatic, and predictable.
 
-**Refill semantics** (`RefillClock.swift`, `PortfolioService.redeemWeeklyIfDue()`):
-- Every Monday at 00:00 local time, every account gets its membership's weekly allowance credited.
-- Missed a Monday (app closed for a week)? On next launch you get exactly one allowance — never a stacked backlog.
-- This mirrors real box-office cadence: opening weekends settle Monday morning; balances do too.
+**Weekly cycle** (`RefillClock.swift` / `WeeklyReset`, `PortfolioService.applyWeeklyCycle()`):
+- **Friday:** a movie opens and trading on it locks (`Movie.isTradingOpen`). Movies that haven't opened keep trading.
+- **Sunday 00:00 local:** the week's stake is taken back; profit is kept as cash. Unfilled limit orders are refunded first. Open positions are never closed — any stake riding on them becomes `stakeOwed`.
+- **Monday 00:00 local:** opening weekends settle and a fresh stake (the tier's `weeklyAllowance`, 1,000 RC free) lands, so a player who lost everything is back in.
+- A position that was open at a reset repays up to its cost toward `stakeOwed` from its proceeds; profit above cost is kept, and a losing carried trade owes nothing. This stops a player dodging the reset by parking the stake in an unreleased movie.
+- Missed a week? On next launch you get exactly one reset and one stake — never a stacked backlog.
 
 **The three ways you can lose coins** — spelled out with numbers in `LearnView` (Losing Coins section):
 1. **Contract expires worthless.** Your Call finishes below the strike (or Put finishes above) → you lose the full premium × quantity. Max loss, capped.

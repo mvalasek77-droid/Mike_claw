@@ -6,6 +6,11 @@ struct User: Codable, Hashable {
     var lifetimePnL: Double
     var weeklyAllowance: Double
     var lastAllowanceAt: Date
+    /// The part of the balance that is this week's stake (taken back on Sunday).
+    var weeklyStake: Double?
+    var lastResetAt: Date?
+    /// Stake still riding on trades at the last reset, repaid from their proceeds.
+    var stakeOwed: Double?
 
     // Reputation (earned, not bought)
     var xp: Int

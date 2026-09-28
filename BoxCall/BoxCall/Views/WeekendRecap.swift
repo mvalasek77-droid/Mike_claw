@@ -97,7 +97,7 @@ struct WeekendRecap: View {
         if net > 0   { return "In the green." }
         if net == 0  { return "Flat weekend." }
         if net > -100 { return "Tough weekend. Monday's a fresh start." }
-        return "Ouch. Coins reset Monday."
+        return "Ouch. A fresh stake lands Monday."
     }
 
     private func stat(_ label: String, _ value: String, color: Color = Theme.cream) -> some View {

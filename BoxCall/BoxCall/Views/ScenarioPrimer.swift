@@ -166,7 +166,7 @@ struct FirstTradeTutorial: View {
                         title: side == .call
                             ? "3. If the movie opens AT OR BELOW your strike, you lose the premium."
                             : "3. If the movie opens AT OR ABOVE your strike, you lose the premium.",
-                        body: "The contract expires worthless. You lose exactly what you paid. Reel Coins refill every Monday, so it's never permanent."
+                        body: "The contract expires worthless. You lose exactly what you paid. Every Monday you get a fresh stake, so a loss is never permanent."
                     )
                     PayoffChart(side: side,
                                 strike: side == .call ? 100 : 40,

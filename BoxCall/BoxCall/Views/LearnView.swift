@@ -428,7 +428,7 @@ struct SettlementSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             LearnHeader(index: 8, title: LearnSection.settlement.title)
-            LearnParagraph("Trading on a movie closes when the first show goes up on Friday night. Over the weekend, the studio reports Friday, Saturday, and Sunday grosses. Monday morning, BoxCall pulls the reported domestic three-day number and settles every open position on that movie.")
+            LearnParagraph("Trading on a movie locks when it opens on Friday. Over the weekend, the studio reports Friday, Saturday, and Sunday grosses. Monday morning, BoxCall pulls the reported domestic three-day number and settles every open position on that movie. Movies that haven't opened yet keep trading all weekend.")
             LearnParagraph("Settlement pays the intrinsic value of each contract:")
             HStack(spacing: 10) {
                 FormulaBox(title: "Call settle", formula: "max(actual − K, 0) × mult × qty")
@@ -443,7 +443,7 @@ struct LosingCoinsSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             LearnHeader(index: 9, title: LearnSection.losingCoins.title)
-            LearnParagraph("BoxCall is a real market. You will lose trades. Here are the three ways it happens, exactly what they cost, and how the Monday reset gets you back in.")
+            LearnParagraph("BoxCall is a real market. You will lose trades. Here are the three ways it happens, exactly what they cost, and how the weekly reset gets you back in.")
 
             Text("How losses happen")
                 .font(.subheadline.weight(.bold))
@@ -470,13 +470,15 @@ struct LosingCoinsSection: View {
 
             Divider().padding(.vertical, 4)
 
-            Text("The Monday reset")
+            Text("The weekly reset")
                 .font(.subheadline.weight(.bold))
 
-            LearnParagraph("Every Monday at 12:00 AM (your local time), every account gets its weekly allowance credited automatically. This mirrors real box-office cadence: opening weekends settle Monday morning, and so do BoxCall balances.")
+            LearnParagraph("Every week follows the box office. Friday: the movie opens and trading on it locks. Sunday at 12:00 AM (your local time): your weekly stake is taken back and you keep any profit above it. Monday at 12:00 AM: opening weekends settle, winners are paid, and every account gets a fresh stake.")
+            LearnParagraph("Example: you start the week with a 1,000 RC stake and finish Saturday at 1,350 RC. Sunday the 1,000 goes back and you keep 350. Monday your 1,000 stake returns — 1,350 again. If you'd lost it all, Monday still puts you back at 1,000.")
+            LearnParagraph("Trades still running on Sunday — this weekend's opener, or a movie that hasn't opened yet like Avengers: Doomsday — are never closed by the reset. If part of your stake is riding on one, that trade pays the stake back out of its winnings when it settles or you sell it, and you keep everything above that. If it loses, nothing is owed. Unfilled limit orders are cancelled and refunded just before the reset.")
 
             HStack(spacing: 10) {
-                resetBullet("500 RC",  "Free tier",           .gray)
+                resetBullet("1,000", "Free tier",           .gray)
                 resetBullet("1,500",   "Backstage",           .blue)
             }
             HStack(spacing: 10) {
@@ -487,7 +489,7 @@ struct LosingCoinsSection: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("If you're at 0 coins…")
                     .font(.subheadline.weight(.bold))
-                Text("Trading pauses. You can still watch the market, read the feed, comment on posts, and write reviews. On Monday, your allowance lands automatically — no action required, no way to run negative. Subscribers can skip the wait via the paywall.")
+                Text("Trading pauses. You can still watch the market, read the feed, comment on posts, and write reviews. On Monday, your fresh stake lands automatically — no action required, no way to run negative. Your trades on movies that haven't opened keep running.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             .padding(12)
@@ -587,7 +589,7 @@ struct RewardsSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             LearnHeader(index: 12, title: LearnSection.rewards.title)
-            LearnParagraph("Reel Coins are the fuel — 500 refill weekly, and you never buy or redeem them. What actually accrues is status.")
+            LearnParagraph("Reel Coins are the fuel — a fresh stake every Monday, profit kept, and you never buy or redeem them. What actually accrues is status.")
             HStack(alignment: .top, spacing: 10) {
                 pillar("🎯", "XP & tiers", "Wins grant XP proportional to profit. Six tiers unlock functional social power — verified checkmark, gold username, ability to create custom markets, pinned posts.")
                 pillar("🏅", "Badges", "Feats trigger badges: Sniper (5 in a row), Bomb Caller (put that hits by 30%+), Rocket (call that beats by 40%+), Contrarian (win far from consensus).")

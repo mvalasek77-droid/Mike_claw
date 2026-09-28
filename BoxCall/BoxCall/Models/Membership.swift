@@ -41,10 +41,10 @@ enum Membership: String, Codable, CaseIterable, Identifiable {
         }
     }
 
-    /// Reel Coins refilled every week.
+    /// The weekly stake: lands Monday, taken back the next Sunday (profit stays).
     var weeklyAllowance: Double {
         switch self {
-        case .free:           return 500
+        case .free:           return 1_000
         case .backstage:      return 1_500
         case .producersPass:  return 4_000
         case .mogul:          return 10_000
@@ -90,13 +90,13 @@ enum Membership: String, Codable, CaseIterable, Identifiable {
         case .free:
             return [
                 "1,000 starting Reel Coins",
-                "500 RC refilled weekly, forever",
+                "Fresh 1,000 RC stake every Monday, forever — you keep your profit",
                 "Full access to every market, feed, and reward"
             ]
         case .backstage:
             return [
                 "5,000 RC starting bonus",
-                "1,500 RC weekly allowance",
+                "1,500 RC weekly stake",
                 "24-hour early access to new markets",
                 "Up to 3 simultaneous limit orders",
                 "Subscriber badge on your profile"
@@ -104,7 +104,7 @@ enum Membership: String, Codable, CaseIterable, Identifiable {
         case .producersPass:
             return [
                 "15,000 RC starting bonus",
-                "4,000 RC weekly allowance",
+                "4,000 RC weekly stake",
                 "Portfolio performance stats",
                 "Up to 10 simultaneous limit orders",
                 "Everything in Backstage"
@@ -112,7 +112,7 @@ enum Membership: String, Codable, CaseIterable, Identifiable {
         case .mogul:
             return [
                 "40,000 RC starting bonus",
-                "10,000 RC weekly allowance",
+                "10,000 RC weekly stake",
                 "Create custom prop markets",
                 "Unlimited limit orders",
                 "Everything in Producer's Pass"

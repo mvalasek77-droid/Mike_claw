@@ -368,7 +368,7 @@ struct TradeSheet: View {
         let thresholdDirection = contract.side == .call ? "at or below" : "at or above"
         let strike = Int(contract.strikeMillions)
         let allowance = Int(portfolio.user.membership.weeklyAllowance)
-        return "If \(movie.title) opens \(thresholdDirection) $\(strike)M, the contract expires worthless and you lose the full premium. Every account resets every Monday with \(allowance) RC — next refill in \(RefillClock.countdownString())."
+        return "If \(movie.title) opens \(thresholdDirection) $\(strike)M, the contract expires worthless and you lose the full premium. A fresh \(allowance) RC stake lands every Monday — next in \(RefillClock.countdownString())."
     }
 
     private func submitOrder() {

@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Reminder shown on Portfolio + Slate when a user is running out of coins.
-/// Losses are real — coins deplete — but every account resets on Monday.
+/// Losses are real — coins deplete — but a fresh stake lands every Monday.
 /// The banner surfaces the exact countdown and (if applicable) an
 /// Upgrade CTA for users who don't want to wait.
 struct LowBalanceBanner: View {
@@ -60,9 +60,9 @@ struct LowBalanceBanner: View {
 
     private var subtitle: String {
         if isBroke {
-            return "Losing trades happen — that's the market. Your next allowance lands on Monday. Every account resets every week."
+            return "Losing trades happen — that's the market. A fresh \(Int(portfolio.user.membership.weeklyAllowance)) RC stake lands Monday."
         } else {
-            return "Bets can lose the full premium. Every account resets every Monday with a fresh allowance."
+            return "Bets can lose the full premium. Every Monday brings a fresh stake; profit you've made is yours to keep."
         }
     }
 
@@ -71,7 +71,7 @@ struct LowBalanceBanner: View {
             Image(systemName: "calendar.badge.clock")
                 .foregroundStyle(.orange)
                 .font(.caption)
-            Text("Next refill: **Monday** · in \(RefillClock.countdownString(from: ticker))")
+            Text("Fresh stake: **Monday** · in \(RefillClock.countdownString(from: ticker))")
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(.primary.opacity(0.9))
         }

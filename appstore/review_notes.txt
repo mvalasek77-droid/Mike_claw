@@ -5,7 +5,7 @@ Attached, recorded on a physical iPhone running the latest iOS. It starts at app
 
 2. PURPOSE AND AUDIENCE
 BoxCall is a free-to-play prediction game for movie fans aged 13+. Players predict how much upcoming films will earn on their opening weekend by buying virtual "Call" (bigger) or "Put" (smaller) contracts with Reel Coins, a play currency. It turns box-office tracking news into a game and teaches basic options concepts with no financial risk.
-Reel Coins cannot be bought as a balance, cashed out, transferred between players, or exchanged for anything of value. Every account gets a free weekly refill. Subscriptions (Backstage, Producer's Pass, Mogul) add larger refills, limit orders and stats; they never offer cash or prizes.
+Reel Coins cannot be bought as a balance, cashed out, transferred between players, or exchanged for anything of value. Weekly cycle: trading on a movie locks when it opens Friday; on Sunday each account's weekly stake is taken back and profit is kept; on Monday results settle and every account gets a fresh stake (1,000 RC free). Subscriptions (Backstage, Producer's Pass, Mogul) add larger stakes, limit orders and stats; they never offer cash or prizes.
 
 3. HOW TO USE THE APP
 No login or demo account is needed. The whole app works as a guest.

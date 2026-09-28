@@ -33,6 +33,10 @@ final class OrderBookService: ObservableObject {
         try? data.write(to: Self.fileURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
     }
 
+    func cancelAll() {
+        for order in openOrders { cancel(orderId: order.id) }
+    }
+
     /// Drops every order without refunding — used when the whole account is erased.
     func eraseAllData() {
         openOrders = []
@@ -41,9 +45,10 @@ final class OrderBookService: ObservableObject {
     }
 
     enum PlaceError: LocalizedError {
-        case insufficientFunds, invalidLimit, orderLimitReached
+        case insufficientFunds, invalidLimit, orderLimitReached, tradingLocked
         var errorDescription: String? {
             switch self {
+            case .tradingLocked:     return "Trading on this movie locked when it opened. It settles Monday."
             case .insufficientFunds: return "Not enough Reel Coins to reserve for this limit."
             case .invalidLimit:      return "Limit price must be greater than 0."
             case .orderLimitReached: return "You've hit your limit-order cap. Cancel an existing order or upgrade your membership for more."
@@ -57,6 +62,9 @@ final class OrderBookService: ObservableObject {
     func placeBuyLimit(contract: Contract, quantity: Int,
                        limitPrice: Double) throws -> UUID {
         guard limitPrice > 0 else { throw PlaceError.invalidLimit }
+        guard MarketService.shared.movie(id: contract.movieId)?.isTradingOpen ?? false else {
+            throw PlaceError.tradingLocked
+        }
         let membership = PortfolioService.shared.user.membership
         guard openOrders.count < membership.maxLimitOrders else {
             throw PlaceError.orderLimitReached
@@ -99,7 +107,7 @@ final class OrderBookService: ObservableObject {
         guard !openOrders.isEmpty else { return }
         var stillOpen: [LimitOrder] = []
         for order in openOrders {
-            if let movie = MarketService.shared.movie(id: order.movieId), movie.isSettled {
+            if let movie = MarketService.shared.movie(id: order.movieId), !movie.isTradingOpen {
                 let reserved = order.limitPrice * Double(order.quantity)
                 PortfolioService.shared.mutateUser { $0.reelCoins += reserved }
                 var expired = order

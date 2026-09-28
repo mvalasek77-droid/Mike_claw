@@ -102,6 +102,7 @@ Ship-ready test matrix. Run through this before every App Store submission. Auto
 - [ ] Privacy Policy + ToS linked from Profile and match `appstore/category_and_rating.txt` App Privacy answers.
 - [ ] Delete-account path: Profile › Delete account and data wipes trades, coins, posts, reviews and sign-in, and returns to the age gate.
 - [ ] Force-quit and relaunch: coins, open/settled positions and resting limit orders are all still there.
+- [ ] Weekly cycle (set the device clock): on Friday the opening movie shows "Trading locked" and its positions show "Settles Mon"; unreleased movies still trade. Sunday: balance drops to profit only; open trades untouched. Monday: fresh stake lands; a winning opener trade pays back its stake then credits the profit; a losing one owes nothing.
 
 ## 13 · Market-making desk (sentiment-driven quotes)
 

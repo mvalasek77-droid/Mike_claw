@@ -26,8 +26,9 @@ final class PortfolioService: ObservableObject {
         } else {
             self.user = Self.freshUser()
         }
+        // applyWeeklyCycle() runs from app launch, not here: it refunds limit
+        // orders through OrderBookService, which calls back into `shared`.
         seedLeaderboard()
-        redeemWeeklyIfDue()
     }
 
     private func persist() {
@@ -43,7 +44,6 @@ final class PortfolioService: ObservableObject {
         positions = []
         user = Self.freshUser()
         seedLeaderboard()
-        redeemWeeklyIfDue()
     }
 
     private static func freshUser() -> User {
@@ -53,7 +53,9 @@ final class PortfolioService: ObservableObject {
             reelCoins: StartingGrant.reelCoins,
             lifetimePnL: 0,
             weeklyAllowance: Membership.free.weeklyAllowance,
-            lastAllowanceAt: Date().addingTimeInterval(-8 * 86400),
+            lastAllowanceAt: RefillClock.lastMonday(),
+            weeklyStake: StartingGrant.reelCoins,
+            lastResetAt: RefillClock.lastSunday(),
             xp: 0,
             currentStreakWeeks: 0,
             longestStreakWeeks: 0,
@@ -106,7 +108,7 @@ final class PortfolioService: ObservableObject {
             case .notFound:
                 return "That contract vanished."
             case .alreadySettled:
-                return "Trading has closed on this movie."
+                return "Trading on this movie locked when it opened. It settles Monday on the reported opening weekend."
             }
         }
     }
@@ -117,7 +119,7 @@ final class PortfolioService: ObservableObject {
         guard let movie = MarketService.shared.movie(id: contract.movieId) else {
             throw TradeError.notFound
         }
-        guard !movie.isSettled else { throw TradeError.alreadySettled }
+        guard movie.isTradingOpen else { throw TradeError.alreadySettled }
         let cost = contract.premium * Double(quantity)
         guard user.reelCoins >= cost else { throw TradeError.insufficientFunds }
 
@@ -158,14 +160,16 @@ final class PortfolioService: ObservableObject {
     }
 
     func closeAtMark(position: Position) {
-        guard position.isOpen else { return }
+        guard position.isOpen,
+              MarketService.shared.movie(id: position.movieId)?.isTradingOpen ?? false else { return }
         let chain = MarketService.shared.chain(for: position.movieId)
         let fallback = chain.first { $0.id == position.contractId }?.premium
             ?? position.entryPremium
         let bid = MarketService.shared.quote(contractId: position.contractId)?.bid ?? fallback
         let proceeds = bid * Double(position.quantity)
+        let credited = creditAfterStakeRepayment(proceeds, from: position)
         mutateUser { u in
-            u.reelCoins += proceeds
+            u.reelCoins += credited
             u.lifetimePnL += proceeds - position.cost
         }
         MarketService.shared.recordSell(contractId: position.contractId, quantity: position.quantity)
@@ -194,8 +198,9 @@ final class PortfolioService: ObservableObject {
             let payoutPerContract = intrinsic * p.multiplier
             let payout = payoutPerContract * Double(p.quantity)
             let net = payout - p.cost
+            let credited = creditAfterStakeRepayment(payout, from: p)
             mutateUser { u in
-                u.reelCoins += payout
+                u.reelCoins += credited
                 u.lifetimePnL += net
             }
             toSettle[i].settledPayout = payout
@@ -242,16 +247,55 @@ final class PortfolioService: ObservableObject {
 
     // MARK: - Weekly allowance
 
-    /// Monday-based reset. If a Monday has passed since the last
-    /// refill, grant exactly one allowance (never a stacked backlog).
-    func redeemWeeklyIfDue() {
-        let lastMonday = RefillClock.lastMonday()
-        if user.lastAllowanceAt < lastMonday {
+    /// Sunday: the week's stake is taken back and profit stays.
+    /// Monday: a fresh stake lands. Open positions are never touched, so
+    /// trades on movies that haven't opened keep running through the reset.
+    /// Safe to call any time — each step fires at most once per week.
+    func applyWeeklyCycle(now: Date = Date()) {
+        let sunday = RefillClock.lastSunday(before: now)
+        if let lastReset = user.lastResetAt {
+            if lastReset < sunday {
+                // Resting orders aren't trades yet: refund them so their coins count as cash.
+                OrderBookService.shared.cancelAll()
+                let openCost = positions.filter(\.isOpen).reduce(0) { $0 + $1.cost }
+                let result = WeeklyReset.reset(
+                    cash: user.reelCoins,
+                    openCost: openCost,
+                    owed: user.stakeOwed ?? 0,
+                    stake: user.weeklyStake ?? user.membership.weeklyAllowance)
+                mutateUser { u in
+                    u.reelCoins = result.cash
+                    u.stakeOwed = result.owed
+                    u.weeklyStake = 0
+                    u.lastResetAt = sunday
+                }
+            }
+        } else {
+            // Saved before the reset existed: start the cycle without a retroactive reset.
+            mutateUser { $0.lastResetAt = sunday }
+        }
+
+        let monday = RefillClock.lastMonday(before: now)
+        if user.lastAllowanceAt < monday {
+            let allowance = user.membership.weeklyAllowance
+            let grant = WeeklyReset.mondayGrant(allowance: allowance,
+                                                stakeStillHeld: user.weeklyStake ?? 0)
             mutateUser { u in
-                u.reelCoins += u.membership.weeklyAllowance
-                u.lastAllowanceAt = lastMonday
+                u.reelCoins += grant
+                u.weeklyStake = allowance
+                u.lastAllowanceAt = monday
             }
         }
+    }
+
+    /// A trade that was running at the last Sunday reset pays back the
+    /// stake it was holding before its winnings hit the balance.
+    private func creditAfterStakeRepayment(_ proceeds: Double, from position: Position) -> Double {
+        guard let owed = user.stakeOwed, owed > 0,
+              let reset = user.lastResetAt, position.openedAt < reset else { return proceeds }
+        let result = WeeklyReset.settleCarried(proceeds: proceeds, cost: position.cost, owed: owed)
+        mutateUser { $0.stakeOwed = result.owed }
+        return result.credited
     }
 
     // MARK: - Social hooks used by RewardsService

@@ -33,9 +33,13 @@ struct MovieDetailView: View {
                 DeskSummaryCard(movieId: movie.id)
                 if !events.isEmpty { newsTicker }
                 ticketButtons
-                sidePicker
-                chainHeader
-                chainTable
+                if movie.isTradingOpen {
+                    sidePicker
+                    chainHeader
+                    chainTable
+                } else {
+                    tradingLockedCard
+                }
                 reviewsSection
             }
             .padding()
@@ -331,6 +335,24 @@ struct MovieDetailView: View {
         }
         .padding(10)
         .background(RoundedRectangle(cornerRadius: 10).fill(Color(.secondarySystemBackground)))
+    }
+
+    private var tradingLockedCard: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "lock.fill").foregroundStyle(.orange).font(.title3)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(movie.isSettled ? "Settled" : "Trading locked — it's opening weekend")
+                    .font(.subheadline.weight(.bold))
+                Text(movie.isSettled
+                     ? "This movie's opening weekend is in. Check Positions for your result."
+                     : "Contracts locked when \(movie.title) opened. Every position settles Monday on the reported opening weekend. Movies that haven't opened yet are still trading.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 12).fill(Color.orange.opacity(0.10)))
     }
 
     private var sidePicker: some View {

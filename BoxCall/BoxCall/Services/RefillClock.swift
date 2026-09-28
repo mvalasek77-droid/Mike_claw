@@ -1,51 +1,76 @@
 import Foundation
 
-/// One place that owns "when do coins refill?".
+/// One place that owns the weekly coin cycle, in the user's local time.
 ///
-/// Semantics: every Monday at 00:00 in the user's local time zone,
-/// every account gets its membership's weekly allowance. If a user
-/// misses a Monday (app closed for a week), they still get exactly
-/// one allowance on next launch — never a stacked backlog.
+/// - Friday: a movie opens and trading on it locks.
+/// - Sunday 00:00: the week's stake is taken back. Profit stays.
+/// - Monday 00:00: opening weekends settle and a fresh stake lands.
 ///
-/// This deliberately mirrors real box-office cadence: opening
-/// weekends settle Monday morning, and so do BoxCall balances.
+/// A user who misses a week gets exactly one reset and one stake on
+/// next launch — never a stacked backlog.
 enum RefillClock {
+    private static let sunday = 1
+    private static let monday = 2
+
     /// The most recent Monday-at-midnight (local), on or before `now`.
     static func lastMonday(before now: Date = Date()) -> Date {
-        let cal = Calendar.current
-        // Move forward off `now` by 1 minute to guarantee we get a
-        // Monday STRICTLY before, then look backward.
+        last(weekday: monday, before: now)
+    }
+
+    /// The next Monday-at-midnight (local) strictly after `now`.
+    static func nextMonday(after now: Date = Date()) -> Date {
+        next(weekday: monday, after: now)
+    }
+
+    /// The most recent Sunday-at-midnight (local), on or before `now`.
+    static func lastSunday(before now: Date = Date()) -> Date {
+        last(weekday: sunday, before: now)
+    }
+
+    /// The next Sunday-at-midnight (local) strictly after `now`.
+    static func nextSunday(after now: Date = Date()) -> Date {
+        next(weekday: sunday, after: now)
+    }
+
+    private static func midnight(weekday: Int) -> DateComponents {
         var comps = DateComponents()
-        comps.weekday = 2   // Monday (Sunday = 1)
+        comps.weekday = weekday
         comps.hour = 0
         comps.minute = 0
         comps.second = 0
-        return cal.nextDate(
+        return comps
+    }
+
+    private static func last(weekday: Int, before now: Date) -> Date {
+        // Step 1 minute past `now` so a boundary exactly at `now` counts.
+        Calendar.current.nextDate(
             after: now.addingTimeInterval(60),
-            matching: comps,
+            matching: midnight(weekday: weekday),
             matchingPolicy: .nextTime,
             direction: .backward
         ) ?? now
     }
 
-    /// The next Monday-at-midnight (local) strictly after `now`.
-    static func nextMonday(after now: Date = Date()) -> Date {
-        let cal = Calendar.current
-        var comps = DateComponents()
-        comps.weekday = 2
-        comps.hour = 0
-        comps.minute = 0
-        comps.second = 0
-        return cal.nextDate(
+    private static func next(weekday: Int, after now: Date) -> Date {
+        Calendar.current.nextDate(
             after: now,
-            matching: comps,
+            matching: midnight(weekday: weekday),
             matchingPolicy: .nextTime
         ) ?? now.addingTimeInterval(7 * 86400)
     }
 
-    /// Short human countdown to the next refill. "2d 14h" / "6h 23m" / "12m".
+    /// Short human countdown to the next Monday stake. "2d 14h" / "6h 23m" / "12m".
     static func countdownString(from now: Date = Date()) -> String {
-        let seconds = nextMonday(after: now).timeIntervalSince(now)
+        countdown(to: nextMonday(after: now), from: now)
+    }
+
+    /// Short human countdown to the next Sunday reset.
+    static func resetCountdownString(from now: Date = Date()) -> String {
+        countdown(to: nextSunday(after: now), from: now)
+    }
+
+    private static func countdown(to target: Date, from now: Date) -> String {
+        let seconds = target.timeIntervalSince(now)
         if seconds <= 0 { return "any moment" }
         let days = Int(seconds) / 86400
         let hours = (Int(seconds) % 86400) / 3600
@@ -64,5 +89,37 @@ enum RefillClock {
     /// Localized long form, e.g. "Monday, Aug 25 at 12:00 AM".
     static func nextMondayFormatted(from now: Date = Date()) -> String {
         dayFormatter.string(from: nextMonday(after: now))
+    }
+}
+
+/// The Sunday reset rule, kept pure so it can be tested.
+enum WeeklyReset {
+    /// The week's stake goes back and profit stays. Profit is kept as cash
+    /// first; whatever part of the stake is riding on trades that are still
+    /// running becomes `owed`, repaid from those trades' proceeds later.
+    /// - Parameters:
+    ///   - openCost: cost basis of every open position.
+    ///   - owed: stake already claimed against those positions at an earlier reset.
+    static func reset(cash: Double, openCost: Double, owed: Double,
+                      stake: Double) -> (cash: Double, owed: Double) {
+        let equity = cash + max(openCost - owed, 0)
+        let profit = max(equity - stake, 0)
+        let keptCash = min(cash, profit)
+        let reclaimed = min(equity, stake)
+        let fromCash = cash - keptCash
+        return (keptCash, owed + max(reclaimed - fromCash, 0))
+    }
+
+    /// Proceeds from a trade that was running at the reset first repay the
+    /// stake it held, up to its cost. Returns (coins credited, owed left).
+    static func settleCarried(proceeds: Double, cost: Double,
+                              owed: Double) -> (credited: Double, owed: Double) {
+        let claim = min(owed, cost)
+        return (proceeds - min(proceeds, claim), owed - claim)
+    }
+
+    /// Coins added on Monday: tops the stake back up to the tier amount.
+    static func mondayGrant(allowance: Double, stakeStillHeld: Double) -> Double {
+        max(allowance - stakeStillHeld, 0)
     }
 }

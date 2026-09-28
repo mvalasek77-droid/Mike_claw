@@ -22,7 +22,7 @@ final class TradeCoordinator: ObservableObject {
     /// that strike/side.
     func requestCopy(fromPost post: SocialPost) -> Bool {
         guard let movie = MarketService.shared.movie(id: post.movieId),
-              !movie.isSettled else { return false }
+              movie.isTradingOpen else { return false }
 
         let chain = MarketService.shared.chain(for: post.movieId)
         guard let match = chain.first(where: {

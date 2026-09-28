@@ -44,4 +44,72 @@ final class RefillClockTests: XCTestCase {
         let s = RefillClock.countdownString()
         XCTAssertFalse(s.isEmpty)
     }
+
+    func testLastSunday_fromWednesday_isPreviousSunday() {
+        // Wed 2026-08-19 → last Sunday 2026-08-16
+        let last = RefillClock.lastSunday(before: makeDate(2026, 8, 19))
+        let comps = Calendar.current.dateComponents([.month, .day, .weekday, .hour], from: last)
+        XCTAssertEqual(comps.month, 8)
+        XCTAssertEqual(comps.day, 16)
+        XCTAssertEqual(comps.weekday, 1)
+        XCTAssertEqual(comps.hour, 0)
+    }
+
+    func testSundayAfternoon_resetIsToday_mondayIsLastWeek() {
+        let sun = makeDate(2026, 8, 23, 15)
+        XCTAssertEqual(Calendar.current.component(.day, from: RefillClock.lastSunday(before: sun)), 23)
+        XCTAssertEqual(Calendar.current.component(.day, from: RefillClock.lastMonday(before: sun)), 17)
+    }
+}
+
+final class WeeklyResetTests: XCTestCase {
+    func testWinner_keepsOnlyProfit() {
+        let r = WeeklyReset.reset(cash: 1_350, openCost: 0, owed: 0, stake: 1_000)
+        XCTAssertEqual(r.cash, 350)
+        XCTAssertEqual(r.owed, 0)
+    }
+
+    func testLoser_keepsNothing_owesNothing() {
+        let r = WeeklyReset.reset(cash: 120, openCost: 0, owed: 0, stake: 1_000)
+        XCTAssertEqual(r.cash, 0)
+        XCTAssertEqual(r.owed, 0)
+    }
+
+    func testStakeRidingOnTrades_isOwedNotForgiven() {
+        // 600 cash + 800 on an unreleased movie: 400 profit kept as cash,
+        // 200 of stake taken from cash, 800 claimed against the trade.
+        let r = WeeklyReset.reset(cash: 600, openCost: 800, owed: 0, stake: 1_000)
+        XCTAssertEqual(r.cash, 400)
+        XCTAssertEqual(r.owed, 800)
+    }
+
+    func testParkingWholeStake_cannotDodgeTheReset() {
+        let r = WeeklyReset.reset(cash: 0, openCost: 1_000, owed: 0, stake: 1_000)
+        XCTAssertEqual(r.cash, 0)
+        XCTAssertEqual(r.owed, 1_000)
+    }
+
+    func testAlreadyClaimedTrade_isNotClaimedTwice() {
+        let r = WeeklyReset.reset(cash: 1_300, openCost: 1_000, owed: 1_000, stake: 1_000)
+        XCTAssertEqual(r.cash, 300)
+        XCTAssertEqual(r.owed, 1_000)
+    }
+
+    func testCarriedWinner_repaysStake_keepsProfit() {
+        let r = WeeklyReset.settleCarried(proceeds: 1_500, cost: 1_000, owed: 1_000)
+        XCTAssertEqual(r.credited, 500)
+        XCTAssertEqual(r.owed, 0)
+    }
+
+    func testCarriedLoser_owesNothing() {
+        let r = WeeklyReset.settleCarried(proceeds: 0, cost: 1_000, owed: 1_000)
+        XCTAssertEqual(r.credited, 0)
+        XCTAssertEqual(r.owed, 0)
+    }
+
+    func testMondayGrant_fullAfterReset_topUpOtherwise() {
+        XCTAssertEqual(WeeklyReset.mondayGrant(allowance: 1_000, stakeStillHeld: 0), 1_000)
+        XCTAssertEqual(WeeklyReset.mondayGrant(allowance: 1_000, stakeStillHeld: 1_000), 0)
+        XCTAssertEqual(WeeklyReset.mondayGrant(allowance: 1_500, stakeStillHeld: 1_000), 500)
+    }
 }

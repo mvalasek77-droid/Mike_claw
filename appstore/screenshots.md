@@ -37,9 +37,9 @@ Recommended tools: Screenshotr, Rotato, or Fastlane frameit.
 **Caption:** "Winning gets you status."
 **Screen:** ProfileView with tier progress bar mid-Analyst, 4 badges on the shelf, trophy row visible.
 
-## 9 — Monday reset
-**Caption:** "Fresh coins every Monday."
-**Screen:** LowBalanceBanner with the "Next refill: Monday · in 2d 14h" countdown showing.
+## 9 — Weekly reset
+**Caption:** "Keep your profit. Fresh stake every Monday."
+**Screen:** Last page of the app tour ("How each week works") showing the Fri / Sun / Mon timeline.
 
 ## 10 — Learn
 **Caption:** "Actually teaches how options work."

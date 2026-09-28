@@ -80,7 +80,7 @@ final class NotificationsService: NSObject, ObservableObject, UNUserNotification
     func notifyOutOfCoins() {
         deliver(id: "broke_\(UUID().uuidString.prefix(8))",
                 title: "You're out of Reel Coins.",
-                body: "Trading pauses until Monday morning. Your allowance will land automatically.",
+                body: "Trading pauses until Monday, when your fresh stake lands automatically. Trades on movies that haven't opened keep running.",
                 kind: .outOfCoins)
     }
 

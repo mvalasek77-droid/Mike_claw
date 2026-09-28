@@ -14,6 +14,8 @@ struct BoxCallApp: App {
 
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
     @AppStorage("passedAgeGate") private var passedAgeGate: Bool = false
+    @Environment(\.scenePhase) private var scenePhase
+    private let weeklyTick = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
     var body: some Scene {
         WindowGroup {
@@ -32,6 +34,8 @@ struct BoxCallApp: App {
                     .environmentObject(rewards)
             }
             .task {
+                // Before settlement, so this weekend's payouts repay any stake riding on them.
+                portfolio.applyWeeklyCycle()
                 AnalyticsService.shared.installCrashHandler()
                 AnalyticsService.shared.track(.appOpen)
                 Haptics.warmUp()
@@ -42,6 +46,10 @@ struct BoxCallApp: App {
                 await settlement.checkAndSettle()
                 WidgetSyncService.sync()
             }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { portfolio.applyWeeklyCycle() }
+            }
+            .onReceive(weeklyTick) { _ in portfolio.applyWeeklyCycle() }
             .sheet(item: $coordinator.pendingCopy) { intent in
                 TradeSheet(contract: intent.contract, movie: intent.movie)
             }

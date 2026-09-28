@@ -16,7 +16,7 @@ struct OnboardingView: View {
                 buySlide.tag(3)
                 trackSlide.tag(4)
                 settleSlide.tag(5)
-                coinsSlide.tag(6)
+                weekSlide.tag(6)
             }
             .tabViewStyle(.page(indexDisplayMode: .always))
             .indexViewStyle(.page(backgroundDisplayMode: .always))
@@ -125,7 +125,7 @@ struct OnboardingView: View {
         slide(step: 4,
               tab: ("chart.line.uptrend.xyaxis", "Positions"),
               title: "Watch it move.",
-              body: "Prices shift all week as other players trade and news breaks. Sell any time before opening to lock in a gain or cut a loss.") {
+              body: "Prices shift all week as other players trade and news breaks. Sell any time before the movie opens on Friday — then its contracts lock until results.") {
             MockCard {
                 VStack(spacing: 8) {
                     mockPositionRow(emoji: "🧟", title: "Resident Evil", side: "CALL $40M", pnl: 18.2)
@@ -154,11 +154,45 @@ struct OnboardingView: View {
         }
     }
 
-    private var coinsSlide: some View {
+    private var weekSlide: some View {
         slide(step: nil,
-              emoji: "🏆",
-              title: "Play money. Real bragging rights.",
-              body: "You start with 1,000 Reel Coins. Every Monday you get a fresh allowance, so you can never be locked out.\n\nWins earn XP, badges and a spot on the Box Office leaderboard. Replay this tour any time from Profile.")
+              tab: nil,
+              title: "How each week works.",
+              body: "You start with a 1,000 Reel Coin stake. Play money only — it can't be cashed out.") {
+            MockCard {
+                VStack(alignment: .leading, spacing: 12) {
+                    weekRow(day: "FRI", icon: "lock.fill", color: .orange,
+                            text: "The movie opens. Trading on it locks.")
+                    weekRow(day: "SUN", icon: "arrow.uturn.backward.circle.fill", color: .red,
+                            text: "Weekly reset. Your 1,000 stake goes back — **you keep your profit**.")
+                    weekRow(day: "MON", icon: "checkmark.seal.fill", color: .green,
+                            text: "Results settle and winners get paid. **Everyone gets a fresh 1,000**, so a bad week never locks you out.")
+                    Divider()
+                    weekRow(day: "ALL", icon: "arrow.right.circle.fill", color: .blue,
+                            text: "Trades on movies that haven't opened yet — like Avengers: Doomsday — keep running right through the reset.")
+                }
+            }
+            Text("Wins earn XP, badges and a spot on the Box Office leaderboard. Replay this tour any time from Profile.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 24)
+        }
+    }
+
+    private func weekRow(day: String, icon: String, color: Color, text: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Text(day)
+                .font(.caption2.weight(.heavy).monospaced())
+                .foregroundStyle(color)
+                .frame(width: 32, alignment: .leading)
+                .padding(.top, 2)
+            Image(systemName: icon).foregroundStyle(color)
+            Text(.init(text))
+                .font(.caption)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
     }
 
     // MARK: - Slide scaffolding

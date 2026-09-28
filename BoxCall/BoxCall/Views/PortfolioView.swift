@@ -105,7 +105,7 @@ struct PortfolioView: View {
             .font(.caption)
             HStack(spacing: 4) {
                 Image(systemName: "calendar.badge.clock").foregroundStyle(.orange)
-                Text("Next Monday reset · +\(Int(portfolio.user.membership.weeklyAllowance)) RC in \(RefillClock.countdownString())")
+                Text("Sunday reset in \(RefillClock.resetCountdownString()) · keep your profit · fresh \(Int(portfolio.user.membership.weeklyAllowance)) RC Monday")
                     .foregroundStyle(.secondary)
             }
             .font(.caption2)
@@ -206,13 +206,19 @@ struct PositionRow: View {
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
-                    Button("Close") {
-                        portfolio.closeAtMark(position: position)
-                        portfolio.refreshLeaderboard()
+                    if movie?.isTradingOpen ?? false {
+                        Button("Close") {
+                            portfolio.closeAtMark(position: position)
+                            portfolio.refreshLeaderboard()
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .accessibilityLabel("Close position at current mark")
+                    } else {
+                        Label("Settles Mon", systemImage: "lock.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .accessibilityLabel("Close position at current mark")
                 }
                 .font(.caption)
             } else if let actual = position.actualOWMillions {
