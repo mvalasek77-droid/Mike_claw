@@ -70,12 +70,15 @@ def _text(fragment: str) -> str:
     return re.sub(r"\s+", " ", html_lib.unescape(_TAG.sub(" ", fragment))).strip()
 
 
-def _parse_date(text: str, today: dt.date) -> dt.date | None:
+def _parse_date(text: str, today: dt.date, floor: dt.date | None = None) -> dt.date | None:
     """A month-day date, with or without a year.
 
     Calendars often print "September 30" alone; the year is whichever
     puts the date closest ahead of today (a date more than two months
-    past means next year).
+    past means next year). Calendars run in date order, so a year-less
+    date that falls well before `floor` (the last date seen above it)
+    belongs to a later year: "December 17" after "January 8, 2027" is
+    December 2027, not a film opening this winter.
     """
     match = _DATE.search(text)
     if not match:
@@ -89,6 +92,11 @@ def _parse_date(text: str, today: dt.date) -> dt.date | None:
         return None
     if candidate < today - dt.timedelta(days=60):
         candidate = candidate.replace(year=today.year + 1)
+    while floor and candidate < floor - dt.timedelta(days=7):
+        try:
+            candidate = candidate.replace(year=candidate.year + 1)
+        except ValueError:  # February 29
+            return None
     return candidate
 
 
@@ -115,6 +123,7 @@ def parse_calendar(page: str, *, source: str, today: dt.date, horizon_days: int)
     """
     horizon = today + dt.timedelta(days=horizon_days)
     current: dt.date | None = None
+    latest: dt.date | None = None  # the page runs in date order
     seen: set[str] = set()
     out: list[dict] = []
 
@@ -124,9 +133,10 @@ def parse_calendar(page: str, *, source: str, today: dt.date, horizon_days: int)
         titles = [t for t in (_text(label) for _, label in _LINK.findall(block))
                   if t and "company info" not in t.lower()]
         if not titles:
-            found = _parse_date(" ".join(cells), today)
+            found = _parse_date(" ".join(cells), today, latest)
             if found:
                 current = found
+                latest = max(found, latest or found)
             continue
         title = titles[0]
 
@@ -135,7 +145,9 @@ def parse_calendar(page: str, *, source: str, today: dt.date, horizon_days: int)
         # "3rd quarter") — which must not inherit the previous date.
         lead = cells[0] if cells else ""
         if lead and title not in lead:
-            current = _parse_date(lead, today)
+            current = _parse_date(lead, today, latest)
+            if current:
+                latest = max(current, latest or current)
         if current is None or not (today <= current <= horizon):
             continue
 

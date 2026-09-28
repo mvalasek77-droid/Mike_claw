@@ -609,6 +609,22 @@ class TestScheduleOnRealLayouts:
         films, _ = schedule.fetch_upcoming(Client(), today=self.TODAY)
         assert [f["title"] for f in films] == ["Ramayana"]
 
+    def test_year_less_dates_later_in_the_page_belong_to_later_years(self):
+        page = """<table>
+<tr><td>December 18</td><td><a href="/movie/a">Dune: Part Three</a> (Wide)</td><td>Warner Bros.</td></tr>
+<tr><td>January 8</td><td><a href="/movie/b">Early Film</a> (Wide)</td><td>Universal</td></tr>
+<tr><td>November 24</td><td><a href="/movie/c">Frozen III</a> (Wide)</td><td>Walt Disney</td></tr>
+<tr><td>December 17</td><td><a href="/movie/d">Avengers: Secret Wars</a> (Wide)</td><td>Walt Disney</td></tr>
+</table>"""
+        films = {f["title"]: f for f in schedule.parse_calendar(
+            page, source="the-numbers", today=self.TODAY, horizon_days=500)}
+        assert films["Dune: Part Three"]["releaseDate"] == "2026-12-18"
+        assert films["Early Film"]["releaseDate"] == "2027-01-08"
+        assert films["Frozen III"]["releaseDate"] == "2027-11-24"
+        assert films["Avengers: Secret Wars"]["releaseDate"] == "2027-12-17"
+        near = schedule.parse_calendar(page, source="the-numbers", today=self.TODAY, horizon_days=90)
+        assert {f["title"] for f in near} == {"Dune: Part Three"}
+
     def test_year_rolls_over_for_early_months(self):
         assert schedule._parse_date("January 8", dt.date(2026, 11, 20)) == dt.date(2027, 1, 8)
         assert schedule._parse_date("September 30", dt.date(2026, 9, 28)) == dt.date(2026, 9, 30)
