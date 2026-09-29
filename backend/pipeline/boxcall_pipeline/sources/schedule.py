@@ -194,15 +194,20 @@ def _same_film_listed(film: dict, listed) -> bool:
     return False
 
 
+# Box Office Mojo is read in four-week pages this far ahead; The Numbers'
+# single page covers the rest of the year.
+BOM_DAYS = 84
+
+
 def calendar_pages(today: dt.date, horizon_days: int) -> list[tuple[str, str]]:
     """Every page to read, in priority order.
 
     Box Office Mojo's calendar shows about four weeks from the date in its
-    URL, so it is read in four-week steps out to the horizon. The Numbers
-    lists the whole schedule on one page and fills in anything BOM lacks.
+    URL, so it is read in four-week steps. The Numbers lists the whole
+    schedule on one page and fills in anything BOM lacks.
     """
     pages = [CALENDAR_SOURCES[0]]
-    for offset in range(28, horizon_days + 1, 28):
+    for offset in range(28, min(horizon_days, BOM_DAYS) + 1, 28):
         day = today + dt.timedelta(days=offset)
         pages.append(("boxofficemojo", f"{CALENDAR_SOURCES[0][1]}{day.isoformat()}/"))
     pages.extend(CALENDAR_SOURCES[1:])
@@ -210,7 +215,7 @@ def calendar_pages(today: dt.date, horizon_days: int) -> list[tuple[str, str]]:
 
 
 def fetch_upcoming(client: httpx.Client, *, today: dt.date | None = None,
-                   horizon_days: int = 90) -> tuple[list[dict], str]:
+                   horizon_days: int = 365) -> tuple[list[dict], str]:
     """(films, status line). Never raises.
 
     Reads every calendar page and merges them: a film listed by more than
@@ -250,10 +255,29 @@ def fetch_upcoming(client: httpx.Client, *, today: dt.date | None = None,
     return merged, status
 
 
-def estimate_opening(baseline: float, wiki_views_7d: int | None) -> float:
-    """Distributor baseline scaled by Wikipedia attention (bounded 0.5x–2.5x)."""
+# Sequels and franchise entries open well above a studio's typical film.
+_SEQUEL = re.compile(r"\b(?:[2-9]|ii|iii|iv|vi|part (?:two|three|four|[2-9]|ii|iii|iv))\b"
+                     r"|\b(?:two|three|returns|reloaded|resurrection)\s*$",
+                     re.IGNORECASE)
+
+
+def franchise_factor(title: str) -> float:
+    """1.6x for a numbered sequel, 1.3x for a franchise subtitle, else 1."""
+    if _SEQUEL.search(title):
+        return 1.6
+    prefix, colon, _ = title.partition(":")
+    # "The Hunger Games: Sunrise on the Reaping", not "Ali G: Who Iz I?".
+    if colon and len(prefix.strip()) >= 8:
+        return 1.3
+    return 1.0
+
+
+def estimate_opening(baseline: float, wiki_views_7d: int | None, title: str = "") -> float:
+    """Distributor baseline, lifted for franchise entries, scaled by
+    Wikipedia attention (bounded 0.5x–2.5x)."""
+    base = baseline * franchise_factor(title)
     if not wiki_views_7d:
-        return round(baseline, 1)
+        return round(base, 1)
     # ~40k views a week is a typical wide-release run-up.
     factor = min(2.5, max(0.5, (wiki_views_7d / 40_000) ** 0.5))
-    return round(baseline * factor, 1)
+    return round(base * factor, 1)

@@ -96,13 +96,15 @@ Since real-money wagering is off the table, revenue stacks:
 Two swappable abstractions handle upcoming releases and the initial premium anchor:
 
 **Upcoming-movies sources** — `MovieDataProvider` protocol; `CompositeMovieProvider` merges multiple:
-- `TMDBMovieProvider` — free official /movie/upcoming, called directly from the client (titles, posters, dates, studios, genres)
-- `BoxCallBackendUpcomingProvider` — hits `api.boxcall.com/upcoming` which aggregates IMDb Coming Soon, The Numbers release schedule, and Deadline calendars via server-side scrapers. Stubbed today — returns [] until the backend ships — and degrades gracefully so TMDB alone still fills the catalog. Dedup by lowercased title + release-week bucket; later sources win the tie so richer backend metadata beats TMDB baseline.
-- `VerifiedMovieProvider` — hand-curated studio-announced slate for offline / demo
+- `TMDBMovieProvider` — free official /movie/upcoming, called directly from the client when a key is set (titles, posters, dates, genres)
+- `PublishedCatalogProvider` — `upcoming.json` from the BoxCall data feed, rebuilt by the BoxCall Data workflow from the Box Office Mojo and The Numbers release calendars
+- `VerifiedMovieProvider` — hand-curated studio-announced slate, bundled so the app is full offline
+
+Dedup by title key (case, accent and punctuation folded). Later sources win the tie, except that a live calendar's release date beats the bundled one, and missing posters or synopses are filled from the other sources. The merged catalog is saved on device, so a film you hold stays listed until it settles.
 
 **Tracking sources** — `TrackingDataSource` protocol; `CompositeTrackingSource` tries in order:
-- `BoxCallBackendTrackingSource` — hits `api.boxcall.com/tracking?movie_id=...` which aggregates Deadline + NRG-style pre-release numbers. Stubbed.
-- `AlgorithmicTrackingSource` — always-on fallback derived from the movie's own popularity-based estimate.
+- `TradeProjectionTrackingSource` — the opening range the trades published, blended toward the app's estimate as it ages
+- `AlgorithmicTrackingSource` — always-on fallback: the movie's own estimate from the data feed
 
 **PriceSetter** (`Services/PriceSetter.swift`) — pure struct that owns *initial* chain pricing. Given a Movie + Tracking, it emits a 5-strikes-per-side chain of Contracts with theoretical premiums using:
 ```

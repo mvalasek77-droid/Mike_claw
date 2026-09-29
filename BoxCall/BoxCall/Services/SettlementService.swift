@@ -70,8 +70,9 @@ final class SettlementService: ObservableObject {
             }
             guard hasOpenPositions else { continue }
 
-            let actual = actuals[movie.id]
-                ?? actuals[Movie.titleKey(movie.title)]
+            let actual = [actuals[movie.id], actuals[Movie.titleKey(movie.title)]]
+                .compactMap { $0 }
+                .first { $0.belongs(to: movie) }?.millions
                 ?? Self.knownActuals[movie.id]
             if let actual {
                 portfolio.settle(movieId: movie.id, actualMillions: actual)
@@ -103,7 +104,32 @@ final class SettlementService: ObservableObject {
 
     // MARK: - Data fetching
 
-    private func fetchActuals() async -> [String: Double] {
+    /// A published opening, and the weekend it was reported for.
+    struct PublishedOpening {
+        let millions: Double
+        let weekendOf: Date?
+
+        /// A title match only counts for this film's own opening weekend:
+        /// an older film with the same name ("The Mummy") must not settle it.
+        func belongs(to movie: Movie) -> Bool {
+            guard let weekendOf else { return true }
+            // The reported weekend's Friday is on or after opening day
+            // (Wednesday and Thursday openers report that Friday). A day of
+            // slack covers time zones.
+            let earliest = Calendar.current.date(byAdding: .day, value: -1, to: movie.opensAt) ?? movie.opensAt
+            return weekendOf >= earliest
+        }
+    }
+
+    private static let weekendFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.calendar = Calendar(identifier: .gregorian)
+        f.timeZone = .current
+        f.dateFormat = "yyyy-MM-dd"
+        return f
+    }()
+
+    private func fetchActuals() async -> [String: PublishedOpening] {
         let url = baseURL.appendingPathComponent("actuals.json")
         do {
             var request = URLRequest(url: url)
@@ -116,11 +142,18 @@ final class SettlementService: ObservableObject {
                 return [:]
             }
             let envelope = try JSONDecoder().decode(ActualsEnvelope.self, from: data)
-            var result: [String: Double] = [:]
+            var result: [String: PublishedOpening] = [:]
             for (key, entry) in envelope.actuals where entry.isOpeningWeekend ?? true {
-                result[key] = entry.domesticOpeningMillions
+                let opening = PublishedOpening(
+                    millions: entry.domesticOpeningMillions,
+                    weekendOf: entry.weekendOf.flatMap { Self.weekendFormatter.date(from: String($0.prefix(10))) })
+                result[key] = opening
                 if let title = entry.title {
-                    result[Movie.titleKey(title)] = entry.domesticOpeningMillions
+                    let titleKey = Movie.titleKey(title)
+                    // Two films can share a title; the newer opening wins.
+                    if let existing = result[titleKey], let a = existing.weekendOf,
+                       let b = opening.weekendOf, a > b { continue }
+                    result[titleKey] = opening
                 }
             }
             lastError = nil
@@ -144,6 +177,7 @@ private struct ActualEntry: Decodable {
     let title: String?
     let domesticOpeningMillions: Double
     let isOpeningWeekend: Bool?
+    let weekendOf: String?
     let source: String?
     let reportedAt: String?
 }

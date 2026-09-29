@@ -8,6 +8,13 @@ import Foundation
 protocol MovieDataProvider {
     /// Fetch upcoming movies within `windowDays` from today.
     func fetchUpcoming(windowDays: Int) async throws -> [Movie]
+    /// True for sources read live from the release calendars. Studios move
+    /// dates; a live source's date beats one compiled into the app.
+    var isLive: Bool { get }
+}
+
+extension MovieDataProvider {
+    var isLive: Bool { false }
 }
 
 // MARK: - Built-in slate (real films, real dates)
@@ -223,11 +230,9 @@ final class VerifiedMovieProvider: MovieDataProvider {
 
 /// Hits The Movie Database's public /movie/upcoming endpoint.
 /// Free API key required — set in Config.tmdbAPIKey. If unset, the
-/// service degrades gracefully to the built-in slate so the app still
-/// runs. In production, calls should route through your own backend
-/// (boxcall.com/api/upcoming) that proxies TMDB, layers on tracking
-/// numbers from The Numbers / Deadline, and normalizes the schema.
+/// catalog comes from the BoxCall data feed and the built-in slate.
 final class TMDBMovieProvider: MovieDataProvider {
+    var isLive: Bool { true }
     private let apiKey: String
     private let session: URLSession
     private let base = URL(string: "https://api.themoviedb.org/3")!

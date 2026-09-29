@@ -181,8 +181,11 @@ def build(
             else "not configured" if not tmdb_key else "failed"
         )
         calendar_movies, source_status["schedule"] = schedule.fetch_upcoming(client, today=now.date())
+        # The whole calendar is published, a year ahead, so the app can
+        # move a film it already lists when the studio moves its date.
+        # Only the soonest films are listed for trading and need signals.
         movies = merge_catalog(tmdb_movies, calendar_movies, load_seed(seed_path), today=now.date())
-        movies = movies[:max_movies]
+        tracked = movies[:max_movies]
 
         if not movies:
             raise SystemExit("No upcoming films from any source; nothing to build.")
@@ -190,7 +193,7 @@ def build(
         # --- Per-movie signals ---------------------------------------
         budget = [youtube_search_budget]
         signals: list[dict] = []
-        for index, movie in enumerate(movies):
+        for index, movie in enumerate(tracked):
             signals.append(
                 collect_movie_signal(
                     client,
@@ -201,7 +204,7 @@ def build(
                     search_budget=budget,
                 )
             )
-            if index < len(movies) - 1:
+            if index < len(tracked) - 1:
                 time.sleep(POLITE_DELAY_SECONDS)
 
         yt_covered = attach_youtube_stats(client, signals, youtube_key, now)
@@ -224,7 +227,8 @@ def build(
     for movie in movies:
         baseline = movie.pop("baselineOpeningMillions", None)
         if baseline is not None:
-            movie["estimatedOpeningMillions"] = schedule.estimate_opening(baseline, views.get(movie["id"]))
+            movie["estimatedOpeningMillions"] = schedule.estimate_opening(
+                baseline, views.get(movie["id"]), movie["title"])
 
     # --- Box office actuals -----------------------------------------
     previous = load_previous_actuals(previous_actuals_path)

@@ -1,8 +1,8 @@
 import Foundation
 
-/// One-line-per-event analytics wrapper. Only the console sink is active:
-/// `BoxCallBackendSink` stays off until there is a backend we control and
-/// the App Store privacy label declares the upload.
+/// One-line-per-event analytics wrapper. Events only go to the debug
+/// console: nothing leaves the device, which is what the App Store
+/// privacy label declares.
 ///
 /// Events are anonymous (no PII). Sign-in status is tracked only as a
 /// bool flag on each event.
@@ -144,33 +144,5 @@ final class ConsoleAnalyticsSink: AnalyticsSink {
         let pairs = s.props.map { "\($0.key)=\($0.value)" }.joined(separator: " ")
         print("📊 \(s.name) | \(pairs) | signedIn=\(s.signedIn) tier=\(s.membership)")
         #endif
-    }
-}
-
-/// Stub HTTP sink. Fails silently when the backend isn't reachable so
-/// the app never blocks on analytics.
-final class BoxCallBackendSink: AnalyticsSink {
-    let endpoint: URL
-    let session: URLSession
-    private static let isoFormatter = ISO8601DateFormatter()
-
-    init(endpoint: URL = URL(string: "https://api.boxcall.com/analytics/events")!,
-         session: URLSession = .shared) {
-        self.endpoint = endpoint
-        self.session = session
-    }
-    func record(_ s: AnalyticsSample) {
-        var req = URLRequest(url: endpoint)
-        req.httpMethod = "POST"
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        var payload: [String: Any] = [
-            "name": s.name,
-            "ts": Self.isoFormatter.string(from: s.timestamp),
-            "signed_in": s.signedIn,
-            "membership": s.membership
-        ]
-        payload["props"] = s.props
-        req.httpBody = try? JSONSerialization.data(withJSONObject: payload)
-        session.dataTask(with: req) { _, _, _ in }.resume()
     }
 }

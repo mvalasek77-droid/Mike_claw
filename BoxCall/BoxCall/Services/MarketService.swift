@@ -83,13 +83,16 @@ final class MarketService: ObservableObject {
     /// into the live catalog. Preserves any chains, price history, and
     /// user positions on movies that survive across refreshes.
     @MainActor
-    func refreshCatalog(windowDays: Int = 60) async {
+    func refreshCatalog(windowDays: Int = MarketService.listingWindowDays) async {
         guard !refreshInFlight else { return }
         refreshInFlight = true
         defer { refreshInFlight = false }
         do {
-            let fetched = try await provider.fetchUpcoming(windowDays: windowDays)
-            let newlyAddedIds = merge(remote: fetched)
+            // Read well past the listing window so a film already listed
+            // still gets its new date when the studio moves it out.
+            let fetched = try await provider.fetchUpcoming(windowDays: Self.lookaheadDays)
+            let listUntil = Date().addingTimeInterval(Double(windowDays) * 86_400)
+            let newlyAddedIds = merge(remote: fetched, listUntil: listUntil)
             lastRefreshAt = Date()
             lastRefreshError = nil
             if !newlyAddedIds.isEmpty {
@@ -109,8 +112,13 @@ final class MarketService: ObservableObject {
     /// - New ids get freshly generated chains and are marked as NEW.
     /// - Local-only movies (verified offline seeds not in remote) are kept as long as
     ///   they haven't opened yet OR the user has an open position on them.
+    /// How far ahead a film is listed for trading (matches the data feed).
+    nonisolated static let listingWindowDays = 90
+    /// How far ahead the catalog is read, to catch date moves.
+    nonisolated static let lookaheadDays = 400
+
     @discardableResult
-    private func merge(remote: [Movie]) -> Set<String> {
+    private func merge(remote: [Movie], listUntil: Date) -> Set<String> {
         var byId: [String: Movie] = Dictionary(uniqueKeysWithValues: movies.map { ($0.id, $0) })
         var chainsById = chains
         var addedIds: Set<String> = []
@@ -141,7 +149,7 @@ final class MarketService: ObservableObject {
                     trailerQuery: r.trailerQuery ?? existing.trailerQuery,
                     criticScore: r.criticScore ?? existing.criticScore,
                     tradeProjection: r.tradeProjection ?? existing.tradeProjection)
-            } else {
+            } else if r.releaseDate <= listUntil {
                 byId[r.id] = r
                 chainsById[r.id] = generateChain(for: r)
                 movieSentiment[r.id] = 1.0
@@ -162,9 +170,14 @@ final class MarketService: ObservableObject {
             consensusHistory.removeValue(forKey: id)
         }
 
+        // A moved date re-prices time value but keeps the strikes, so
+        // chains for existing films stay as they were.
+
         // Publish. Sort by release date so the Slate lists soonest first.
         movies = Array(byId.values).sorted { $0.releaseDate < $1.releaseDate }
         chains = chainsById
+        keepHeldContractsListed()
+        persistCatalog()
         // Drop sentiment state for movies that just left the catalog —
         // every per-movie map in the engine is keyed by an id that can
         // disappear when an opened film is pruned.
@@ -509,19 +522,63 @@ final class MarketService: ObservableObject {
 
     // MARK: - Verified catalog + chain generation
 
+    /// Launch catalog: the films saved last session, then any from the
+    /// bundled slate not among them. A film someone holds stays listed
+    /// until it settles, even after it opens — the release calendars stop
+    /// listing a film once it's out, and the position still has to settle.
     private func loadVerifiedCatalog() {
-        // Same filter fetchUpcoming applies: never surface a film that
-        // has already opened on cold launch.
+        let held = Set(PortfolioService.shared.positions.filter(\.isOpen).map(\.movieId))
+        let saved = Self.loadSavedCatalog()
+        let savedKeys = Set(saved.map { Movie.titleKey($0.title) })
         let seeds = VerifiedMovieProvider.builtInSeed()
-            .filter { !$0.isSettled }
+            .filter { !savedKeys.contains(Movie.titleKey($0.title)) }
+        let catalog = (saved + seeds)
+            .filter { !$0.isSettled || held.contains($0.id) }
             .sorted { $0.releaseDate < $1.releaseDate }
-        movies = seeds
+        movies = catalog
         var built: [String: [Contract]] = [:]
-        for m in seeds {
+        for m in catalog {
             built[m.id] = generateChain(for: m)
             movieSentiment[m.id] = 1.0
         }
         chains = built
+        keepHeldContractsListed()
+    }
+
+    /// A chain can re-centre (new tracking, a new app version's estimate),
+    /// which would drop a strike someone holds. Re-list any such contract
+    /// so it keeps a price, can be closed, and settles like the rest.
+    private func keepHeldContractsListed() {
+        for p in PortfolioService.shared.positions where p.isOpen {
+            guard let m = movie(id: p.movieId),
+                  var chain = chains[p.movieId],
+                  !chain.contains(where: { $0.id == p.contractId }) else { continue }
+            chain.append(priceSetter.contract(
+                for: m, side: p.side, strike: p.strikeMillions,
+                tracking: Tracking(openingWeekendMillions: m.consensusOpeningMillions,
+                                   impliedVolPct: m.impliedVolPct)))
+            chains[p.movieId] = chain.sorted {
+                ($0.side.rawValue, $0.strikeMillions) < ($1.side.rawValue, $1.strikeMillions)
+            }
+        }
+    }
+
+    // MARK: - Saved catalog
+
+    static var catalogFileURL: URL {
+        URL.applicationSupportDirectory.appendingPathComponent("catalog.json")
+    }
+
+    private static func loadSavedCatalog() -> [Movie] {
+        guard let data = try? Data(contentsOf: catalogFileURL) else { return [] }
+        return (try? JSONDecoder().decode([Movie].self, from: data)) ?? []
+    }
+
+    private func persistCatalog() {
+        guard let data = try? JSONEncoder().encode(movies) else { return }
+        try? FileManager.default.createDirectory(at: URL.applicationSupportDirectory,
+                                                 withIntermediateDirectories: true)
+        try? data.write(to: Self.catalogFileURL, options: .atomic)
     }
 
     /// Build the initial chain for a movie via PriceSetter, sourcing
@@ -579,9 +636,16 @@ final class MarketService: ObservableObject {
                 abs(t.openingWeekendMillions - m.consensusOpeningMillions) > 0.5
                 || abs(t.impliedVolPct - m.impliedVolPct) > 3
             guard hasMeaningfulChange else { continue }
-            // Re-seed the chain against the real tracking.
-            chains[id] = priceSetter.chain(for: m, tracking: t)
+            // Re-seed the chain against the real tracking, and move the
+            // movie's consensus with it: the chain is centred on the
+            // consensus, and the next launch rebuilds it from that number.
+            let updated = m.with(consensusOpeningMillions: t.openingWeekendMillions,
+                                 impliedVolPct: t.impliedVolPct)
+            if let index = movies.firstIndex(where: { $0.id == id }) { movies[index] = updated }
+            chains[id] = priceSetter.chain(for: updated, tracking: t)
         }
+        keepHeldContractsListed()
+        persistCatalog()
     }
 
     // MARK: - Settlement demo

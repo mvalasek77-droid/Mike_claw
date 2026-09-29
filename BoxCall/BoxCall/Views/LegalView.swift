@@ -1,8 +1,6 @@
 import SwiftUI
 
-/// Terms of Service + Privacy Policy shipped in-app. Real production
-/// would host these on boxcall.com and link out — bundled copies here
-/// so the app can be reviewed and used offline.
+/// Terms of Service + Privacy Policy, bundled so they can be read offline.
 struct LegalView: View {
     enum Kind { case terms, privacy }
     let kind: Kind

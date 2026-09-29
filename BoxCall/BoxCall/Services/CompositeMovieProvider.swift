@@ -3,22 +3,39 @@ import Foundation
 /// Merge multiple upcoming-movies providers into one deduped stream.
 ///
 /// Later sources take priority when the same film appears twice; see
-/// `Config.compositeProvider` for the order.
+/// `Config.compositeProvider` for the order. Two exceptions keep the
+/// winner accurate: a live source's release date beats a bundled one
+/// (studios move dates after the app ships), and fields the winner
+/// lacks — a poster, a synopsis — are filled from the others.
 final class CompositeMovieProvider: MovieDataProvider {
     private let sources: [MovieDataProvider]
     init(_ sources: [MovieDataProvider]) { self.sources = sources }
 
+    var isLive: Bool { sources.contains { $0.isLive } }
+
     func fetchUpcoming(windowDays: Int) async throws -> [Movie] {
         var byKey: [String: Movie] = [:]
+        var liveDates: [String: Date] = [:]
         var firstError: Error?
 
         for source in sources {
             do {
                 let batch = try await source.fetchUpcoming(windowDays: windowDays)
                 for m in batch {
-                    let key = dedupKey(for: m)
-                    // Later source wins the tie.
-                    byKey[key] = m
+                    // Same film, same key — even when sources disagree on the
+                    // id or on a date the studio has since moved.
+                    let key = Movie.titleKey(m.title)
+                    var winner = m
+                    if let earlier = byKey[key] {
+                        winner = winner.with(posterURL: m.posterURL ?? earlier.posterURL,
+                                             synopsis: m.synopsis ?? earlier.synopsis)
+                    }
+                    if source.isLive {
+                        liveDates[key] = m.releaseDate
+                    } else if let live = liveDates[key] {
+                        winner = winner.with(releaseDate: live)
+                    }
+                    byKey[key] = winner
                 }
             } catch {
                 if firstError == nil { firstError = error }
@@ -27,12 +44,6 @@ final class CompositeMovieProvider: MovieDataProvider {
 
         if byKey.isEmpty, let error = firstError { throw error }
         return Array(byKey.values).sorted { $0.releaseDate < $1.releaseDate }
-    }
-
-    /// Same film, same key — even when sources disagree on the id or on
-    /// a release date the studio has since moved.
-    private func dedupKey(for m: Movie) -> String {
-        Movie.titleKey(m.title)
     }
 }
 
@@ -43,6 +54,7 @@ final class CompositeMovieProvider: MovieDataProvider {
 /// Mojo's and The Numbers' release calendars (and TMDB when a key is set).
 /// This is how new films reach the app without an update.
 final class PublishedCatalogProvider: MovieDataProvider {
+    var isLive: Bool { true }
     private let baseURL: URL
     private let session: URLSession
 

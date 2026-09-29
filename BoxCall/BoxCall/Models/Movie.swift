@@ -104,4 +104,23 @@ struct Movie: Identifiable, Codable, Hashable {
     var resolvedTrailerQuery: String {
         trailerQuery ?? "\(title) official trailer"
     }
+
+    /// A copy with the given fields replaced.
+    func with(releaseDate: Date? = nil,
+              posterURL: String? = nil,
+              synopsis: String? = nil,
+              consensusOpeningMillions: Double? = nil,
+              impliedVolPct: Double? = nil) -> Movie {
+        Movie(id: id, title: title, studio: studio,
+              releaseDate: releaseDate ?? self.releaseDate,
+              posterEmoji: posterEmoji,
+              posterURL: posterURL ?? self.posterURL,
+              tagline: tagline,
+              consensusOpeningMillions: consensusOpeningMillions ?? self.consensusOpeningMillions,
+              impliedVolPct: impliedVolPct ?? self.impliedVolPct,
+              genre: genre, addedAt: addedAt, director: director, cast: cast,
+              synopsis: synopsis ?? self.synopsis,
+              trailerQuery: trailerQuery, criticScore: criticScore,
+              tradeProjection: tradeProjection)
+    }
 }

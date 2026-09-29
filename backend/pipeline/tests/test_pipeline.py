@@ -444,6 +444,16 @@ class TestBoxOffice:
         assert boxoffice._parse_gross("") is None
         assert boxoffice._parse_gross("N/A") is None
 
+    def test_franchise_entries_start_higher(self):
+        assert schedule.franchise_factor("Violent Night 2") == 1.6
+        assert schedule.franchise_factor("Dune: Part Three") == 1.6
+        assert schedule.franchise_factor("Frozen III") == 1.6
+        assert schedule.franchise_factor("The Hunger Games: Sunrise on the Reaping") == 1.3
+        assert schedule.franchise_factor("Avengers: Doomsday") == 1.3
+        assert schedule.franchise_factor("Ali G: Who Iz I?") == 1.0
+        assert schedule.franchise_factor("Digger") == 1.0
+        assert schedule.estimate_opening(20.0, None, "Violent Night 2") == 32.0
+
     def test_fetch_degrades_on_failure(self):
         class Boom:
             def get(self, *a, **k):

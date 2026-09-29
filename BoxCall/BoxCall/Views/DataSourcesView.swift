@@ -44,7 +44,7 @@ struct DataSourcesView: View {
                 }
             }
             statRow("Provider",
-                    Config.tmdbAPIKey.isEmpty ? "Mock (built-in slate)" : "TMDB /movie/upcoming")
+                    Config.tmdbAPIKey.isEmpty ? "Data feed + built-in slate" : "TMDB + data feed + built-in slate")
             statRow("Data API", Config.dataAPIBaseURL.host ?? "—")
             statRow("Catalog size", "\(market.movies.count) movies")
             if let last = market.lastRefreshAt {
@@ -90,17 +90,17 @@ struct DataSourcesView: View {
             Group {
                 Text("Pre-release tracking (feeds the price setter)")
                     .font(.headline).padding(.top, 4)
-                SourceRow(name: "Algorithmic estimate",
-                          role: "Consensus opening + IV derived from TMDB popularity when nothing better is available. Always on as a fallback.",
-                          status: "Live — powers the initial chain when the backend tracking endpoint has no data.",
+                SourceRow(name: "Published trade projections",
+                          role: "The opening range the trades printed for a film, where one exists. Trusted less as it ages.",
+                          status: "Live for the built-in slate.",
+                          wired: true)
+                SourceRow(name: "BoxCall estimate",
+                          role: "For every other film: the studio's typical wide opening, lifted for sequels and franchise entries, scaled by Wikipedia attention.",
+                          status: "Live — set by the data feed when a film is listed; trading moves it from there.",
                           wired: true)
                 SourceRow(name: "Deadline Hollywood + NRG",
-                          role: "Real pre-release tracking numbers.",
-                          status: "Backend-only. Server pulls headline tracking each morning and serves it to the app via /tracking. Endpoint stubbed.",
-                          wired: false)
-                SourceRow(name: "The Numbers — historical grosses",
-                          role: "Genre / budget cohorts for IV calibration.",
-                          status: "Backend-only. Scraper feeds a per-genre volatility model.",
+                          role: "Industry pre-release tracking numbers.",
+                          status: "Planned. Not connected.",
                           wired: false)
             }
             Group {
@@ -159,10 +159,11 @@ struct DataSourcesView: View {
     private var howItStaysFresh: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("How the app stays fresh").font(.headline)
-            bullet("On launch", "Kicks off a refresh from the current provider. Falls back to the last cached catalog if the network fails.")
-            bullet("Every 6 hours", "A background timer re-fetches while the app is open. New releases stream in and get a NEW badge on the Slate.")
+            bullet("On launch", "Opens on the catalog saved last time, then refreshes. If the network fails, the saved catalog stays.")
+            bullet("Every 6 hours", "The feed rebuilds from the release calendars, and the app re-fetches while open. Films are listed 90 days out and get a NEW badge on the Slate.")
+            bullet("Date changes", "When a studio moves a film, its date updates here. Trading stays open until it actually opens.")
             bullet("Pull to refresh", "Manual override — swipe down on the Slate any time.")
-            bullet("Positions survive", "Refresh merges data. A movie you're already holding never disappears mid-cycle, even if the provider stops listing it before opening.")
+            bullet("Positions survive", "A movie you hold stays listed until it settles, even after the calendars stop listing it.")
             bullet("Auto-prune", "Once a movie has opened AND you have no open positions on it, it drops off the Slate on the next refresh.")
         }
     }

@@ -73,42 +73,6 @@ final class TradeProjectionTrackingSource: TrackingDataSource {
     }
 }
 
-// MARK: - Backend (real tracking)
-
-/// The production path. Calls the BoxCall backend which aggregates
-/// pre-release tracking from Deadline / The Numbers / NRG feeds
-/// server-side and returns a normalized number. Stubbed here — the
-/// endpoint just doesn't exist yet — but the shape is real.
-final class BoxCallBackendTrackingSource: TrackingDataSource {
-    let baseURL: URL
-    let session: URLSession
-    private let decoder: JSONDecoder = {
-        let d = JSONDecoder()
-        d.keyDecodingStrategy = .convertFromSnakeCase
-        return d
-    }()
-
-    init(baseURL: URL = URL(string: "https://api.boxcall.com")!,
-         session: URLSession = .shared) {
-        self.baseURL = baseURL
-        self.session = session
-    }
-
-    func tracking(for movie: Movie) async -> Tracking? {
-        guard var comps = URLComponents(url: baseURL.appendingPathComponent("tracking"),
-                                        resolvingAgainstBaseURL: false) else { return nil }
-        comps.queryItems = [.init(name: "movie_id", value: movie.id)]
-        guard let url = comps.url else { return nil }
-        do {
-            let (data, resp) = try await session.data(from: url)
-            guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return nil }
-            return try decoder.decode(Tracking.self, from: data)
-        } catch {
-            return nil
-        }
-    }
-}
-
 // MARK: - Composite with graceful fallback
 
 /// Tries sources in order. First one that returns a non-nil Tracking
@@ -129,26 +93,15 @@ final class CompositeTrackingSource: TrackingDataSource {
 
 extension Config {
     /// The tracking source stack, best evidence first: a projection the
-    /// trades actually published, then the backend aggregate (currently
-    /// stubbed so it 404s and falls through), then the app's own
-    /// estimate as a guaranteed floor.
+    /// trades actually published, then the app's own estimate (from the
+    /// data feed) as a guaranteed floor.
     ///
     /// Whatever this returns is then moved up or down by the sentiment
     /// engine — see `enrichedTrackingSource`.
     static var trackingSource: TrackingDataSource {
         CompositeTrackingSource([
             TradeProjectionTrackingSource(),
-            BoxCallBackendTrackingSource(),
             AlgorithmicTrackingSource()
         ])
-    }
-}
-
-// MARK: - Codable helper for the backend shape
-
-extension Tracking: Codable {
-    enum CodingKeys: String, CodingKey {
-        case openingWeekendMillions = "openingWeekendMillions"
-        case impliedVolPct = "impliedVolPct"
     }
 }

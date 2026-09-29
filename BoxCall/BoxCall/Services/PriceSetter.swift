@@ -37,34 +37,42 @@ struct PriceSetter {
         let center = tracking.openingWeekendMillions
         let step = max(1.0, (center * 0.10).rounded())
         let strikes = strikeOffsets.map { (center + Double($0) * step).rounded() }
-        let iv = tracking.impliedVolPct / 100.0
-        let dte = max(1, movie.daysToRelease)
-
-        var out: [Contract] = []
-        for side in ContractSide.allCases {
-            for k in strikes {
-                let intrinsic = side == .call
-                    ? max(center - k, 0)
-                    : max(k - center, 0)
-                let moneyness = abs(center - k) / max(1, center)
-                let timeValue = center * iv * sqrt(Double(dte) / 30.0)
-                              * exp(-moneyness * moneynessDecay) * timeValueCoeff
-                let fair = max(floorPremium, intrinsic + timeValue)
-                let rounded = (fair * 100).rounded() / 100
-                out.append(.init(
-                    id: "\(movie.id)_\(side.rawValue)_\(Int(k))",
-                    movieId: movie.id,
-                    side: side,
-                    strikeMillions: k,
-                    basePremium: rounded,
-                    premium: rounded,
-                    multiplier: multiplier,
-                    openInterest: Int.random(in: 40...900)
-                ))
-            }
+        let out = ContractSide.allCases.flatMap { side in
+            strikes.map { contract(for: movie, side: side, strike: $0, tracking: tracking) }
         }
         return out.sorted {
             ($0.side.rawValue, $0.strikeMillions) < ($1.side.rawValue, $1.strikeMillions)
         }
+    }
+
+    /// One strike on one side, priced with the formula above. Also used to
+    /// keep a contract someone holds listed after the chain re-centres.
+    func contract(for movie: Movie, side: ContractSide, strike k: Double,
+                  tracking: Tracking) -> Contract {
+        let center = tracking.openingWeekendMillions
+        let iv = tracking.impliedVolPct / 100.0
+        let dte = max(1, movie.daysToRelease)
+        let intrinsic = side == .call
+            ? max(center - k, 0)
+            : max(k - center, 0)
+        let moneyness = abs(center - k) / max(1, center)
+        let timeValue = center * iv * sqrt(Double(dte) / 30.0)
+                      * exp(-moneyness * moneynessDecay) * timeValueCoeff
+        let fair = max(floorPremium, intrinsic + timeValue)
+        let rounded = (fair * 100).rounded() / 100
+        return Contract(
+            id: Self.contractId(movieId: movie.id, side: side, strike: k),
+            movieId: movie.id,
+            side: side,
+            strikeMillions: k,
+            basePremium: rounded,
+            premium: rounded,
+            multiplier: multiplier,
+            openInterest: Int.random(in: 40...900)
+        )
+    }
+
+    static func contractId(movieId: String, side: ContractSide, strike: Double) -> String {
+        "\(movieId)_\(side.rawValue)_\(Int(strike))"
     }
 }

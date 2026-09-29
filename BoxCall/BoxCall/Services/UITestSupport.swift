@@ -11,7 +11,7 @@ enum UITestSupport {
     static func prepareIfNeeded() {
         guard isUITesting else { return }
         if arguments.contains("-resetState") {
-            for name in ["portfolio.json", "open_orders.json", "social.json"] {
+            for name in ["portfolio.json", "open_orders.json", "social.json", "catalog.json"] {
                 try? FileManager.default.removeItem(
                     at: URL.applicationSupportDirectory.appendingPathComponent(name))
             }

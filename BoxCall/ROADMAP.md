@@ -7,8 +7,8 @@ Six months. Grouped by quarter. Every item has an owner-facing "why".
 **Goal: 5,000 sign-ups in the first month, 25% D7 retention.**
 
 - [x] iOS app v1.0 ship (this repo)
-- [x] Backend live at api.boxcall.com (deploy the FastAPI skeleton)
-- [x] TMDB catalog live; Box Office Mojo settlement cron running Mondays
+- [x] Data feed live: the BoxCall Data workflow publishes upcoming films and opening weekends (no server to run)
+- [x] Release calendars and weekend charts read automatically; results settle on the Sunday estimate
 - [ ] App Store submission — screenshots + review notes from `appstore/`
 - [ ] boxcall.com landing live on Cloudflare Pages
 - [ ] Product Hunt launch — first Sunday after Apple approval

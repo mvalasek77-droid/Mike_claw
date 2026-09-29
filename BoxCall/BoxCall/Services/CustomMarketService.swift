@@ -77,7 +77,7 @@ final class CustomMarketService: ObservableObject {
         markets = [
             .init(id: UUID(),
                   question: "Villeneuve's Rendezvous opens above $50M.",
-                  details: "Domestic three-day opening weekend, per Box Office Mojo. Settles the Monday after release.",
+                  details: "Domestic three-day opening weekend, per Box Office Mojo. Settles on the Sunday estimate.",
                   creatorHandle: "popcornshark", creatorTier: .studioHead,
                   createdAt: Date().addingTimeInterval(-3 * 86400),
                   resolvesOn: Date().addingTimeInterval(60 * 86400),

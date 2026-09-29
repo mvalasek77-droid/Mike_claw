@@ -71,7 +71,7 @@ struct PortfolioView: View {
                         }
                         .foregroundStyle(.orange)
                     } footer: {
-                        Text("Results are fetched automatically on launch. Tap to check again now.")
+                        Text("Results land Sunday and are checked automatically. Tap to check now.")
                             .font(.caption)
                     }
                 }
@@ -155,10 +155,12 @@ struct PortfolioView: View {
         .frame(minWidth: 80, alignment: .leading)
     }
 
+    /// Opened, so its result can land (normally Sunday).
     private func movieIsSettleable(_ movieId: String) -> Bool {
-        market.movie(id: movieId)?.isSettled ?? false
+        market.movie(id: movieId).map { !$0.isTradingOpen } ?? false
     }
 
+    #if DEBUG
     private func simulateAllSettlements() {
         for movie in market.movies where movie.daysToRelease <= 14 {
             let actual = market.simulatedActualOW(for: movie)
@@ -166,6 +168,7 @@ struct PortfolioView: View {
         }
         portfolio.refreshLeaderboard()
     }
+    #endif
 }
 
 struct PositionRow: View {
