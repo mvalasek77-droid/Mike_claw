@@ -99,13 +99,15 @@ final class NotificationsService: NSObject, ObservableObject, UNUserNotification
                 kind: .comment(handle: handle))
     }
 
-    /// Reminder scheduled at trade placement, 24h before release.
-    func scheduleOpeningReminder(movie: Movie, position: Position) {
-        let fireDate = movie.releaseDate.addingTimeInterval(-24 * 3600)
-        guard fireDate > Date() else { return }
+    /// One reminder per film, at 6 PM the evening before it opens: the
+    /// last call before trading on it locks at midnight. Scheduling again
+    /// (another trade, or the studio moved the date) replaces it.
+    func scheduleOpeningReminder(movie: Movie) {
+        guard let fireDate = Calendar.current.date(byAdding: .hour, value: -6, to: movie.opensAt),
+              fireDate > Date() else { return }
         let content = UNMutableNotificationContent()
         content.title = "🎬 \(movie.title) opens tomorrow"
-        content.body = "Your \(position.side.display) at $\(Int(position.strikeMillions))M is live. Consensus: $\(Int(movie.consensusOpeningMillions))M."
+        content.body = "Trading on it locks at midnight. Last chance to adjust your position."
         content.sound = .default
         content.userInfo = ["movieId": movie.id]
 
@@ -113,15 +115,15 @@ final class NotificationsService: NSObject, ObservableObject, UNUserNotification
             [.year, .month, .day, .hour, .minute], from: fireDate)
         let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
         let req = UNNotificationRequest(
-            identifier: "open_\(position.id.uuidString)",
+            identifier: "open_\(movie.id)",
             content: content, trigger: trigger)
         UNUserNotificationCenter.current().add(req, withCompletionHandler: nil)
 
-        // Also drop an inbox item now so users see the reminder is armed.
+        // Show the armed reminder in the inbox too.
         appendInbox(.init(
-            id: "reminder_\(position.id.uuidString)",
+            id: "reminder_\(movie.id)",
             title: "Reminder set",
-            body: "We'll ping you 24h before \(movie.title) opens.",
+            body: "We'll ping you the evening before \(movie.title) opens, before trading locks.",
             kind: .reminder(movieId: movie.id),
             createdAt: Date(),
             isRead: false
@@ -146,6 +148,8 @@ final class NotificationsService: NSObject, ObservableObject, UNUserNotification
     }
 
     private func appendInbox(_ item: InboxItem) {
+        // Ids are unique: a repeat (a re-armed reminder) replaces the old one.
+        inbox.removeAll { $0.id == item.id }
         inbox.insert(item, at: 0)
         if inbox.count > 100 { inbox = Array(inbox.prefix(100)) }
     }

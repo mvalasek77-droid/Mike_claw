@@ -12,6 +12,10 @@ struct Position: Identifiable, Codable, Hashable {
     let openedAt: Date
     var settledPayout: Double?   // nil until settled
     var actualOWMillions: Double?
+    /// The film as it was listed when the trade opened, so history still
+    /// reads right after the film leaves the Slate. Nil on older saves.
+    var movieTitle: String? = nil
+    var posterEmoji: String? = nil
 
     var cost: Double { entryPremium * Double(quantity) }
     var isOpen: Bool { settledPayout == nil }

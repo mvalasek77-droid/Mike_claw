@@ -1,17 +1,24 @@
 import SwiftUI
 
-/// Monday-morning "here's what happened this weekend" card. Shows the
-/// positions that settled since the last time the user saw a recap,
-/// tallied, with the single biggest swing called out. Dismisses to
-/// UserDefaults so it appears once per settlement wave.
+/// "Here's what happened this weekend" card. Shows the positions that
+/// settled on an opening-weekend result since the user last dismissed a
+/// recap, tallied, with the single biggest swing called out. Trades sold
+/// early aren't weekend results and don't appear.
 struct WeekendRecap: View {
     @EnvironmentObject var portfolio: PortfolioService
     @EnvironmentObject var market: MarketService
-    @AppStorage("recap.lastSeenSettledCount") private var lastSeen: Int = 0
+    /// Ids of results already shown, space-separated.
+    @AppStorage("recap.seenPositionIds") private var seenIds: String = ""
     @State private var confettiTrigger = 0
 
-    private var settled: [Position] { portfolio.positions.filter { !$0.isOpen } }
-    private var fresh: [Position] { Array(settled.suffix(max(0, settled.count - lastSeen))) }
+    /// Positions settled on a published (or simulated) opening number.
+    private var settled: [Position] {
+        portfolio.positions.filter { !$0.isOpen && $0.actualOWMillions != nil }
+    }
+    private var fresh: [Position] {
+        let seen = Set(seenIds.split(separator: " ").map(String.init))
+        return settled.filter { !seen.contains($0.id.uuidString) }
+    }
 
     private var net: Double {
         fresh.reduce(0) { $0 + (($1.settledPayout ?? 0) - $1.cost) }
@@ -37,7 +44,7 @@ struct WeekendRecap: View {
                 MarqueeBulbs(count: 10)
                 Spacer()
                 Button {
-                    lastSeen = settled.count
+                    seenIds = settled.map(\.id.uuidString).joined(separator: " ")
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(Theme.cream.opacity(0.6))

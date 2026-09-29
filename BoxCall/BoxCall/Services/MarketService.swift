@@ -127,6 +127,8 @@ final class MarketService: ObservableObject {
         let idByTitle = Dictionary(movies.map { (Movie.titleKey($0.title), $0.id) },
                                    uniquingKeysWith: { first, _ in first })
         var remoteIds: Set<String> = []
+        let heldMovieIds = Set(PortfolioService.shared.positions
+            .filter { $0.isOpen }.map { $0.movieId })
 
         for r in remote {
             let id = byId[r.id] != nil ? r.id : (idByTitle[Movie.titleKey(r.title)] ?? r.id)
@@ -149,6 +151,11 @@ final class MarketService: ObservableObject {
                     trailerQuery: r.trailerQuery ?? existing.trailerQuery,
                     criticScore: r.criticScore ?? existing.criticScore,
                     tradeProjection: r.tradeProjection ?? existing.tradeProjection)
+                // The studio moved a film someone holds: move its reminder.
+                if r.releaseDate != existing.releaseDate, heldMovieIds.contains(id),
+                   let moved = byId[id] {
+                    NotificationsService.shared.scheduleOpeningReminder(movie: moved)
+                }
             } else if r.releaseDate <= listUntil {
                 byId[r.id] = r
                 chainsById[r.id] = generateChain(for: r)
@@ -158,11 +165,9 @@ final class MarketService: ObservableObject {
         }
 
         // Prune old local movies that already opened and have no open positions.
-        let openMovieIds = Set(PortfolioService.shared.positions
-            .filter { $0.isOpen }.map { $0.movieId })
         for (id, m) in byId {
             if remoteIds.contains(id) { continue }
-            if openMovieIds.contains(id) { continue }
+            if heldMovieIds.contains(id) { continue }
             if !m.isSettled { continue }
             byId.removeValue(forKey: id)
             chainsById.removeValue(forKey: id)

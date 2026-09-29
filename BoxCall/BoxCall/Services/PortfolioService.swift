@@ -137,7 +137,9 @@ final class PortfolioService: ObservableObject {
             entryPremium: contract.premium,
             openedAt: Date(),
             settledPayout: nil,
-            actualOWMillions: nil
+            actualOWMillions: nil,
+            movieTitle: movie.title,
+            posterEmoji: movie.posterEmoji
         ))
         MarketService.shared.recordBuy(contractId: contract.id, quantity: quantity)
         Haptics.trade()

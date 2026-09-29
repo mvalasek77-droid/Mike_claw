@@ -187,9 +187,9 @@ struct PositionRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text(movie?.posterEmoji ?? "🎬").font(.title2)
+                Text(movie?.posterEmoji ?? position.posterEmoji ?? "🎬").font(.title2)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(movie?.title ?? "—").fontWeight(.semibold)
+                    Text(movie?.title ?? position.movieTitle ?? "—").fontWeight(.semibold)
                     Text("\(position.side.display) $\(Int(position.strikeMillions))M · qty \(position.quantity)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -256,7 +256,7 @@ struct PositionRow: View {
                 : "Missed by \(Int(-net)) RC"
         }()
         let card = ShareCard(
-            title: movie?.title ?? "—",
+            title: movie?.title ?? position.movieTitle ?? "—",
             side: position.side,
             strikeMillions: position.strikeMillions,
             quantity: position.quantity,
@@ -264,9 +264,9 @@ struct PositionRow: View {
             handle: portfolio.user.handle,
             tier: portfolio.user.tier,
             outcomeText: outcomeText,
-            poster: movie?.posterEmoji ?? "🎬"
+            poster: movie?.posterEmoji ?? position.posterEmoji ?? "🎬"
         )
-        let message = "\(position.side.display) $\(Int(position.strikeMillions))M on \(movie?.title ?? "a movie") — via BoxCall"
+        let message = "\(position.side.display) $\(Int(position.strikeMillions))M on \(movie?.title ?? position.movieTitle ?? "a movie") — via BoxCall"
         Sharer.share(card, message: message)
     }
 

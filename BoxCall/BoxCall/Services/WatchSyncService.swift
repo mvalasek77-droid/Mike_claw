@@ -62,19 +62,22 @@ final class WatchSyncService: NSObject {
         let portfolio = PortfolioService.shared
 
         let next = market.movies
-            .filter { $0.daysToRelease >= 0 }
-            .sorted { $0.daysToRelease < $1.daysToRelease }
-            .first
+            .filter(\.isTradingOpen)
+            .min(by: { $0.releaseDate < $1.releaseDate })
 
-        let positionSnaps: [PositionSnap] = portfolio.positions.map { p in
+        // Open trades plus the latest results: the whole history would
+        // eventually outgrow what WatchConnectivity can carry.
+        let shown = portfolio.positions.filter(\.isOpen)
+            + portfolio.positions.filter { !$0.isOpen }.suffix(20)
+        let positionSnaps: [PositionSnap] = shown.map { p in
             let movie = market.movie(id: p.movieId)
             let chain = market.chain(for: p.movieId)
             let mark = chain.first { $0.id == p.contractId }?.premium ?? p.entryPremium
             let pnl = p.pnl(mark: mark)
             return PositionSnap(
                 id: p.id.uuidString,
-                movieTitle: movie?.title ?? "Unknown",
-                movieEmoji: movie?.posterEmoji ?? "🎬",
+                movieTitle: movie?.title ?? p.movieTitle ?? "—",
+                movieEmoji: movie?.posterEmoji ?? p.posterEmoji ?? "🎬",
                 sideLabel: p.side.display,
                 strikeMillions: p.strikeMillions,
                 quantity: p.quantity,
@@ -86,7 +89,8 @@ final class WatchSyncService: NSObject {
             )
         }
 
-        let totalPnL = positionSnaps.reduce(0.0) { $0 + $1.pnl }
+        let openPnL = positionSnaps.filter { !$0.isSettled }.reduce(0.0) { $0 + $1.pnl }
+        let totalPnL = portfolio.user.lifetimePnL + openPnL
 
         return Snapshot(
             updatedAt: Date(),

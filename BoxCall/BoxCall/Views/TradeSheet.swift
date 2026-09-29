@@ -387,12 +387,7 @@ struct TradeSheet: View {
                         hotTake: hotTake
                     )
                 }
-                if let placed = portfolio.positions.first(where: { $0.id == positionId }) {
-                    NotificationsService.shared.scheduleOpeningReminder(
-                        movie: movie,
-                        position: placed
-                    )
-                }
+                NotificationsService.shared.scheduleOpeningReminder(movie: movie)
             }
             portfolio.refreshLeaderboard()
             dismiss()

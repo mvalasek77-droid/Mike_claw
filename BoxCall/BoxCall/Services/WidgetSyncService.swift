@@ -32,11 +32,10 @@ enum WidgetSyncService {
         let market = MarketService.shared
         let portfolio = PortfolioService.shared
 
-        // Next opening = movie with smallest positive daysToRelease.
-        let sorted = market.movies
-            .filter { $0.daysToRelease >= 0 }
-            .sorted { $0.daysToRelease < $1.daysToRelease }
-        guard let next = sorted.first else { return }
+        // Next opening = the soonest film that is still tradable.
+        guard let next = market.movies
+            .filter(\.isTradingOpen)
+            .min(by: { $0.releaseDate < $1.releaseDate }) else { return }
 
         // Top position = biggest cost, open only.
         let openPositions = portfolio.positions.filter { $0.isOpen }

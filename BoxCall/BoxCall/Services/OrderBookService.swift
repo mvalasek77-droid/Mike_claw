@@ -101,13 +101,13 @@ final class OrderBookService: ObservableObject {
     }
 
     /// Called by MarketService on every tick — matches any buy-limit
-    /// whose limit is at or above the current ask, and cancels orders
-    /// on movies that have already settled.
+    /// whose limit is at or above the current ask, and expires (refunds)
+    /// orders on movies that have opened or are no longer listed.
     func tickMatch() {
         guard !openOrders.isEmpty else { return }
         var stillOpen: [LimitOrder] = []
         for order in openOrders {
-            if let movie = MarketService.shared.movie(id: order.movieId), !movie.isTradingOpen {
+            if !(MarketService.shared.movie(id: order.movieId)?.isTradingOpen ?? false) {
                 let reserved = order.limitPrice * Double(order.quantity)
                 PortfolioService.shared.mutateUser { $0.reelCoins += reserved }
                 var expired = order
@@ -126,13 +126,15 @@ final class OrderBookService: ObservableObject {
                 let refund = max(0, reserved - paid)
                 PortfolioService.shared.mutateUser { $0.reelCoins += refund }
 
+                let listed = MarketService.shared.movie(id: order.movieId)
                 let position = Position(
                     id: UUID(),
                     contractId: order.contractId, movieId: order.movieId,
                     side: order.side, strikeMillions: order.strikeMillions,
                     multiplier: order.multiplier, quantity: order.quantity,
                     entryPremium: fillPrice, openedAt: Date(),
-                    settledPayout: nil, actualOWMillions: nil
+                    settledPayout: nil, actualOWMillions: nil,
+                    movieTitle: listed?.title, posterEmoji: listed?.posterEmoji
                 )
                 PortfolioService.shared.appendPosition(position)
                 MarketService.shared.recordBuy(contractId: order.contractId,
