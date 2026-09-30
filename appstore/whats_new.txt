@@ -1,9 +1,8 @@
 Launch release.
 
-• Live 24/7 market with support/resistance-aware market makers
-• YouTube + X social signals shift the implied consensus
-• Featured Critics — the top 5 traders by total profit get their reviews spotlighted on the home screen
-• Custom prop markets for Mogul-tier members
-• Home-screen widget for your top position + next opening
-• Sign in with Apple for cross-device sync
-• Referral codes — both sides get 500 Reel Coins
+• Trade CALLs and PUTs on upcoming movies' opening weekends with play money
+• Live market with an automated market-making desk quoting both sides
+• Results settle on the studios' Sunday estimate; fresh 1,000 RC stake every Monday
+• Trader ranks from Rookie to Legend, earned only by profit
+• Featured Critics: the top 5 traders by total profit get their reviews spotlighted
+• Home-screen widgets and an Apple Watch app

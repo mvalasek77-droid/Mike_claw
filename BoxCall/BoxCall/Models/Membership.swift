@@ -2,7 +2,7 @@ import Foundation
 import SwiftUI
 
 /// Subscription plan. Paid plans add tools (early access, limit orders,
-/// stats, custom markets) and a name badge — never extra Reel Coins, so
+/// stats) and a name badge — never extra Reel Coins, so
 /// every player trades the same bankroll and profit, rank and the review
 /// spotlight stay a measure of skill.
 enum Membership: String, Codable, CaseIterable, Identifiable {
@@ -58,9 +58,6 @@ enum Membership: String, Codable, CaseIterable, Identifiable {
         }
     }
 
-    /// Only Mogul can propose custom prop markets.
-    var canCreateCustomMarkets: Bool { self == .mogul }
-
     /// SF Symbol badge shown next to the subscriber's handle.
     var badgeIcon: String? {
         switch self {
@@ -95,7 +92,6 @@ enum Membership: String, Codable, CaseIterable, Identifiable {
         case .mogul:
             return [
                 "Crown badge next to your name",
-                "Create custom prop markets",
                 "Unlimited limit orders",
                 "Everything in Producer's Pass"
             ]

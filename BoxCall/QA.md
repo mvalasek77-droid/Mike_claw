@@ -22,7 +22,7 @@ Ship-ready test matrix. Run through this before every App Store submission. Auto
 - [ ] Opening Night hero shows the film with the soonest release date, and its countdown ticks once per second.
 - [ ] Marquee ticker scrolls continuously without a visible seam at the wrap point.
 - [ ] Pull-to-refresh on Slate triggers a spinner in the nav bar; "Updated Xs ago" text updates on completion.
-- [ ] Tap a movie → detail view. Consensus card has a pulsing green dot. News ticker shows 0–3 recent events. Chain scrolls, each row's sparkline animates every 3s.
+- [ ] Tap a movie → detail view. Consensus card has a pulsing green dot. Chain scrolls, each row's sparkline animates every 3s.
 - [ ] Tap any chain row → **First-time tutorial** fires for Call OR Put (first time only per side). Skip once → check second row of same side does not re-trigger.
 - [ ] TradeSheet ScenarioPrimer reads: "You WIN if…" / "You LOSE if…" with the correct strike numbers. Live mark chart shows S/R lines. Buy button caption reflects the current mark, not the sheet-opening mark.
 - [ ] Change quantity → totals update in real time. Toggle Limit → slider appears, Buy label switches to "Place buy-limit @ X".
@@ -39,7 +39,8 @@ Ship-ready test matrix. Run through this before every App Store submission. Auto
 
 - [ ] Detail view chart mean-reverts inside its S/R band across 30s. Green support and red resistance lines visible with labels.
 - [ ] Buy 50 contracts of one strike → mark jumps up on the next tick. Sparkline reflects it.
-- [ ] Wait ~30s for a news event to fire (5% per tick, expected ~1 in 20). Verify: matching push arrives if you hold a position on that movie, sparkline shifts direction on all strikes of that movie.
+- [ ] No text anywhere claims news about a real film. The Trading Desk's "What moved it" list only shows your trades, Hot Takes, reviews and feed signals.
+- [ ] Every other trader (leaderboard, feed, spotlight reviews, movie reviews) shows a SIM tag.
 
 ## 5 · Social + moderation
 
@@ -59,22 +60,21 @@ Ship-ready test matrix. Run through this before every App Store submission. Auto
 
 ## 7 · Notifications + Live Activity + widgets
 
-- [ ] Grant push permission. Trigger every notification path (settlement win/loss, follower, badge, tier promotion, opening reminder, market event, out-of-coins) and verify each has the correct emoji + copy.
+- [ ] Grant push permission. Trigger every notification path (settlement win/loss, badge, tier promotion, opening reminder, voided market, out-of-coins) and verify each has the correct emoji + copy.
 - [ ] Buy a contract on a movie opening in the next 24h. Live Activity appears on Lock Screen; Dynamic Island (iPhone 14 Pro+) shows compact leading emoji + trailing P&L. Update ticks live. Settlement changes it to "Opened at $X.XM".
 - [ ] Home screen: add the Next Opening widget in small + medium. Add Top Position widget. Verify both refresh within one minute of a chain change in the app.
 - [ ] Paired Apple Watch: complication (circular + rectangular) shows correct data. Watch app opens with the same snapshot; no "waiting for iPhone" state after 5s.
 
-## 8 · Auth + cloud sync
+## 8 · Sign in with Apple (sets the trader name; nothing syncs)
 
 - [ ] Guest state fully functional. AuthCard says "Playing as a guest".
 - [ ] Sign in with Apple → handle populates from given name if it was "you". AuthCard flips to "Signed in with Apple".
 - [ ] Sign out → local credentials cleared, handle unchanged, positions preserved.
 - [ ] Revoke the credential in Settings → app auto-signs-out on next launch.
 
-## 9 · Referrals + custom markets
+## 9 · Challenge friends
 
-- [ ] Profile → Invite friends: my code renders in monospace. Copy + Share both work. Redeem another code → +500 RC to me, doubles-redeem rejected with "already redeemed", self-code rejected.
-- [ ] Profile → Prop markets: as a free user, "Propose" opens the paywall. Upgrade to Mogul in StoreKit sim → the Propose row switches to opening the ProposeMarketSheet. Submit with < 20 chars of details → validation error; submit valid → market appears in pendingReview with the LIVE/REVIEW badge.
+- [ ] Profile → Challenge friends: the share sheet opens with the App Store link. No codes, no coin rewards.
 
 ## 10 · Edge cases
 
@@ -117,7 +117,7 @@ Automated coverage lives in `MarketMakingAgentTests`, `MarketMakingDeskTests`, a
 - [ ] Every agent row shows a rationale sentence that matches its numbers — an agent marked *Bidding* has the larger size on the bid.
 - [ ] **Trend Rider** and **Fade Desk** visibly disagree on a movie whose crowd score is past ±0.5.
 - [ ] **The Anchor** always shows size on both sides, at every sentiment reading.
-- [ ] Wait for a news headline to fire on a movie you are watching. The Momentum metric spikes, the shock banner appears, and at least one agent shows *Stepped away*.
+- [ ] Place a large trade on a movie you are watching. The Momentum metric spikes, and at least one agent widens or steps away.
 - [ ] After the shock decays, spreads visibly tighten again and the stepped-away agents come back.
 - [ ] Buy 20 contracts of one strike → the crowd chatter feed gains an **Order flow** entry, and the desk's inventory skew shades its next quotes down.
 - [ ] Post a Hot Take from the Trade Sheet → a **Chatter** entry appears on that movie's desk within one tick.

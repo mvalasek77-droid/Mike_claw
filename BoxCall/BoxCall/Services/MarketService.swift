@@ -19,7 +19,6 @@ final class MarketService: ObservableObject {
     @Published private(set) var chains: [String: [Contract]] = [:]
     @Published private(set) var history: [String: [PricePoint]] = [:]     // contractId
     @Published private(set) var consensusHistory: [String: [PricePoint]] = [:]  // movieId
-    @Published private(set) var recentEvents: [MarketEvent] = []
     @Published private(set) var lastTickAt: Date = Date()
     @Published private(set) var lastRefreshAt: Date?
     @Published private(set) var refreshInFlight: Bool = false
@@ -233,9 +232,6 @@ final class MarketService: ObservableObject {
     func chain(for movieId: String) -> [Contract] { chains[movieId] ?? [] }
     func priceHistory(contractId: String) -> [PricePoint] { history[contractId] ?? [] }
     func consensusHistoryFor(movieId: String) -> [PricePoint] { consensusHistory[movieId] ?? [] }
-    func events(for movieId: String) -> [MarketEvent] {
-        recentEvents.filter { $0.movieId == movieId }
-    }
     func srLevel(contractId: String) -> SRLevel? { srLevels[contractId] }
 
     // MARK: - Desk reads
@@ -347,16 +343,12 @@ final class MarketService: ObservableObject {
         // 1. Market makers step in at support / resistance across the book.
         runMarketMakers()
 
-        // 2. Occasionally inject a news event that shocks a random movie.
-        maybeInjectEvent()
-
-        // 3. Advance the crowd read for every listed movie. This runs
+        // 2. Advance the crowd read for every listed movie. This runs
         // before pricing so the agents quote against the freshest
         // sentiment rather than last tick's.
-        let titles = Dictionary(uniqueKeysWithValues: movies.map { ($0.id, $0.title) })
-        SentimentEngine.shared.tick(movieIds: movies.map(\.id), titles: titles)
+        SentimentEngine.shared.tick(movieIds: movies.map(\.id))
 
-        // 4. Drift demand slowly back toward zero (mean reversion).
+        // 3. Drift demand slowly back toward zero (mean reversion).
         for k in demand.keys {
             demand[k] = (demand[k] ?? 0) * 0.995
         }
@@ -485,42 +477,6 @@ final class MarketService: ObservableObject {
                     demand[c.id, default: 0] += Double.random(in: -2...2)
                 }
             }
-        }
-    }
-
-    private func maybeInjectEvent() {
-        // ~5% chance per tick.
-        guard Double.random(in: 0...1) < 0.05, let movie = movies.randomElement() else { return }
-        let bullish = Bool.random()
-        let magnitude = (bullish ? 1 : -1) * Double.random(in: 0.05...0.25)
-        let headline = bullish
-            ? MarketEvent.bullishHeadlines.randomElement()!
-            : MarketEvent.bearishHeadlines.randomElement()!
-        let event = MarketEvent(
-            id: UUID(), time: Date(),
-            movieId: movie.id, movieTitle: movie.title,
-            headline: headline, magnitude: magnitude
-        )
-        recentEvents.insert(event, at: 0)
-        if recentEvents.count > 25 { recentEvents = Array(recentEvents.prefix(25)) }
-
-        // Apply the shock to the movie's whole chain via sentiment.
-        let current = movieSentiment[movie.id] ?? 1.0
-        movieSentiment[movie.id] = clamp(current + magnitude, 0.5, 1.5)
-
-        // Feed the same headline to the crowd read. This is what makes a
-        // news event visibly widen spreads: the pulse spikes, velocity
-        // jumps, and the scalper and vol desks pull their quotes.
-        SentimentEngine.shared.recordHeadline(movieId: movie.id,
-                                              headline: headline,
-                                              magnitude: magnitude)
-
-        // Also drop an inbox notification for the user IF they hold any
-        // position on this movie (news matters when you're exposed).
-        if PortfolioService.shared.positions.contains(where: {
-            $0.movieId == movie.id && $0.isOpen
-        }) {
-            NotificationsService.shared.notifyMarketEvent(event)
         }
     }
 

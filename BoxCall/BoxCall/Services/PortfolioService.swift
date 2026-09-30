@@ -63,7 +63,6 @@ final class PortfolioService: ObservableObject {
             lastResetAt: RefillClock.lastSunday(),
             currentStreakWeeks: 0,
             longestStreakWeeks: 0,
-            followerCount: 0,
             followingHandles: [],
             badges: [],
             trophies: [],

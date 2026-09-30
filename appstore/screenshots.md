@@ -6,12 +6,12 @@ Recommended tools: Screenshotr, Rotato, or Fastlane frameit.
 
 ## 1 — Hero
 **Caption:** "Trade the opening weekend."
-**Screen:** MovieListView (Slate) with the top row highlighting Neon Requiem, live sparkline visible.
+**Screen:** MovieListView (Slate) with the soonest opening at the top, live sparkline visible.
 **Framing:** iPhone with a subtle gradient background (orange → black).
 
 ## 2 — Live market
-**Caption:** "Markets move 24/7."
-**Screen:** MovieDetailView with the live consensus card + news ticker + sparkline sub-chart.
+**Caption:** "A market that never sits still."
+**Screen:** MovieDetailView with the live consensus card, market-makers card and sparkline sub-chart.
 
 ## 3 — Options chain
 **Caption:** "Every movie has a chain."
@@ -19,10 +19,10 @@ Recommended tools: Screenshotr, Rotato, or Fastlane frameit.
 
 ## 4 — Trade sheet with scenario primer
 **Caption:** "Understand every trade before you place it."
-**Screen:** TradeSheet on Neon Requiem $12M CALL — ScenarioPrimer card visible ("You WIN if…" / "You LOSE if…") plus the annotated price chart with S/R lines.
+**Screen:** TradeSheet on a listed movie's at-the-money CALL — ScenarioPrimer card visible ("You WIN if…" / "You LOSE if…") plus the annotated price chart with S/R lines.
 
 ## 5 — Feed
-**Caption:** "The community writes the tape."
+**Caption:** "Share your calls. Take on the league."
 **Screen:** FeedView with Featured Critics hero card visible and two hot-take posts below.
 
 ## 6 — Featured Critics

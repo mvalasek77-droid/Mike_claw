@@ -108,13 +108,13 @@ enum SentimentModel {
 /// that produced it.
 ///
 /// Inputs, in order of how much they are trusted:
-///   1. `SocialSignal` captures from the real YouTube / X sources — the
-///      slow baseline the pulse reverts toward.
+///   1. `SocialSignal` captures from the published data feed — the slow
+///      baseline the pulse reverts toward.
 ///   2. Real order flow from the app's own users.
-///   3. Hot Takes posted in the feed.
-///   4. Market headlines from the event generator.
-///   5. Ambient synthetic chatter, so the desk still breathes when no
-///      API keys are configured.
+///   3. Hot Takes and reviews posted in the app.
+///   4. Ambient noise: small unlabeled nudges so the desk still moves
+///      between real inputs. It never produces text — nothing shown to a
+///      player is invented about a real film.
 @MainActor
 final class SentimentEngine: ObservableObject {
     static let shared = SentimentEngine()
@@ -148,8 +148,8 @@ final class SentimentEngine: ObservableObject {
     private let windowSeconds: TimeInterval = 45
     private let historyCap = 90
     private let eventCap = 60
-    /// Chance per movie per tick that ambient chatter lands.
-    private let chatterChance: Double = 0.18
+    /// Chance per movie per tick that an ambient nudge lands.
+    private let noiseChance: Double = 0.18
 
     private init() {}
 
@@ -249,7 +249,7 @@ final class SentimentEngine: ObservableObject {
                text: "@\(handle) filed a \(rating)-star review.")
     }
 
-    /// A market headline fired. Magnitude arrives already signed.
+    /// A real headline about the film. Magnitude arrives already signed.
     func recordHeadline(movieId: String, headline: String, magnitude: Double) {
         record(movieId: movieId, source: .headline,
                impact: SentimentPulse.clampSigned(magnitude * 3),
@@ -263,18 +263,16 @@ final class SentimentEngine: ObservableObject {
     ///
     /// - Parameters:
     ///   - movieIds: everything currently listed.
-    ///   - titles: used to write ambient chatter that names the film.
     ///   - now: injectable for tests.
-    ///   - rng: injectable so ambient chatter is reproducible.
+    ///   - rng: injectable so ambient noise is reproducible.
     func tick(movieIds: [String],
-              titles: [String: String] = [:],
               now: Date = Date(),
               rng: inout SeededGenerator) {
         let elapsed = max(0.5, now.timeIntervalSince(lastTickAt))
         lastTickAt = now
 
         for id in movieIds {
-            maybeGenerateChatter(movieId: id, title: titles[id], now: now, rng: &rng)
+            maybeAddNoise(movieId: id, now: now, rng: &rng)
 
             // Trim the attention window, then read it.
             let window = (impactWindow[id] ?? []).filter {
@@ -317,9 +315,9 @@ final class SentimentEngine: ObservableObject {
     }
 
     /// Convenience for production callers that do not hold a generator.
-    func tick(movieIds: [String], titles: [String: String] = [:], now: Date = Date()) {
+    func tick(movieIds: [String], now: Date = Date()) {
         var rng = SeededGenerator.live()
-        tick(movieIds: movieIds, titles: titles, now: now, rng: &rng)
+        tick(movieIds: movieIds, now: now, rng: &rng)
     }
 
     // MARK: - Internals
@@ -334,28 +332,20 @@ final class SentimentEngine: ObservableObject {
         if events.count > eventCap { events.removeLast(events.count - eventCap) }
     }
 
-    /// Ambient crowd noise. Without this the desk sits perfectly still
-    /// whenever no API keys are configured, which reads as broken rather
-    /// than quiet. Impacts are drawn around the movie's own baseline so
-    /// the chatter agrees with the standing view most of the time and
-    /// occasionally does not — which is exactly what creates dispersion.
-    private func maybeGenerateChatter(movieId: String, title: String?,
-                                      now: Date, rng: inout SeededGenerator) {
-        guard rng.unit() < chatterChance else { return }
+    /// Ambient noise. Without it the desk sits perfectly still between
+    /// real inputs, which reads as broken rather than quiet. Nudges are
+    /// drawn around the movie's own baseline, so they usually agree with
+    /// the standing view and occasionally don't — which creates
+    /// dispersion. They move numbers only and are never shown as text.
+    private func maybeAddNoise(movieId: String, now: Date, rng: inout SeededGenerator) {
+        guard rng.unit() < noiseChance else { return }
         let baseline = baselines[movieId] ?? 0
-        // Most chatter agrees with the baseline; one in five dissents.
+        // Most nudges agree with the baseline; one in five dissents.
         let dissent = rng.unit() < 0.20
         let magnitude = rng.double(in: 0.15...0.75)
         let direction: Double = dissent ? (baseline >= 0 ? -1 : 1) : (baseline >= 0 ? 1 : -1)
         let impact = SentimentPulse.clampSigned(direction * magnitude)
-
-        let name = title ?? "it"
-        let line = impact >= 0
-            ? Self.bullishChatter.randomElement(using: &rng)?.replacingOccurrences(of: "{}", with: name)
-            : Self.bearishChatter.randomElement(using: &rng)?.replacingOccurrences(of: "{}", with: name)
-
-        record(movieId: movieId, source: .chatter, impact: impact,
-               text: line ?? "Chatter on \(name).", at: now)
+        impactWindow[movieId, default: []].append(Impact(at: now, value: impact))
     }
 
     private func appendSample(movieId: String, score: Double, at: Date) {
@@ -374,26 +364,4 @@ final class SentimentEngine: ObservableObject {
     }
 
     private func signed(_ x: Double) -> String { String(format: "%+.2f", x) }
-
-    // MARK: - Chatter corpus
-
-    private static let bullishChatter: [String] = [
-        "Early screening reactions for {} are glowing.",
-        "{} trailer is trending again — third day running.",
-        "Presales for {} just outpaced the studio's own forecast.",
-        "Every critic who has seen {} is posting the same rave.",
-        "{} is the only thing on the timeline this morning.",
-        "Word of mouth on {} is spreading past the fan base.",
-        "Theater chains added showtimes for {}."
-    ]
-
-    private static let bearishChatter: [String] = [
-        "The {} marketing push has gone quiet this week.",
-        "Embargo chatter on {} is not encouraging.",
-        "{} lost a prime-weekend slot in two major markets.",
-        "Trailer comments on {} have turned.",
-        "Tracking for {} was revised down overnight.",
-        "{} is getting buried by the competing release.",
-        "Presales for {} stalled after the first day."
-    ]
 }

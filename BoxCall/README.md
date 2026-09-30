@@ -13,9 +13,9 @@ Open the app and you're standing under a marquee:
 - **Trailers in-app.** Every movie page plays the official trailer inline via a YouTube search-embed — no API key required.
 - **Real posters in 30 seconds.** Profile → *Turn on real posters* walks you through pasting a free TMDB key; the catalog re-fetches and every one-sheet blooms in. Key stays on-device.
 - **Haptics everywhere.** Medium tap on buy, rigid tap on close, a rising-into-thump Core Haptics celebration on big wins, error on losses, double-thump on badges.
-- **Streak fire.** A pulsing flame badge next to your handle when you've won consecutive weeks. Users trade play-money **Call / Put contracts** on upcoming movies, and their calls become **posts in a public feed** where the community likes, comments, and follows the sharpest analysts.
+- **Streak fire.** A pulsing flame badge next to your handle when you've won consecutive weeks. Users trade play-money **Call / Put contracts** on upcoming movies, and their calls become **posts in the feed** alongside BoxCall's simulated league of automated traders (each marked SIM in the app — there is no server, so no other real players appear).
 
-No real money changes hands. Winning is measured in **status**: total profit, trader rank, the homepage review spotlight, badges, followers, and season titles.
+No real money changes hands. Winning is measured in **status**: total profit, trader rank, the homepage review spotlight, badges, and season titles.
 
 ## The reward stack
 
@@ -50,13 +50,13 @@ BoxCall/
     │   ├── Movie.swift
     │   ├── Contract.swift          # Call/Put + intrinsic payoff
     │   ├── Position.swift
-    │   ├── User.swift              # profit, rank, streak, followers, badges, trophies
+    │   ├── User.swift              # profit, rank, streak, badges, trophies
     │   ├── Rewards.swift           # Tier + Badge catalog
     │   └── SocialPost.swift        # posts, comments, outcomes
     ├── Services/
     │   ├── MarketService.swift     # verified catalog + chain pricing
     │   ├── PortfolioService.swift  # buy/close/settle
-    │   ├── RewardsService.swift    # rank-ups, badges, streaks, follower bumps
+    │   ├── RewardsService.swift    # rank-ups, badges, streaks
     │   └── SocialService.swift     # feed, follow, like, comment
     ├── Views/
     │   ├── RootView.swift          # 5 tabs: Feed · Slate · Portfolio · Leaders · Profile
@@ -134,7 +134,7 @@ Every tick, for every contract:
 - **Aggression scales linearly with depth into the zone.** A tiny dip gets a small bid; a full flush past support gets a size buyer.
 - Inside the band, small drift noise (±1.5 demand units) keeps the tape alive.
 
-This makes the chart look *chart-shaped*: bouncing off levels, mean-reverting inside a band, and only breaking out when real flow (a user trade, a news event, or shifted sentiment) overpowers the MM.
+This makes the chart look *chart-shaped*: bouncing off levels, mean-reverting inside a band, and only breaking out when real flow (a user trade or shifted sentiment) overpowers the MM.
 
 **Charts (`PriceChart.swift`)** — the Trade Sheet's live chart now draws:
 - Green dashed **support** line with `S xx.xx` label to the right
@@ -208,7 +208,7 @@ Subscriptions sell tools and a name badge. Trader ranks, leaderboard spots and t
 | **Free** | — | — | 1 limit order |
 | **Backstage** | $3.99/mo | ticket | 24-hour early access to new markets, 3 limit orders |
 | **Producer's Pass** | $9.99/mo | star | Portfolio performance stats, 10 limit orders |
-| **Mogul** | $24.99/mo | crown | Create custom prop markets, unlimited limit orders |
+| **Mogul** | $24.99/mo | crown | Unlimited limit orders, plus everything in Producer's Pass |
 
 Implementation:
 - `Models/Membership.swift` — the four cases with pricing, perks, colors, product IDs
@@ -219,7 +219,7 @@ Implementation:
 
 ## Dynamic implied consensus
 
-The "opening weekend estimate" is no longer a static tracker number — it's a **live crowd forecast** derived from the market itself. Every buy, sell, and news event shifts a per-movie sentiment multiplier; the implied consensus is `base × sentiment`. Users see the current implied number with a `%` delta arrow vs the original tracker, plus a live sparkline of how the crowd forecast has been drifting. Same treatment on the Slate list, Movie Detail card, and the Trade Sheet's "if tracks…" scenario.
+The "opening weekend estimate" is no longer a static tracker number — it's a **live crowd forecast** derived from the market itself. Every buy and sell shifts a per-movie sentiment multiplier; the implied consensus is `base × sentiment`. Users see the current implied number with a `%` delta arrow vs the original tracker, plus a live sparkline of how the crowd forecast has been drifting. Same treatment on the Slate list, Movie Detail card, and the Trade Sheet's "if tracks…" scenario.
 
 ## Featured Critics
 
@@ -239,7 +239,7 @@ mark = basePremium × exp(demand / liquidity) × movieSentiment × (1 + noise)
 
 - **User trades move price directly.** Every `buy` calls `MarketService.recordBuy(contractId:quantity:)` which increments the per-contract demand imbalance; the next tick reprices exponentially. Sells symmetrically pull the mark down. Slippage is intuitive: small trades barely move it, crowd piles create real drift.
 - **Background NPC traders** nudge random strikes each tick so the tape is always moving — even when no human is in the app. In a real deployment these are replaced by real user flow and market-maker inventory.
-- **Market events** fire ~5% of ticks: a random movie gets a bullish or bearish headline ("Presales spike — 60% ahead of tracking" / "Embargo lifts: reviews weaker than tracking assumed") that shocks the movie's whole chain via a sentiment multiplier — every Call mark moves one way, every Put mark moves the other. Events surface as a news ticker on each movie's page, and users holding open positions on that movie get a push notification.
+- **No invented news.** Nothing in the market produces text about a real film. Ambient sentiment noise moves numbers only; the "What moved it" list shows real inputs (your trades, Hot Takes, reviews, feed signals).
 - **Price history** is stored per-contract (rolling 90 points ≈ 4.5 minutes) and rendered as row sparklines on the chain, and as a full time-series chart with area gradient on the Trade Sheet.
 - **Live indicator** — a pulsing green dot marks anywhere the tape is streaming, with the last-tick timestamp so users can tell the market is alive.
 - **Mean reversion**: demand drifts back toward zero and sentiment toward 1.0 each tick, so isolated shocks fade if not sustained by continued flow.
@@ -256,7 +256,7 @@ The `PayoffChart` component is a small SwiftUI `Canvas` renderer that draws the 
 
 ## Retention & virality loops
 
-- **Push notifications** (local now, APNs later): settlement results, new followers, badge unlocks, tier promotions, 24-hour opening-day reminders scheduled the moment you place a trade. In-app inbox with an unread bell on the Feed nav bar.
+- **Push notifications** (local now, APNs later): settlement results, badge unlocks, tier promotions, voided markets, and an evening-before reminder (6 PM, before trading locks) for each film you hold. In-app inbox with an unread bell on the Feed nav bar.
 - **Copy-trade**: any feed post has a "Copy call" button that pops the TradeSheet pre-filled with the same movie / side / strike / quantity, priced at the current chain premium. Disabled once the movie settles.
 
 ## Next steps

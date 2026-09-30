@@ -56,13 +56,6 @@ final class NotificationsService: NSObject, ObservableObject, UNUserNotification
                 kind: .settlement(movieId: movie.id, positive: win))
     }
 
-    func notifyFollowers(gained: Int) {
-        guard gained > 0 else { return }
-        let title = "\(gained) new follower\(gained == 1 ? "" : "s")"
-        let body = "Your last winning call caught eyes on the feed."
-        deliver(id: "followers_\(UUID().uuidString)", title: title, body: body, kind: .follower)
-    }
-
     func notifyBadge(_ badge: Badge) {
         deliver(id: "badge_\(badge.id)",
                 title: "\(badge.emoji) Badge unlocked: \(badge.name)",
@@ -89,21 +82,6 @@ final class NotificationsService: NSObject, ObservableObject, UNUserNotification
                 title: "\(title) market closed",
                 body: "It opened early in limited release, so its result was already known. Your \(Int(refund.rounded())) RC is refunded.",
                 kind: .reminder(movieId: movieId))
-    }
-
-    func notifyMarketEvent(_ event: MarketEvent) {
-        let arrow = event.isBullish ? "▲" : "▼"
-        deliver(id: "evt_\(event.id.uuidString)",
-                title: "\(arrow) \(event.movieTitle)",
-                body: event.headline,
-                kind: .marketEvent(movieId: event.movieId, positive: event.isBullish))
-    }
-
-    func notifyComment(fromHandle handle: String, movieTitle: String) {
-        deliver(id: "cmt_\(UUID().uuidString)",
-                title: "@\(handle) replied to your call",
-                body: "On \(movieTitle).",
-                kind: .comment(handle: handle))
     }
 
     /// One reminder per film, at 6 PM the evening before it opens: the
@@ -189,23 +167,17 @@ struct InboxItem: Identifiable, Hashable {
 
     enum Kind: Hashable {
         case settlement(movieId: String, positive: Bool)
-        case follower
         case badge(badgeId: String)
         case tier(tier: Tier)
-        case comment(handle: String)
         case reminder(movieId: String)
-        case marketEvent(movieId: String, positive: Bool)
         case outOfCoins
 
         var emoji: String {
             switch self {
             case .settlement(_, let pos):  return pos ? "🎯" : "📉"
-            case .follower:                return "👥"
             case .badge:                   return "🏅"
             case .tier:                    return "⭐️"
-            case .comment:                 return "💬"
             case .reminder:                return "🎬"
-            case .marketEvent(_, let pos): return pos ? "📈" : "📰"
             case .outOfCoins:              return "🪙"
             }
         }

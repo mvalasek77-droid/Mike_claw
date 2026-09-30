@@ -160,7 +160,7 @@ struct WinnerReviewCard: View {
                     Text("@\(review.authorHandle)")
                         .font(.caption)
                         .foregroundStyle(Theme.marqueeGold)
-                    if review.authorIsCurrentUser { MemberFlair() }
+                    if review.authorIsCurrentUser { MemberFlair() } else { SimulatedTag() }
                     Text((tier ?? review.authorTier).name.uppercased())
                         .scaledFont(8, weight: .bold, design: .monospaced)
                         .tracking(0.5)
@@ -202,6 +202,7 @@ struct SupportingReviewCard: View {
                     .font(.caption2)
                     .foregroundStyle(Theme.marqueeGold)
                     .lineLimit(1)
+                if !review.authorIsCurrentUser { SimulatedTag() }
                 if let profit {
                     Text("\(profit >= 0 ? "+" : "")\(Int(profit))")
                         .font(.caption2.weight(.semibold).monospacedDigit())
@@ -367,7 +368,7 @@ struct ReviewDetailSheet: View {
                             .foregroundStyle(Theme.marqueeGold)
                             .font(.caption)
                     }
-                    if review.authorIsCurrentUser { MemberFlair() }
+                    if review.authorIsCurrentUser { MemberFlair() } else { SimulatedTag() }
                 }
                 Text(standing).font(.caption).foregroundStyle(.secondary)
             }

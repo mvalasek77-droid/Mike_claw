@@ -28,7 +28,7 @@ struct DataSourcesView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Where the catalog comes from")
                 .font(.title3.bold())
-            Text("BoxCall's upcoming-releases feed and real posters are pulled from public movie databases. Historical box-office grosses and pre-release tracking numbers, when available, are aggregated server-side.")
+            Text("BoxCall's upcoming releases and opening-weekend results come from the public Box Office Mojo and The Numbers charts, compiled several times a day into a published data feed. There is no BoxCall server and no account data leaves your phone.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }
@@ -109,10 +109,6 @@ struct DataSourcesView: View {
                           role: "For every other film: the studio's typical wide opening, lifted for sequels and franchise entries, scaled by Wikipedia attention.",
                           status: "Live — set by the data feed when a film is listed; trading moves it from there.",
                           wired: true)
-                SourceRow(name: "Deadline Hollywood + NRG",
-                          role: "Industry pre-release tracking numbers.",
-                          status: "Planned. Not connected.",
-                          wired: false)
             }
             Group {
                 Text("Social signals (adjusts consensus ±30%)")
@@ -125,10 +121,6 @@ struct DataSourcesView: View {
                           role: "24h public posts mentioning the film, scored with VADER and weighted by engagement so a post nobody saw does not outvote one thousands liked.",
                           status: "Read by the data feed with a free Bluesky account. See Live status above for the last run.",
                           wired: feedStatus?.isHealthy("bluesky") ?? true)
-                SourceRow(name: "X (Twitter)",
-                          role: "Originally the mention source for this model.",
-                          status: "Dropped. X ended its free tier in February 2026 and now bills per post read, so an X-backed signal could never be free. Bluesky replaces it.",
-                          wired: false)
                 SourceRow(name: "Wikipedia pageview velocity",
                           role: "Trailing-week article views against the week before. Spikes on trailer drops, casting news, and embargo lifts, and is far harder to game than engagement counts.",
                           status: "Live via the published data set. Wikimedia's REST API is free and needs no key.",
@@ -140,10 +132,6 @@ struct DataSourcesView: View {
                           role: "Actual reported Fri–Sun domestic gross. Drives automatic settlement of every open position.",
                           status: settlementStatus,
                           wired: true)
-                SourceRow(name: "IMDb",
-                          role: "Cast / crew metadata for review context.",
-                          status: "Paid data licensing — reserved for a later phase.",
-                          wired: false)
             }
             Group {
                 Text("Pricing").font(.headline).padding(.top, 4)
@@ -156,8 +144,8 @@ struct DataSourcesView: View {
                           status: "Live. See the Learn section on the live market.",
                           wired: true)
                 SourceRow(name: "SentimentEngine",
-                          role: "Fuses trailer engagement, mention velocity, published reviews, in-app Hot Takes, headlines, and real order flow into one crowd score from -1 to +1, plus its rate of change, chatter volume, and how split the crowd is.",
-                          status: "Live. Real social captures set the slow baseline; everything else moves the pulse tick by tick.",
+                          role: "Fuses the data feed's crowd signals, in-app Hot Takes and reviews, and real order flow into one crowd score from -1 to +1, plus its rate of change, volume, and how split the crowd is. Between real inputs it adds small unlabeled nudges so the market keeps moving.",
+                          status: "Live. The feed's signals set the slow baseline; everything else moves the pulse tick by tick.",
                           wired: true)
                 SourceRow(name: "Market-making desk (5 agents)",
                           role: "Five agents quote a two-sided market against that crowd score. Trend Rider chases it, Fade Desk fades extremes, The Anchor holds support/resistance, Tape Scalper trades its velocity, Vol Breaker prices disagreement. Best bid and lowest offer become the market.",

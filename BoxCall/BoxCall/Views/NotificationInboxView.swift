@@ -34,7 +34,7 @@ struct NotificationInboxView: View {
                             Label("Enable push notifications", systemImage: "bell.badge.fill")
                         }
                     } footer: {
-                        Text("We use pushes for settlement results, new followers, badge unlocks, and 24-hour opening-day reminders. No promo blasts.")
+                        Text("We use pushes for settlement results, badge unlocks, and an evening-before reminder when a movie you hold is about to open. No promo blasts.")
                     }
                 }
             }

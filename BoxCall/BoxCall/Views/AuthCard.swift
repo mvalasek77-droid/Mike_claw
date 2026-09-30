@@ -1,9 +1,9 @@
 import SwiftUI
 import AuthenticationServices
 
-/// Sign-in card on Profile. Guest state still works fully — signing
-/// in unlocks cloud sync (once the backend exists) so state follows
-/// you across devices.
+/// Sign-in card on Profile. Guest state works fully; signing in only
+/// sets the trader handle from the Apple ID name. Nothing syncs: all
+/// data stays on this device.
 struct AuthCard: View {
     @EnvironmentObject var portfolio: PortfolioService
     @ObservedObject var auth = AuthService.shared

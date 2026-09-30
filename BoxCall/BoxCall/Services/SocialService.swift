@@ -134,25 +134,27 @@ final class SocialService: ObservableObject {
         // Pick any real movie ids that are in the seed; skip missing.
         let picks = m.movies.prefix(6)
         var out: [Review] = []
-        let seedPacks: [(String, Tier, String, String, Int, Int, Int, Bool)] = [
-            ("popcornshark",  .studioHead, "Franchise fatigue is a real number.",
-             "This one carries the tentpole load for the quarter. Presales are strong in the top-25 markets but softer in the flyover, and the trailer's Rotten Tomatoes leak reads middling. I'd fade the highest strikes and buy the mid-body.",
-             312, 4, 4, false),
-            ("indieyoda",     .producer,   "Underestimated. Again.",
-             "The tracking model doesn't know how to price this. Letterboxd early reviews are running hot and the marketing pivot in the last two weeks landed. Consensus feels ten to fifteen million light.",
-             187, 8, 5, true),
+        // Opinions only: these are pinned to whichever films are listed,
+        // so they never state a fact (presales, scores, tracking) about one.
+        let seedPacks: [(String, Tier, String, String, Int, Int)] = [
+            ("popcornshark",  .studioHead, "Priced for a perfect weekend.",
+             "The chain is pricing the best case. I'd fade the highest strikes and buy the middle of the range — a solid opening still pays there.",
+             4, 4),
+            ("indieyoda",     .producer,   "The crowd is too cautious.",
+             "Consensus feels light to me. Films like this tend to find their audience faster than the market assumes. I'm long a strike above consensus.",
+             8, 5),
             ("openingnight",  .insider,    "Old-fashioned in the best way.",
-             "The audience for this shows up. Adult drama sold on movie-star charisma — a lost art. The studio's been quiet in press which usually means confidence. I'm long the money strike.",
-             94,  12, 4, false),
-            ("marqueemaven",  .insider,    "Great trailer, no reason to see it opening weekend.",
-             "Streaming will absorb this in three weeks. The core audience already knows the plot from the marketing. Not a bomb — just a slow build.",
-             71,  18, 3, false),
+             "The audience for this kind of movie still exists, and it buys tickets opening weekend. I'm long the money strike.",
+             12, 4),
+            ("marqueemaven",  .insider,    "Great trailer, no rush to see it.",
+             "I think plenty of people wait for streaming on this one. Not a bomb — just a slow build. Small put below consensus.",
+             18, 3),
             ("greenlight",    .analyst,    "Priced fairly. Not much edge either way.",
-             "Genre plays in this budget range have overperformed all year. Nothing to short; nothing to swing for the fence on. Consensus is honest.",
-             44,  24, 3, false),
+             "I don't see an edge on either side at these prices. Nothing to short, nothing to swing for. Sitting this one out.",
+             24, 3),
             ("trailerbait",   .analyst,    "Prestige on autopilot.",
-             "You've seen this movie before. Sometimes that's a compliment. The tracking is honest; the audience is loyal; the theatrical run will be short. Neutral.",
-             18,  30, 3, false),
+             "You've seen this movie before. Sometimes that's a compliment. I expect a steady opening, not a surprise. Neutral.",
+             30, 3),
         ]
         for (pack, movie) in zip(seedPacks, picks) {
             out.append(.init(
@@ -161,9 +163,9 @@ final class SocialService: ObservableObject {
                 authorIsCurrentUser: false,
                 movieId: movie.id, movieTitle: movie.title,
                 moviePosterEmoji: movie.posterEmoji,
-                headline: pack.2, body: pack.3, rating: pack.6,
-                createdAt: Date().addingTimeInterval(-3600 * Double(pack.5)),
-                likes: pack.4, isLikedByMe: pack.7
+                headline: pack.2, body: pack.3, rating: pack.5,
+                createdAt: Date().addingTimeInterval(-3600 * Double(pack.4)),
+                likes: 0, isLikedByMe: false
             ))
         }
         reviews = out
@@ -209,9 +211,6 @@ final class SocialService: ObservableObject {
             payoutPerContract: payoutPerContract,
             netProfit: netProfit
         )
-        if netProfit > 0 {
-            feed[idx].likes += Int.random(in: 12...50)  // outcome brings traffic
-        }
     }
 
     // MARK: - Interactions
@@ -253,15 +252,16 @@ final class SocialService: ObservableObject {
         // now — live TMDB fetch, verified offline slate, or a mix.
         let movies = MarketService.shared.movies.prefix(4)
         guard !movies.isEmpty else { return }
-        let seeds: [(String, Tier, ContractSide, Double, Int, Double, String?, Int, Bool)] = [
+        // (handle, rank, side, strike, quantity, premium, hot take, minutes ago)
+        let seeds: [(String, Tier, ContractSide, Double, Int, Double, String?, Int)] = [
             ("popcornshark", .studioHead, .put,  Double(Int(movies.first?.consensusOpeningMillions ?? 60) - 5),
-             20, 6.20, "Tracking looks generous. Fading strength.", 214, false),
+             20, 6.20, "Consensus looks generous to me. Fading strength.", 107),
             ("indieyoda",    .producer,   .call, Double(Int(movies.dropFirst().first?.consensusOpeningMillions ?? 20)),
-             40, 2.80, "Letterboxd is heating up faster than tracking suggests.", 88, false),
+             40, 2.80, "I think the market is too low on this one.", 44),
             ("greenlight",   .analyst,    .call, Double(Int(movies.dropFirst(2).first?.consensusOpeningMillions ?? 40) + 4),
-             15, 5.10, nil, 12, false),
+             15, 5.10, nil, 6),
             ("marqueemaven", .insider,    .put,  Double(Int(movies.dropFirst(3).first?.consensusOpeningMillions ?? 20) - 3),
-             25, 3.40, "Marketing was too quiet. Getting buried.", 41, true),
+             25, 3.40, "Feels like it gets lost on a crowded weekend.", 20),
         ]
         feed = zip(seeds, movies).map { seed, movie in
             SocialPost(
@@ -272,8 +272,8 @@ final class SocialService: ObservableObject {
                 side: seed.2, strikeMillions: seed.3,
                 quantity: seed.4, entryPremium: seed.5,
                 hotTake: seed.6,
-                createdAt: Date().addingTimeInterval(-Double(seed.7 * 30)),
-                likes: seed.7, isLikedByMe: seed.8,
+                createdAt: Date().addingTimeInterval(-Double(seed.7 * 60)),
+                likes: 0, isLikedByMe: false,
                 comments: [], outcome: nil
             )
         }

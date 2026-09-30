@@ -1,7 +1,7 @@
 import Foundation
 import Combine
 
-/// Badges, streaks, followers and rank-up moments. Everything here is
+/// Badges, streaks and rank-up moments. Everything here is
 /// play-status earned by trading: no cash, no IAP.
 @MainActor
 final class RewardsService: ObservableObject {
@@ -50,10 +50,7 @@ final class RewardsService: ObservableObject {
     }
 
     func recordWin(position: Position, actual: Double, netProfit: Double) {
-        let followersGained = Int.random(in: 3...12)
-        PortfolioService.shared.mutateUser { $0.followerCount += followersGained }
-        toast("+\(Int(netProfit)) RC profit", subtitle: "Winning \(position.side.display) settled — new followers", emoji: "🎯")
-        NotificationsService.shared.notifyFollowers(gained: followersGained)
+        toast("+\(Int(netProfit)) RC profit", subtitle: "Winning \(position.side.display) settled", emoji: "🎯")
 
         recentWinsInARow += 1
         if recentWinsInARow == 5, let b = Badge.make("sniper") { award(badge: b) }

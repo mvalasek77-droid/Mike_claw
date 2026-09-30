@@ -127,7 +127,7 @@ struct OnboardingView: View {
         slide(step: 4,
               tab: ("chart.line.uptrend.xyaxis", "Positions"),
               title: "Watch it move.",
-              body: "Prices shift all week as other players trade and news breaks. Sell any time before the movie opens on Friday — then its contracts lock until results.") {
+              body: "Prices shift all week as the market buys and sells, your trades included. Sell any time before the movie opens on Friday — then its contracts lock until results.") {
             MockCard {
                 VStack(spacing: 8) {
                     mockPositionRow(emoji: "🧟", title: "Resident Evil", side: "CALL $40M", pnl: 18.2)
@@ -146,11 +146,11 @@ struct OnboardingView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
                         Image(systemName: "checkmark.seal.fill").foregroundStyle(.green)
-                        Text("Resident Evil opened at $52M").font(.subheadline.weight(.semibold))
+                        Text("Resident Evil opened at $60.1M").font(.subheadline.weight(.semibold))
                     }
-                    Text("Your CALL at $40M finished $12M in the money.")
+                    Text("A 5-contract CALL at $40M finished $20.1M in the money.")
                         .font(.caption).foregroundStyle(.secondary)
-                    mockLine("Payout", "+60.00 RC", valueColor: .green)
+                    mockLine("Payout", "+100.50 RC", valueColor: .green)
                 }
             }
         }
@@ -181,7 +181,7 @@ struct OnboardingView: View {
         slide(step: nil,
               tab: ("trophy", "Box Office"),
               title: "The goal: most profit.",
-              body: "Everyone trades the same 1,000 stake, and the leaderboard ranks by total profit — the weekly reset never touches it. Profit earns ranks like Insider and Studio Head, and the top 5 get their movie review spotlighted on the home screen, #1 first.") {
+              body: "You trade a 1,000 stake against BoxCall's simulated league, and the leaderboard ranks by total profit — the weekly reset never touches it. Profit earns ranks like Insider and Studio Head, and the top 5 get their movie review spotlighted on the home screen, #1 first.") {
             MockCard {
                 VStack(alignment: .leading, spacing: 8) {
                     mockRankRow("🥇", "you", "Studio Head", "+3,410", highlighted: true)

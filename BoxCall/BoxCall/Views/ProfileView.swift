@@ -163,16 +163,10 @@ struct ProfileView: View {
                          subtitle: "Send BoxCall to your group chat and see who out-trades who.")
             }
             NavigationLink {
-                CustomMarketsView()
-            } label: {
-                learnRow(icon: "text.bubble", title: "Prop markets",
-                         subtitle: "User-proposed prop markets. Mogul-tier users can create their own.")
-            }
-            NavigationLink {
                 DataSourcesView()
             } label: {
                 learnRow(icon: "server.rack", title: "Data sources",
-                         subtitle: "Where the catalog and settlement numbers come from. TMDB, Box Office Mojo, and more.")
+                         subtitle: "Where the catalog and settlement numbers come from: Box Office Mojo, The Numbers and more.")
             }
             NavigationLink {
                 BlockedUsersView()
@@ -246,9 +240,6 @@ struct ProfileView: View {
                         .padding(.horizontal, 8).padding(.vertical, 3)
                         .background(RoundedRectangle(cornerRadius: 4).fill(user.tier.color.opacity(0.25)))
                         .foregroundStyle(user.tier.color)
-                    Text("· \(user.followerCount) followers")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                     if user.currentStreakWeeks > 0 {
                         StreakFlame(weeks: user.currentStreakWeeks)
                     }

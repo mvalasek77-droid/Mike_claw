@@ -53,7 +53,7 @@ enum LearnSection: String, CaseIterable, Identifiable {
         case .whatsAPut:    return "Puts: betting the movie flops"
         case .strike:       return "The strike price"
         case .premium:      return "Premium & implied volatility"
-        case .liveMarket:   return "The live market — how mark moves 24/7"
+        case .liveMarket:   return "The live market — how the mark moves"
         case .theDesk:      return "The desk — bid, ask, and social sentiment"
         case .settlement:   return "Opening weekend & settlement"
         case .losingCoins:  return "Losing coins — what actually happens"
@@ -326,20 +326,20 @@ struct LiveMarketSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             LearnHeader(index: 6, title: LearnSection.liveMarket.title)
-            LearnParagraph("Premiums are not static. Every contract's mark moves continuously — 24/7, whether you have the app open or not — as buys and sells push it around and news events shock a movie's whole chain.")
+            LearnParagraph("Premiums are not static. While the app is open, every contract's mark reprices every few seconds as buys and sells push it around and the crowd's mood on the movie shifts.")
             FormulaBox(title: "Live pricing model",
                        formula: "mark = base × exp(demand / liquidity) × movieSentiment × (1 + noise)")
             bullet("Buys push the mark up.",
                    "Every contract you buy adds to the demand imbalance for that strike. The next tick, the mark reprices higher. Slippage is small when demand is small, larger when the whole crowd piles into one strike.")
             bullet("Sells push the mark down.",
                    "Closing a position at the mark removes demand and drops the price for the next buyer.")
-            bullet("News moves the whole chain.",
-                   "A bullish event (great reviews, presales spike, viral trailer) lifts the movie's sentiment multiplier — every Call mark goes up, every Put mark goes down. Bearish news does the reverse. Events land in the news ticker on each movie page.")
+            bullet("Mood moves the whole chain.",
+                   "Each movie has a sentiment multiplier fed by trade flow, Hot Takes, reviews and the data feed's crowd signals. When it rises, every Call mark goes up and every Put mark goes down; when it falls, the reverse. The Trading Desk's \"What moved it\" list shows the real inputs.")
             bullet("Market makers buy support, sell resistance.",
                    "Automated market makers compute rolling support and resistance for every contract from the last ~30 ticks. When the mark drops toward support they step in as buyers, adding a floor. When it rises toward resistance they hit as sellers, adding a ceiling. Aggression scales with how far the price is pushed INTO the zone — a small dip gets a small bid, a deep flush gets a size buyer. Result: charts mean-revert inside a band instead of random-walking, which is exactly how real options books trade.")
             bullet("You can see the levels on every contract chart.",
                    "The Trade Sheet's price chart draws the support line in green and resistance in red, with the band shaded between. A readout below labels whether the current mark is at support, at resistance, or free-drifting inside. Enter at support and exit at resistance for the cleanest edges.")
-            LearnParagraph("The takeaway: entering early — when consensus is stable and news hasn't broken — usually gets you a better fill than piling in after the crowd. And you can trade the news itself: buy the dip on an overreaction, take profit into a spike.")
+            LearnParagraph("The takeaway: entering early — while consensus is stable — usually gets you a better fill than piling in after the crowd. And you can trade the swings themselves: buy the dip on an overreaction, take profit into a spike.")
         }
     }
 
@@ -588,7 +588,7 @@ struct RewardsSection: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("The goal: the most total profit")
                     .font(.subheadline.weight(.bold))
-                Text("The Box Office leaderboard ranks everyone by total trading profit. The weekly reset never touches it and subscription coins don't count — only winning trades move you up. The top 5 get their latest movie review spotlighted on the Marquee home screen, and #1's review leads it. Whoever is #1 when the season ends is crowned its Oracle.")
+                Text("The Box Office leaderboard ranks you against BoxCall's simulated league — automated traders marked SIM — by total trading profit. The weekly reset never touches it and subscriptions add no coins — only winning trades move you up. The top 5 get their latest movie review spotlighted on the Marquee home screen, and #1's review leads it. Whoever is #1 when the season ends is crowned its Oracle.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             .padding(12)
@@ -599,7 +599,7 @@ struct RewardsSection: View {
                 pillar("🏅", "Badges", "Feats trigger badges: Sniper (5 in a row), Bomb Caller (put that hits by 30%+), Rocket (call that beats by 40%+), Contrarian (win far from consensus).")
             }
             HStack(alignment: .top, spacing: 10) {
-                pillar("👥", "Followers", "Winning public calls bring 3–12 new followers each. Reach compounds.")
+                pillar("🔥", "Streaks", "Win every settled trade in a week to grow your weekly streak. The flame by your name shows how long it's running.")
                 pillar("🏆", "Season titles", "Be #1 in total profit when a season ends and earn a permanent \"Oracle · Fall 2026\" title on your trophy shelf.")
             }
         }
@@ -625,7 +625,7 @@ struct GlossarySection: View {
         ("IV (Implied Vol)", "How wide the plausible range of outcomes is. Higher IV → higher premiums."),
         ("DTE",              "Days to expiry — days until the movie opens."),
         ("Mark",             "The current mid-price for a contract. What you'd get if you closed right now."),
-        ("Open interest",    "How many contracts are outstanding across all players. Popularity signal."),
+        ("Open interest",    "How many contracts are outstanding on a line in BoxCall's simulated market."),
         ("Moneyness",        "How far your strike is from consensus. ITM = in-the-money (already profitable). OTM = out-of-the-money (needs movement)."),
         ("Consensus",        "The current crowd/tracker estimate of opening weekend. The chain is built around it."),
         ("Multiplier",       "Reel Coins per $1M of intrinsic value per contract (default: 1)."),

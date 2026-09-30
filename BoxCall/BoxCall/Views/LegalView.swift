@@ -65,7 +65,7 @@ struct LegalView: View {
         ("Third-party services",
          "TMDB delivers movie metadata directly to the app; YouTube's public API is used to fetch trailer view counts; opening-weekend results are downloaded from a public BoxCall data file hosted on GitHub Pages. These providers see the requests we send but not your identity."),
         ("Push notifications",
-         "You can grant or deny notification permission at any time in iOS Settings. We only send transactional notifications (settlements, followers, badges, opening reminders)."),
+         "You can grant or deny notification permission at any time in iOS Settings. We only send transactional notifications (settlements, badges, opening reminders, refunds)."),
         ("Data deletion",
          "Go to Profile › Delete account and data. This permanently erases your account, trades, posts, reviews and sign-in details from your device. Deleting the app also removes all of it."),
         ("Children",

@@ -53,7 +53,7 @@ struct PaywallView: View {
             Text("Better tools. A badge by your name.")
                 .font(.title2.bold())
                 .multilineTextAlignment(.center)
-            Text("Every player — free or paid — trades the same 1,000 RC stake each week, so the leaderboard measures skill. Memberships add early access to new markets, limit orders, performance stats, custom markets and a badge next to your name.")
+            Text("Every player — free or paid — trades the same 1,000 RC stake each week, so the leaderboard measures skill. Memberships add early access to new markets, limit orders, performance stats and a badge next to your name.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

@@ -3,13 +3,13 @@ Trade the opening weekend.
 BoxCall is an options chain for movies about to open. Buy CALLs when you think a movie will beat tracking. Buy PUTs when you smell a bomb. Every account starts with 1,000 Reel Coins. Winning gets you status, not cash.
 
 WHY IT'S DIFFERENT
-Not a poll. Not a prediction market. A full continuous-payoff options chain with five strikes above and below the current implied consensus, live 24/7. Market makers work rolling support and resistance so the tape looks like a real chart, not a random walk.
+Not a poll. Not a prediction market. A full continuous-payoff options chain with five strikes above and below the current implied consensus, repricing every few seconds. Market makers work rolling support and resistance so the tape looks like a real chart, not a random walk.
 
 THE LIVE MARKET
-Every contract has a mark that moves in real time. Your buys and sells shift the price. News events (tracking updates, reviews, trailer spikes) shock the whole chain. The implied opening estimate — the "consensus" — is a live crowd forecast derived from base tracking, YouTube trailer engagement, X mention velocity, and actual trade flow.
+Every contract has a mark that moves in real time. Your buys and sells shift the price, and an automated market-making desk quotes both sides. The implied opening estimate — the "consensus" — starts from published trade projections or BoxCall's own estimate, and moves with Wikipedia attention and trade flow.
 
 WIN STATUS, NOT CASH
-Six trader ranks from Rookie to Studio Head and Legend, earned only by total profit — never bought. Badges for feats: Bomb Caller, Rocket, Contrarian, Sniper. Weekly streaks. Season titles you keep forever. The leaderboard ranks everyone by total profit, which the weekly reset never touches. The top 5 get their movie reviews spotlighted at the top of the home screen, and #1 leads it — winning literally becomes editorial voice.
+Six trader ranks from Rookie to Studio Head and Legend, earned only by total profit — never bought. Badges for feats: Bomb Caller, Rocket, Contrarian, Sniper. Weekly streaks. Season titles you keep forever. The leaderboard ranks you against BoxCall's simulated league of automated traders by total profit, which the weekly reset never touches. The top 5 get their movie reviews spotlighted at the top of the home screen, and #1 leads it — winning literally becomes editorial voice.
 
 WEEKLY RESET
 Every Sunday your weekly stake goes back and you keep your profit, and that afternoon the opening weekends settle. Every Monday, every account gets a fresh stake: 1,000 Reel Coins free, forever. Lose it all? You're back in on Monday. Trades on movies that haven't opened keep running right through the reset.
@@ -19,16 +19,17 @@ Every player trades the same 1,000 RC weekly stake, so the leaderboard measures 
 
   Backstage — $3.99/mo — ticket badge, 24-hour early access to new markets, 3 limit orders
   Producer's Pass — $9.99/mo — star badge, portfolio performance stats, 10 limit orders
-  Mogul — $24.99/mo — crown badge, create custom prop markets, unlimited limit orders
+  Mogul — $24.99/mo — crown badge, portfolio performance stats, unlimited limit orders
 
 WHAT'S IN THE APP
 • Slate — every upcoming release with its live implied opening and consensus sparkline
 • Chain — five CALL and five PUT strikes per movie with live marks and S/R lines
-• Feed — shared calls from the community, with likes, comments, follow, and copy-trade
+• Feed — your calls and the simulated league's, with likes, comments, follow, and copy-trade
 • Featured Critics — the top 5 traders by total profit get their movie reviews at the top of the home screen
 • Portfolio — open positions with live P&L, working limit orders, and one-tap close
 • Leaderboard — ranked by total profit; #1 at season's end is crowned Oracle
-• Home-screen widget — top position and next opening on your lock screen
+• Home-screen widgets — your top position and the next opening
+• Apple Watch — your balance, positions and next opening on your wrist
 
 NOT REAL MONEY
 Reel Coins are play-money. They cannot be purchased as a balance, cannot be redeemed for cash, cannot be transferred. Nothing on BoxCall is a securities offering, event contract, or wager. BoxCall is entertainment.
@@ -37,6 +38,6 @@ DATA SOURCES
 Upcoming releases from the Box Office Mojo and The Numbers release calendars, refreshed several times a day. Opening weekends settle on the studios' Sunday estimate from Box Office Mojo. Full attribution in the Data Sources screen.
 
 PRIVACY
-No data selling. No ad networks. No cross-app tracking. Optional Sign in with Apple for cross-device sync. Anonymous product analytics only.
+Everything stays on your device: no BoxCall server, no analytics, no ad networks, no tracking. Optional Sign in with Apple sets your trader name.
 
 Age 13+.

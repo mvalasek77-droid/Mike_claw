@@ -20,7 +20,6 @@ struct User: Codable, Hashable {
     var bestProfit: Double?
     var currentStreakWeeks: Int
     var longestStreakWeeks: Int
-    var followerCount: Int
     var followingHandles: Set<String>
     var badges: [Badge]
     var trophies: [String]        // e.g. ["Oracle · Summer 2026"]

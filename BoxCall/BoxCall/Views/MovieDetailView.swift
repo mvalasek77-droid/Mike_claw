@@ -14,10 +14,6 @@ struct MovieDetailView: View {
         market.chain(for: movie.id).filter { $0.side == (showPutSide ? .put : .call) }
     }
 
-    var events: [MarketEvent] {
-        market.events(for: movie.id)
-    }
-
     var reviewsForMovie: [Review] {
         social.reviews(for: movie.id)
     }
@@ -31,7 +27,6 @@ struct MovieDetailView: View {
                 TicketStubDivider()
                 consensusCard
                 DeskSummaryCard(movieId: movie.id)
-                if !events.isEmpty { newsTicker }
                 ticketButtons
                 if movie.isTradingOpen {
                     sidePicker
@@ -111,6 +106,7 @@ struct MovieDetailView: View {
                                 Text("@\(r.authorHandle)")
                                     .font(.caption.weight(.semibold))
                                     .foregroundStyle(Theme.marqueeGold)
+                                if !r.authorIsCurrentUser { SimulatedTag() }
                                 Text(r.stars).font(.caption).foregroundStyle(Theme.marqueeGold)
                                 Spacer()
                                 Text("\(r.likes) ♥").font(.caption2).foregroundStyle(Theme.cream.opacity(0.65))
@@ -206,7 +202,7 @@ struct MovieDetailView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         } else {
-            Text("Base estimate: $\(Int(movie.consensusOpeningMillions))M · no published trade projection yet. Moves with buys, sells, and news.")
+            Text("Base estimate: $\(Int(movie.consensusOpeningMillions))M · no published trade projection yet. Moves with buys, sells, and the crowd's mood.")
                 .font(.caption2).foregroundStyle(.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -310,31 +306,6 @@ struct MovieDetailView: View {
             .padding(.horizontal, 10).padding(.vertical, 6)
             .background(RoundedRectangle(cornerRadius: 8).fill(color.opacity(0.12)))
         }
-    }
-
-    private var newsTicker: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                Image(systemName: "dot.radiowaves.left.and.right")
-                    .foregroundStyle(.orange)
-                Text("Market news")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-            }
-            ForEach(events.prefix(3)) { event in
-                HStack(alignment: .top, spacing: 6) {
-                    Image(systemName: event.isBullish ? "arrow.up.right" : "arrow.down.right")
-                        .foregroundStyle(event.isBullish ? Theme.marqueeGold : Theme.bear)
-                        .font(.caption2.weight(.bold))
-                    Text(event.headline)
-                        .font(.caption)
-                    Spacer()
-                    Text(shortTime(event.time)).font(.caption2).foregroundStyle(.tertiary)
-                }
-            }
-        }
-        .padding(10)
-        .background(RoundedRectangle(cornerRadius: 10).fill(Color(.secondarySystemBackground)))
     }
 
     private var tradingLockedCard: some View {

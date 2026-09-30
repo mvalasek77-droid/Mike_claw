@@ -65,7 +65,7 @@
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "Crown badge, custom markets, unlimited orders",
+              "description" : "Crown badge, stats, unlimited limit orders",
               "displayName" : "Mogul",
               "locale" : "en_US"
             }

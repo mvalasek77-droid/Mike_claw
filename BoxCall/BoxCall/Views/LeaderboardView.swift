@@ -29,7 +29,7 @@ struct LeaderboardView: View {
                                             .font(.caption)
                                             .accessibilityLabel("Legend")
                                     }
-                                    if entry.isCurrentUser { MemberFlair() }
+                                    if entry.isCurrentUser { MemberFlair() } else { SimulatedTag() }
                                 }
                                 HStack(spacing: 6) {
                                     Text(entry.tier.name)
@@ -55,12 +55,12 @@ struct LeaderboardView: View {
                         .padding(.vertical, 2)
                         .listRowBackground(idx < 5 ? Color.orange.opacity(0.06) : nil)
                         .accessibilityElement(children: .combine)
-                        .accessibilityLabel("Rank \(idx + 1), \(entry.handle), \(entry.tier.name), total profit \(Int(entry.profit)) Reel Coins, win rate \(Int(entry.winRate * 100)) percent")
+                        .accessibilityLabel("Rank \(idx + 1), \(entry.handle)\(entry.isCurrentUser ? "" : ", simulated trader"), \(entry.tier.name), total profit \(Int(entry.profit)) Reel Coins, win rate \(Int(entry.winRate * 100)) percent")
                     }
                 } header: {
                     Text("Total profit")
                 } footer: {
-                    Text("Ranked by total trading profit — the weekly reset never touches it and subscription coins don't count. Ranks from Analyst to Legend are earned the same way. The top 5 get their latest review spotlighted on the Marquee home screen.")
+                    Text("Ranked by total trading profit — the weekly reset never touches it. Everyone marked SIM is part of BoxCall's simulated league: automated traders playing the same slate. Ranks from Analyst to Legend are earned the same way, and the top 5 get their latest review spotlighted on the Marquee home screen.")
                 }
                 Section {
                     Text("\(Season.name(at: Date())) ends \(seasonEndString). Whoever is #1 in total profit then is crowned its Oracle.")

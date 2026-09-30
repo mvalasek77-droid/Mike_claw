@@ -378,7 +378,7 @@ struct PostCard: View {
                             .foregroundStyle(Theme.marqueeGold)
                             .font(.caption)
                     }
-                    if post.authorIsCurrentUser { MemberFlair() }
+                    if post.authorIsCurrentUser { MemberFlair() } else { SimulatedTag() }
                 }
                 Text("\(authorTier.name) · \(relativeTime(post.createdAt))")
                     .font(.caption2)
