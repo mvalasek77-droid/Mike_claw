@@ -9,7 +9,7 @@ Reel Coins cannot be bought as a balance, cashed out, transferred between player
 
 3. HOW TO USE THE APP
 No login or demo account is needed. The whole app works as a guest.
-- Launch, enter any birth year 13+ years ago, swipe through the 8-page tour (or Skip).
+- Launch, enter any birth year 13+ years ago, swipe through the 9-page tour (or Skip).
 - Now Showing tab: tap any movie, choose BIGGER (Call) or SMALLER (Put), tap a strike row, set quantity, tap Buy.
 - Positions tab: open trades with live P&L; Close sells a position early.
 - Positions settle automatically on the Sunday of each opening weekend, using the studios' reported domestic opening estimate.

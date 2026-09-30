@@ -16,7 +16,7 @@ Apple wants one continuous recording on a **physical iPhone on the latest iOS**,
 |---|---|---|---|
 | 1 | Home screen | Tap the BoxCall icon | Recording starts at launch |
 | 2 | Age check | Type a birth year, tap Confirm | 13+ gate |
-| 3 | App tour | Swipe slowly through all 8 pages, tap Start trading | Purpose + play money |
+| 3 | App tour | Swipe slowly through all 9 pages, tap Start trading | Purpose + play money |
 | 4 | Now Showing | Scroll the list, tap a movie | Browsing |
 | 5 | Movie detail | Pick BIGGER, tap a strike, read the first-time explainer, set qty 2, tap Buy | Buying a Call |
 | 6 | Movie detail | Switch to SMALLER, buy a Put on another strike | Buying a Put |

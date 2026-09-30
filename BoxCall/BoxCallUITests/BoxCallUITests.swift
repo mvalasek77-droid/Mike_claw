@@ -20,8 +20,8 @@ final class BoxCallUITests: XCTestCase {
 
         let next = app.buttons["tour.next"]
         XCTAssertTrue(next.waitForExistence(timeout: 5))
-        for _ in 0..<7 { next.tap() }
-        XCTAssertEqual(next.label, "Start trading", "The tour should be 8 pages long")
+        for _ in 0..<8 { next.tap() }
+        XCTAssertEqual(next.label, "Start trading", "The tour should be 9 pages long")
         next.tap()
 
         XCTAssertTrue(app.tabBars.buttons["Now Showing"].waitForExistence(timeout: 5))

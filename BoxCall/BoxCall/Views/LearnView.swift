@@ -282,7 +282,7 @@ struct StrikeSection: View {
                 Column(head: "Deep OTM strike",
                        body: "For a Call: strike well above consensus. Only pays if the movie blows out → cheap premium, huge multiple if you're right.")
             }
-            LearnParagraph("Contrarian traders — those who pick strikes far from consensus and hit — earn the Contrarian badge and outsized follower gains.")
+            LearnParagraph("Contrarian traders, who pick strikes far from consensus and hit, earn the Contrarian badge and often the biggest profits.")
         }
     }
 
@@ -428,13 +428,14 @@ struct SettlementSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             LearnHeader(index: 8, title: LearnSection.settlement.title)
-            LearnParagraph("Trading on a movie locks when it opens on Friday. On Sunday the studios report the domestic three-day weekend, and BoxCall settles every open position on that movie at that figure — the same number for every player, even if Monday's final count moves it slightly. Movies that haven't opened yet keep trading all weekend.")
+            LearnParagraph("Trading on a movie locks at midnight on its opening day — usually Friday, sometimes Wednesday or Thursday. If you hold it, you get a reminder at 6 PM the night before. On Sunday afternoon the studios report the domestic three-day weekend, and BoxCall settles every open position on that movie at that estimate — the same number for every player, even if Monday's final count moves it slightly. Movies that haven't opened yet keep trading all weekend.")
             LearnParagraph("Settlement pays the intrinsic value of each contract:")
             HStack(spacing: 10) {
                 FormulaBox(title: "Call settle", formula: "max(actual − K, 0) × mult × qty")
                 FormulaBox(title: "Put settle",  formula: "max(K − actual, 0) × mult × qty")
             }
-            LearnParagraph("The Reel Coins land in your balance automatically. If your position was public on the feed, an outcome banner (\"Called it.\" / \"Missed.\") attaches to your post and drives follower gains.")
+            LearnParagraph("The Reel Coins land in your balance automatically. If your position was public on the feed, an outcome banner (\"Called it.\" / \"Missed.\") attaches to your post.")
+            LearnParagraph("Fair-play rules. If a studio moves a release date, your trades carry over and trading stays open until the movie actually opens. If a movie turns out to have already opened in limited release, its result is known, so the market closes and every trade on it is refunded at cost. And if no opening number is published within three weeks, the market settles on a simulated result so no one is left waiting.")
         }
     }
 }

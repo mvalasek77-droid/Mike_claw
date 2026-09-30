@@ -12,7 +12,9 @@ Ship-ready test matrix. Run through this before every App Store submission. Auto
 ## 1 · First-run onboarding
 
 - [ ] Fresh install → **Age gate** appears. Reject invalid year, reject year < 13. Accept a valid one.
-- [ ] Onboarding pages: Welcome → Calls (payoff chart animates in) → Puts (mirror chart) → Status. "Skip" jumps to app. "Read the full guide" opens LearnView, "Done" returns to onboarding.
+- [ ] Tour has 9 pages: Welcome → Pick a movie → Bigger or smaller → Buy → Watch it move → Results on Sunday → How each week works → Fair-play rules → The goal. "Skip" jumps to the app; "Read the full guide" opens LearnView.
+- [ ] Pages 2, 4 and 5 show real movies from the live Slate (soonest tradable first) with the real predicted opening and a real contract price. The Sunday example is the real Resident Evil result ($60.1M, Sept 18–20).
+- [ ] The goal page's rivals show the SIM tag.
 - [ ] Push permission requested on first launch AFTER onboarding, not before.
 - [ ] Second launch skips both — goes straight to `RootView`.
 
