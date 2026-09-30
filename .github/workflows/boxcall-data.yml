@@ -1,0 +1,149 @@
+name: BoxCall Data
+
+# Builds the BoxCall data feed — upcoming movies, crowd signals and every
+# opening weekend so far — and publishes it as plain JSON on the
+# `boxcall-data` branch. The app reads it from raw.githubusercontent.com.
+#
+# It deliberately does not use GitHub Pages: this repository's Pages site
+# serves another app's privacy and support pages, and a Pages deploy
+# replaces the whole site.
+#
+# GitHub only fires `schedule` from the repository's DEFAULT branch. Until
+# this file is on that branch, the feed rebuilds on pushes to the BoxCall
+# branch and from the Actions tab ("Run workflow").
+
+on:
+  schedule:
+    # Catalog and signals, four times a day.
+    - cron: "0 */6 * * *"
+    # Sunday 8 AM–4 PM Pacific, hourly: studios report weekend estimates.
+    - cron: "15 15-23 * * 0"
+    # Sunday evening Pacific, and Monday's corrections.
+    - cron: "15 0-6 * * 1"
+  workflow_dispatch:
+    inputs:
+      max_movies:
+        description: "Titles to collect signals for"
+        required: false
+        default: "80"
+  push:
+    branches: [claude/movie-betting-app-hspuu3]
+    paths:
+      - "backend/pipeline/**"
+      - ".github/workflows/boxcall-data.yml"
+
+permissions:
+  contents: write
+
+# Never let two runs publish at once, and never cancel one mid-publish.
+concurrency:
+  group: boxcall-data
+  cancel-in-progress: false
+
+env:
+  # The branch holding the pipeline code when a scheduled run starts from
+  # the default branch. Override with a repository variable once merged.
+  SOURCE_REF: ${{ vars.BOXCALL_SOURCE_REF || 'claude/movie-betting-app-hspuu3' }}
+  DATA_BRANCH: boxcall-data
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'push' && github.ref || env.SOURCE_REF }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pipeline/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r backend/pipeline/requirements.txt pytest
+
+      - name: Run unit tests
+        run: python -m pytest backend/pipeline/tests -q
+
+      # Resolving a trailer's video id costs 100 YouTube quota units
+      # against a 10,000/day default; the id never changes.
+      - name: Restore trailer id cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .cache
+          key: boxcall-trailer-ids-${{ github.run_id }}
+          restore-keys: |
+            boxcall-trailer-ids-
+
+      # Openings are published once and frozen, so each run must start
+      # from the last published set. If the data branch exists but can't
+      # be read, stop rather than publish a feed that forgot results.
+      - name: Load previously published openings
+        run: |
+          mkdir -p .prev
+          if git ls-remote --exit-code --heads origin "$DATA_BRANCH" > /dev/null; then
+            git fetch --depth=1 origin "$DATA_BRANCH"
+            git show FETCH_HEAD:api/v1/actuals.json > .prev/actuals.json
+            echo "Carrying forward $(python -c 'import json;print(len(json.load(open(".prev/actuals.json"))["actuals"]))') openings."
+          else
+            echo "No data branch yet; starting fresh."
+          fi
+
+      - name: Build the feed
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        working-directory: backend/pipeline
+        run: |
+          python -m boxcall_pipeline.build \
+            --out "$GITHUB_WORKSPACE/site/api/v1" \
+            --seed "$GITHUB_WORKSPACE/backend/pipeline/seed_movies.json" \
+            --cache "$GITHUB_WORKSPACE/.cache/trailer_ids.json" \
+            --previous-actuals "$GITHUB_WORKSPACE/.prev/actuals.json" \
+            --max-movies "${{ github.event.inputs.max_movies || 80 }}"
+
+      - name: Save trailer id cache
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: .cache
+          key: boxcall-trailer-ids-${{ github.run_id }}
+
+      - name: Check and summarize the feed
+        run: |
+          python - <<'PY'
+          import json, os, pathlib, sys
+          root = pathlib.Path("site/api/v1")
+          manifest = json.loads((root / "index.json").read_text())
+          actuals = json.loads((root / "actuals.json").read_text())["actuals"]
+          upcoming = json.loads((root / "upcoming.json").read_text())["movies"]
+          if manifest.get("movieCount", 0) < 1:
+              sys.exit("Refusing to publish an empty catalog.")
+          lines = ["### BoxCall feed", "", "**Sources**", ""]
+          lines += [f"- {k}: {v}" for k, v in manifest["sources"].items()]
+          lines += ["", f"**Upcoming ({len(upcoming)})**", ""]
+          lines += [f"- {m['releaseDate']} — {m['title']}" for m in upcoming[:25]]
+          lines += ["", f"**Opening weekends on file ({len(actuals)})**", ""]
+          for a in sorted(actuals.values(), key=lambda a: a.get("weekendOf", ""), reverse=True)[:25]:
+              tag = "estimate" if a.get("isEstimate") else "actual"
+              lines.append(f"- {a.get('weekendOf')} — {a['title']}: ${a['domesticOpeningMillions']}M ({tag}, {a.get('source')})")
+          text = "\n".join(lines)
+          print(text)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+              f.write(text + "\n")
+          PY
+
+      - name: Publish to the data branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd site
+          git init -q -b "$DATA_BRANCH"
+          git add -A
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "Publish BoxCall data $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -q -f "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$DATA_BRANCH"
+          echo "Published to https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/$DATA_BRANCH/api/v1/"
