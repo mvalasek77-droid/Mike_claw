@@ -5,6 +5,8 @@ import SwiftUI
 struct DataSourcesView: View {
     @EnvironmentObject var market: MarketService
     @ObservedObject var settlement = SettlementService.shared
+    /// What the data feed's last build reported, source by source.
+    @State private var feedStatus: FeedStatus?
 
     var body: some View {
         ScrollView {
@@ -19,6 +21,7 @@ struct DataSourcesView: View {
         }
         .navigationTitle("Data Sources")
         .navigationBarTitleDisplayMode(.inline)
+        .task { feedStatus = await FeedStatus.load() }
     }
 
     private var header: some View {
@@ -62,6 +65,14 @@ struct DataSourcesView: View {
             }
             if let at = market.lastSocialRefreshAt {
                 statRow("Social last run", format(at))
+            }
+            if let feed = feedStatus {
+                Divider()
+                statRow("Feed built", format(feed.generatedAt))
+                ForEach(feed.sources, id: \.name) { source in
+                    statRow(source.name.capitalized, source.status,
+                            color: source.isHealthy ? .primary : .orange)
+                }
             }
         }
         .padding(12)
@@ -112,8 +123,8 @@ struct DataSourcesView: View {
                           wired: market.socialDiagnostics?.isHealthy ?? false)
                 SourceRow(name: "Bluesky mention volume + sentiment",
                           role: "24h public posts mentioning the film, scored with VADER and weighted by engagement so a post nobody saw does not outvote one thousands liked.",
-                          status: "Live via the published BoxCall data set. Bluesky's API is public, keyless, and free at any volume this app reaches.",
-                          wired: true)
+                          status: "Read by the data feed with a free Bluesky account. See Live status above for the last run.",
+                          wired: feedStatus?.isHealthy("bluesky") ?? true)
                 SourceRow(name: "X (Twitter)",
                           role: "Originally the mention source for this model.",
                           status: "Dropped. X ended its free tier in February 2026 and now bills per post read, so an X-backed signal could never be free. Bluesky replaces it.",
@@ -224,6 +235,39 @@ struct DataSourcesView: View {
 
     private func format(_ d: Date) -> String {
         Self.refreshFormatter.string(from: d)
+    }
+}
+
+/// The data feed's `index.json`: when it was built and each source's status.
+struct FeedStatus {
+    struct Source {
+        let name: String
+        let status: String
+        var isHealthy: Bool { status.hasPrefix("ok") || status == "not configured" }
+    }
+    let generatedAt: Date
+    let sources: [Source]
+
+    func isHealthy(_ name: String) -> Bool {
+        sources.first { $0.name == name }?.isHealthy ?? true
+    }
+
+    private struct Manifest: Decodable {
+        let generatedAt: String
+        let sources: [String: String]
+    }
+
+    static func load(baseURL: URL = Config.dataAPIBaseURL) async -> FeedStatus? {
+        var request = URLRequest(url: baseURL.appendingPathComponent("index.json"))
+        request.timeoutInterval = 10
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        guard let response = try? await URLSession.shared.data(for: request),
+              let manifest = try? JSONDecoder().decode(Manifest.self, from: response.0),
+              let built = ISO8601DateFormatter().date(from: manifest.generatedAt) else { return nil }
+        return FeedStatus(
+            generatedAt: built,
+            sources: manifest.sources.sorted { $0.key < $1.key }
+                .map { Source(name: $0.key, status: $0.value) })
     }
 }
 
