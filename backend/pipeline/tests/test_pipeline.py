@@ -230,6 +230,49 @@ class TestBluesky:
 
         assert bluesky.search_posts(Client(), "Dune", now=NOW) == []
 
+    def test_failures_are_counted_and_reported_with_a_fix(self):
+        import collections
+
+        class Resp:
+            status_code = 403
+
+        class Client:
+            def get(self, *a, **k):
+                return Resp()
+
+        stats = collections.Counter()
+        for title in ("Dune", "Clayface"):
+            bluesky.search_posts(Client(), title, now=NOW, stats=stats)
+        assert stats == {403: 2}
+        line = bluesky.describe(stats, 0, 2, signed_in=False)
+        assert line.startswith("no data (403 x2)") and "BLUESKY_APP_PASSWORD" in line
+        assert bluesky.describe(collections.Counter({200: 2}), 2, 2, signed_in=True) == "ok (2/2 titles, signed in)"
+
+    def test_signed_in_search_uses_the_account_host_and_token(self):
+        seen = {}
+
+        class Resp:
+            status_code = 200
+
+            def json(self):
+                return {"posts": []}
+
+        class Client:
+            def get(self, url, headers=None, **k):
+                seen["url"], seen["headers"] = url, headers
+                return Resp()
+
+        bluesky.search_posts(Client(), "Dune", now=NOW, token="abc")
+        assert seen["url"].startswith(bluesky.AUTH_HOST)
+        assert seen["headers"] == {"Authorization": "Bearer abc"}
+
+    def test_login_without_credentials_does_not_call_out(self):
+        class Client:
+            def post(self, *a, **k):
+                raise AssertionError("no credentials, no request")
+
+        assert bluesky.login(Client(), "", "") is None
+
 
 # --------------------------------------------------------------------
 # Wikipedia

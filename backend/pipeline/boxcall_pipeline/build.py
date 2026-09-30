@@ -13,6 +13,7 @@ source contributes nothing rather than a fabricated zero.
 from __future__ import annotations
 
 import argparse
+import collections
 import datetime as dt
 import json
 import os
@@ -70,13 +71,16 @@ def collect_movie_signal(
     trailer_cache: dict[str, str],
     youtube_key: str,
     search_budget: list[int],
+    bluesky_token: str | None = None,
+    bluesky_stats: collections.Counter | None = None,
 ) -> dict:
     """Gather every free signal we can for one film."""
     title = movie["title"]
     release_year = int(movie["releaseDate"][:4]) if movie.get("releaseDate") else None
 
     # --- Bluesky: mention volume + sentiment -------------------------
-    posts = bluesky.search_posts(client, title, limit=100, now=now)
+    posts = bluesky.search_posts(client, title, limit=100, now=now,
+                                 token=bluesky_token, stats=bluesky_stats)
     summary = sentiment.summarize(posts)
 
     # --- Wikipedia: attention velocity -------------------------------
@@ -192,6 +196,9 @@ def build(
 
         # --- Per-movie signals ---------------------------------------
         budget = [youtube_search_budget]
+        bluesky_token = bluesky.login(client, os.environ.get("BLUESKY_HANDLE", ""),
+                                      os.environ.get("BLUESKY_APP_PASSWORD", ""))
+        bluesky_stats: collections.Counter = collections.Counter()
         signals: list[dict] = []
         for index, movie in enumerate(tracked):
             signals.append(
@@ -202,6 +209,8 @@ def build(
                     trailer_cache=trailer_cache,
                     youtube_key=youtube_key,
                     search_budget=budget,
+                    bluesky_token=bluesky_token,
+                    bluesky_stats=bluesky_stats,
                 )
             )
             if index < len(tracked) - 1:
@@ -211,7 +220,8 @@ def build(
 
     social_covered = sum(1 for s in signals if s.get("socialMentions24h"))
     wiki_covered = sum(1 for s in signals if s.get("wikipediaViews7d"))
-    source_status["bluesky"] = f"ok ({social_covered}/{len(signals)} titles)"
+    source_status["bluesky"] = bluesky.describe(bluesky_stats, social_covered, len(signals),
+                                                signed_in=bluesky_token is not None)
     source_status["wikipedia"] = f"ok ({wiki_covered}/{len(signals)} titles)"
     source_status["youtube"] = (
         f"ok ({yt_covered}/{len(signals)} titles)"
