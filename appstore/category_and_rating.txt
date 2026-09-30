@@ -8,9 +8,9 @@ Age rating: 12+
     the mandatory Report + Block + Hide moderation UI shipped in the app.
 
 Content rights: BoxCall does not use third-party audio/video content
-requiring rights clearance. Movie titles, posters, and metadata come from
-TMDB / IMDb under their public terms and are used as informational
-references only.
+requiring rights clearance. Movie titles and release dates come from the
+public Box Office Mojo and The Numbers calendars, and posters (when shown)
+from TMDB under its API terms; all are used as informational references.
 
 Copyright: © 2026 BoxCall.
 

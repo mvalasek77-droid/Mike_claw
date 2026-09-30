@@ -12,7 +12,7 @@ WIN STATUS, NOT CASH
 Six trader ranks from Rookie to Studio Head and Legend, earned only by total profit — never bought. Badges for feats: Bomb Caller, Rocket, Contrarian, Sniper. Weekly streaks. Season titles you keep forever. The leaderboard ranks everyone by total profit, which the weekly reset never touches. The top 5 get their movie reviews spotlighted at the top of the home screen, and #1 leads it — winning literally becomes editorial voice.
 
 WEEKLY RESET
-Every Sunday your weekly stake goes back and you keep your profit. Every Monday, as opening weekends settle, every account gets a fresh stake: 1,000 Reel Coins free, forever. Lose it all? You're back in on Monday. Trades on movies that haven't opened keep running right through the reset.
+Every Sunday your weekly stake goes back and you keep your profit, and that afternoon the opening weekends settle. Every Monday, every account gets a fresh stake: 1,000 Reel Coins free, forever. Lose it all? You're back in on Monday. Trades on movies that haven't opened keep running right through the reset.
 
 SUBSCRIPTIONS ADD TOOLS AND FLAIR, NEVER COINS
 Every player trades the same 1,000 RC weekly stake, so the leaderboard measures skill. Optional memberships add tools and a badge next to your name. Ranks, leaderboard spots and the review spotlight stay earned.
@@ -34,7 +34,7 @@ NOT REAL MONEY
 Reel Coins are play-money. They cannot be purchased as a balance, cannot be redeemed for cash, cannot be transferred. Nothing on BoxCall is a securities offering, event contract, or wager. BoxCall is entertainment.
 
 DATA SOURCES
-Upcoming releases from TMDB (in-app) plus IMDb Coming Soon and The Numbers (server-side). Settlement grosses from Box Office Mojo Monday mornings. Tracking numbers from Deadline / NRG. Full attribution in the Data Sources screen.
+Upcoming releases from the Box Office Mojo and The Numbers release calendars, refreshed several times a day. Opening weekends settle on the studios' Sunday estimate from Box Office Mojo. Full attribution in the Data Sources screen.
 
 PRIVACY
 No data selling. No ad networks. No cross-app tracking. Optional Sign in with Apple for cross-device sync. Anonymous product analytics only.

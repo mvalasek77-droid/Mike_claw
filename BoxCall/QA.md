@@ -97,15 +97,15 @@ Ship-ready test matrix. Run through this before every App Store submission. Auto
 
 ## 12 · Security / privacy
 
-- [ ] No PII in analytics event NDJSON on the backend. Only `signed_in` bool + membership + event name + props.
-- [ ] No secret keys shipped in the app binary — YouTube key is optional and read from Info.plist; X API key never leaves the backend.
+- [ ] No network calls besides the data feed (raw.githubusercontent.com), TMDB when a key is set, and YouTube when a key is set. Analytics stay on device.
+- [ ] No secret keys shipped in the app binary — TMDB and YouTube keys are optional and read from Info.plist.
 - [ ] Privacy Policy + ToS linked from Profile and match `appstore/category_and_rating.txt` App Privacy answers.
 - [ ] Delete-account path: Profile › Delete account and data wipes trades, coins, posts, reviews and sign-in, and returns to the age gate.
 - [ ] Force-quit and relaunch: coins, open/settled positions and resting limit orders are all still there.
 - [ ] Leaderboard ranks by total profit, not balance: buying Mogul (40,000 RC bonus) does not move your rank; a winning settlement does. Sunday's reset leaves total profit unchanged.
 - [ ] Spotlight: get into the top 5, write a review, force-quit and relaunch — your review is still on Marquee with your real rank and profit. Outside the top 5, Marquee shows how many RC you need to get in.
 - [ ] Settlement waits for real results: with no actual published, an opened movie shows "Awaiting results" instead of settling on a guess.
-- [ ] Weekly cycle (set the device clock): on Friday the opening movie shows "Trading locked" and its positions show "Settles Mon"; unreleased movies still trade. Sunday: balance drops to profit only; open trades untouched. Monday: fresh stake lands; a winning opener trade pays back its stake then credits the profit; a losing one owes nothing.
+- [ ] Weekly cycle (set the device clock): on Friday the opening movie shows "Trading locked" and its positions show "Settles Sun"; unreleased movies still trade. Sunday: balance drops to profit only; open trades untouched. Monday: fresh stake lands; a winning opener trade pays back its stake then credits the profit; a losing one owes nothing.
 
 ## 13 · Market-making desk (sentiment-driven quotes)
 

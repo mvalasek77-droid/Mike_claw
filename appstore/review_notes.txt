@@ -5,14 +5,14 @@ Attached, recorded on a physical iPhone running the latest iOS. It starts at app
 
 2. PURPOSE AND AUDIENCE
 BoxCall is a free-to-play prediction game for movie fans aged 13+. Players predict how much upcoming films will earn on their opening weekend by buying virtual "Call" (bigger) or "Put" (smaller) contracts with Reel Coins, a play currency. It turns box-office tracking news into a game and teaches basic options concepts with no financial risk.
-Reel Coins cannot be bought as a balance, cashed out, transferred between players, or exchanged for anything of value. Weekly cycle: trading on a movie locks when it opens Friday; on Sunday each account's weekly stake is taken back and profit is kept; on Monday results settle and every account gets a fresh stake (1,000 RC free). Subscriptions (Backstage, Producer's Pass, Mogul) add a name badge, early market access, limit orders, stats and custom markets; they never add Reel Coins, cash or prizes.
+Reel Coins cannot be bought as a balance, cashed out, transferred between players, or exchanged for anything of value. Weekly cycle: trading on a movie locks when it opens Friday; on Sunday each account's weekly stake is taken back and profit is kept, and that afternoon results settle; on Monday every account gets a fresh stake (1,000 RC free). Subscriptions (Backstage, Producer's Pass, Mogul) add a name badge, early market access, limit orders, stats and custom markets; they never add Reel Coins, cash or prizes.
 
 3. HOW TO USE THE APP
 No login or demo account is needed. The whole app works as a guest.
 - Launch, enter any birth year 13+ years ago, swipe through the 8-page tour (or Skip).
 - Now Showing tab: tap any movie, choose BIGGER (Call) or SMALLER (Put), tap a strike row, set quantity, tap Buy.
 - Positions tab: open trades with live P&L; Close sells a position early.
-- Positions settle automatically the Monday after each opening weekend, using the reported domestic opening gross.
+- Positions settle automatically on the Sunday of each opening weekend, using the studios' reported domestic opening estimate.
 - Box Office tab: leaderboard ranked by total trading profit. Marquee tab: the top 5's movie reviews, then the feed.
 - Profile: membership (Upgrade opens the paywall), Sign in with Apple (optional), Replay the app tour, Terms, Privacy, and Delete account and data.
 Account deletion: Profile > Delete account and data > Delete. This erases all trades, coins, rank, posts, reviews and sign-in details and returns the app to its first-launch state. All account data is stored only on the device; there is no server-side account.

@@ -22,7 +22,7 @@ Apple wants one continuous recording on a **physical iPhone on the latest iOS**,
 | 6 | Movie detail | Switch to SMALLER, buy a Put on another strike | Buying a Put |
 | 7 | Positions | Show both trades and live P&L, tap Close on one | Managing trades |
 | 8 | Force-quit and reopen | Swipe the app away, reopen, go to Positions | Trades are saved |
-| 9 | Positions | Show a settled position with its payout (record this after a Monday settlement, or splice in a second clip) | Settlement |
+| 9 | Positions | Show a settled position with its payout (record this after a Sunday settlement, or splice in a second clip) | Settlement |
 | 10 | Box Office, then Marquee | Scroll the profit leaderboard, then show the Featured critics spotlight on Marquee | Leaderboard + review spotlight |
 | 11 | Marquee | Open the ••• menu on another trader's post: show Report, Block, Not interested. Report one post. Open a comment and show the same menu | UGC moderation |
 | 12 | Profile › Upgrade | Show the paywall, buy Backstage with the sandbox account, show coins increase, tap Restore Purchases | Paid content |
