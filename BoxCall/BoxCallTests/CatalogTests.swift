@@ -71,6 +71,20 @@ final class CatalogTests: XCTestCase {
         XCTAssertTrue(SettlementService.PublishedOpening(millions: 20, weekendOf: nil).belongs(to: film))
     }
 
+    func testLimitedOpeningWeeksBeforeTheWideDate_predatesTheListing() {
+        let film = movie("sched_ym", "Your Mother, Your Mother, Your Mother", on: day(2026, 10, 9))
+        let limited = SettlementService.PublishedOpening(millions: 0.2, weekendOf: day(2026, 9, 25))
+        XCTAssertTrue(limited.predates(film))
+        XCTAssertFalse(limited.belongs(to: film))
+    }
+
+    func testOwnOpening_andOldSameTitleFilms_neverVoidAMarket() {
+        let film = movie("m_mummy", "The Mummy", on: day(2026, 10, 16))
+        XCTAssertFalse(SettlementService.PublishedOpening(millions: 40, weekendOf: day(2026, 10, 16)).predates(film))
+        XCTAssertFalse(SettlementService.PublishedOpening(millions: 12, weekendOf: day(2026, 3, 6)).predates(film))
+        XCTAssertFalse(SettlementService.PublishedOpening(millions: 12, weekendOf: nil).predates(film))
+    }
+
     // MARK: - Held contracts
 
     func testSingleContract_matchesTheChainsOwnPricing() {

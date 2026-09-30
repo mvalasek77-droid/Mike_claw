@@ -64,6 +64,23 @@ final class PortfolioFlowTests: XCTestCase {
     }
 
     @MainActor
+    func testVoidedMarket_refundsAtCost_withNoProfitOrLoss() throws {
+        let portfolio = freshAccount()
+        let contract = try tradableContract(.call)
+        try portfolio.buy(contract: contract, quantity: 5)
+
+        let refund = portfolio.voidMarket(movieId: contract.movieId)
+
+        XCTAssertEqual(refund, contract.premium * 5, accuracy: 0.001)
+        XCTAssertEqual(portfolio.user.reelCoins, 1_000, accuracy: 0.001)
+        XCTAssertEqual(portfolio.user.lifetimePnL, 0)
+        XCTAssertFalse(portfolio.positions[0].isOpen)
+        XCTAssertEqual(portfolio.positions[0].voided, true)
+        XCTAssertNil(portfolio.positions[0].actualOWMillions, "not a weekend result")
+        XCTAssertEqual(portfolio.voidMarket(movieId: contract.movieId), 0, "never refunds twice")
+    }
+
+    @MainActor
     func testRankNeverDrops_afterALosingWeek() throws {
         let portfolio = freshAccount()
         portfolio.mutateUser { $0.lifetimePnL = 3_200 }

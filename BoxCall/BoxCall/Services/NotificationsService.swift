@@ -84,6 +84,13 @@ final class NotificationsService: NSObject, ObservableObject, UNUserNotification
                 kind: .outOfCoins)
     }
 
+    func notifyMarketVoided(movieId: String, title: String, refund: Double) {
+        deliver(id: "void_\(movieId)",
+                title: "\(title) market closed",
+                body: "It opened early in limited release, so its result was already known. Your \(Int(refund.rounded())) RC is refunded.",
+                kind: .reminder(movieId: movieId))
+    }
+
     func notifyMarketEvent(_ event: MarketEvent) {
         let arrow = event.isBullish ? "▲" : "▼"
         deliver(id: "evt_\(event.id.uuidString)",

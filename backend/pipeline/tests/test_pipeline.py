@@ -687,6 +687,34 @@ class TestActualsHistory:
                                 previous=previous)
         assert actuals["seed_resident_evil"]["domesticOpeningMillions"] == 60.1
 
+    def test_same_title_on_a_later_weekend_is_a_new_film(self, monkeypatch):
+        previous = {"title:the-mummy": {"title": "The Mummy", "domesticOpeningMillions": 12.0,
+                                        "weekendOf": "2026-05-01"}}
+        later = boxoffice.OpeningResult("The Mummy", 40.0, True, "boxofficemojo", "2026-10-16", True)
+        actuals = self._collect(monkeypatch, [later], previous=previous,
+                                movies=[{"id": "sched_the-mummy", "title": "The Mummy",
+                                         "releaseDate": "2026-10-16"}])
+        assert actuals["title:the-mummy"]["domesticOpeningMillions"] == 12.0
+        assert actuals["sched_the-mummy"]["domesticOpeningMillions"] == 40.0
+
+    def test_an_older_same_title_opening_is_not_keyed_to_the_new_film(self, monkeypatch):
+        old = boxoffice.OpeningResult("The Mummy", 12.0, True, "boxofficemojo", "2026-05-01", False)
+        actuals = self._collect(monkeypatch, [old],
+                                movies=[{"id": "sched_the-mummy", "title": "The Mummy",
+                                         "releaseDate": "2026-10-16"}])
+        assert "sched_the-mummy" not in actuals and "title:the-mummy" in actuals
+
+    def test_a_film_that_already_opened_limited_is_not_listed(self):
+        from boxcall_pipeline.build import already_opened
+        actuals = {"title:your-mother": {"title": "Your Mother, Your Mother, Your Mother",
+                                         "weekendOf": "2026-09-25"}}
+        movies = [{"id": "sched_ym", "title": "Your Mother, Your Mother, Your Mother",
+                   "releaseDate": "2026-10-09"},
+                  {"id": "sched_fresh", "title": "Digger", "releaseDate": "2026-10-02"},
+                  {"id": "sched_wed", "title": "Hexed", "releaseDate": "2026-11-25"}]
+        actuals["title:hexed"] = {"title": "Hexed", "weekendOf": "2026-11-27"}  # its own opening
+        assert already_opened(movies, actuals) == {"sched_ym"}
+
     def test_history_is_carried_forward_and_pruned_after_six_months(self, monkeypatch):
         previous = {
             "recent": {"title": "Recent", "domesticOpeningMillions": 10, "weekendOf": "2026-09-11"},

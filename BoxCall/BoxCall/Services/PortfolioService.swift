@@ -251,6 +251,25 @@ final class PortfolioService: ObservableObject {
         }
     }
 
+    /// A film that turns out to have opened already (a limited release
+    /// going wide) had no fair market: every open trade on it is refunded
+    /// at cost, with no profit or loss. Returns the amount refunded.
+    @discardableResult
+    func voidMarket(movieId: String) -> Double {
+        var refunded = 0.0
+        var updated = positions
+        for i in updated.indices where updated[i].movieId == movieId && updated[i].isOpen {
+            let p = updated[i]
+            let credited = creditAfterStakeRepayment(p.cost, from: p)
+            mutateUser { $0.reelCoins += credited }
+            refunded += p.cost
+            updated[i].settledPayout = p.cost
+            updated[i].voided = true
+        }
+        positions = updated
+        return refunded
+    }
+
     // MARK: - Weekly allowance
 
     /// Sunday: the week's stake is taken back and profit stays.
@@ -335,7 +354,7 @@ final class PortfolioService: ObservableObject {
     /// and subscription bonuses never move it, so the top
     /// spot — and the homepage review spotlight — can only be won by trading.
     func refreshLeaderboard(now: Date = Date()) {
-        let settled = positions.filter { !$0.isOpen }
+        let settled = positions.filter { !$0.isOpen && $0.voided != true }
         let wins = settled.filter { ($0.settledPayout ?? 0) > $0.cost }.count
         let rate = settled.isEmpty ? 0 : Double(wins) / Double(settled.count)
         let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: now) ?? now

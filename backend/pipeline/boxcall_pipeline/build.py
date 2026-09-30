@@ -237,6 +237,11 @@ def build(
     added = max(len(actuals_data) - len(previous), 0)
     source_status["boxoffice"] = f"ok ({len(actuals_data)} openings on file, {added} new this run)"
 
+    opened = already_opened(movies, actuals_data)
+    if opened:
+        movies = [m for m in movies if m["id"] not in opened]
+        source_status["schedule"] += f"; {len(opened)} already opened (limited), not listed"
+
     manifest = {
         "version": SCHEMA_VERSION,
         "generatedAt": iso(now),
@@ -336,16 +341,23 @@ def collect_actuals(
         results = []
 
     by_title = {title_key(m["title"]): m for m in movies if m.get("title")}
-    published_titles = {title_key(v.get("title", "")) for v in actuals.values()}
+    # Frozen per film: the same title on the same weekend is the same
+    # opening (Sunday estimate, then Monday's actual). The same title on
+    # another weekend is a different film and gets its own entry.
+    published = {(title_key(v.get("title", "")), v.get("weekendOf")) for v in actuals.values()}
 
     for result in results:
         if not result.is_opening_weekend:
             continue
         key_title = title_key(result.title)
-        if not key_title or key_title in published_titles:
+        if not key_title or (key_title, result.weekend_of) in published:
             continue
         movie = by_title.get(key_title)
+        if movie and not _opens_that_weekend(movie, result.weekend_of):
+            movie = None  # a different film that shares the title
         key = movie["id"] if movie else f"title:{key_title.replace(' ', '-')}"
+        if key in actuals:
+            key = f"{key}:{result.weekend_of}"
         actuals[key] = {
             "title": movie["title"] if movie else result.title,
             "domesticOpeningMillions": result.gross_millions,
@@ -355,10 +367,47 @@ def collect_actuals(
             "source": result.source,
             "reportedAt": iso(now),
         }
-        published_titles.add(key_title)
+        published.add((key_title, result.weekend_of))
 
     cutoff = (now - dt.timedelta(days=keep_days)).date().isoformat()
     return {k: v for k, v in actuals.items() if (v.get("weekendOf") or "9999") >= cutoff}
+
+
+def _opens_that_weekend(movie: dict, weekend_of: str) -> bool:
+    """True when the film's release date falls in that weekend's week.
+
+    Wednesday and Thursday openers report the following Friday's weekend.
+    A film with no date can't be ruled out.
+    """
+    try:
+        release = dt.date.fromisoformat(movie["releaseDate"][:10])
+        friday = dt.date.fromisoformat(weekend_of)
+    except (KeyError, TypeError, ValueError):
+        return True
+    return friday - dt.timedelta(days=6) <= release <= friday + dt.timedelta(days=2)
+
+
+def already_opened(movies: list[dict], actuals: dict[str, dict], *, within_days: int = 120) -> set[str]:
+    """Ids of listed films whose opening is already on file — a limited
+    release that goes wide later. Its opening number is known, so it
+    can't be traded as an upcoming opening."""
+    openings: dict[str, list[dt.date]] = {}
+    for entry in actuals.values():
+        try:
+            openings.setdefault(title_key(entry.get("title", "")), []).append(
+                dt.date.fromisoformat(entry["weekendOf"]))
+        except (KeyError, TypeError, ValueError):
+            continue
+    out = set()
+    for movie in movies:
+        try:
+            release = dt.date.fromisoformat(movie["releaseDate"][:10])
+        except (KeyError, TypeError, ValueError):
+            continue
+        for weekend in openings.get(title_key(movie.get("title", "")), []):
+            if release - dt.timedelta(days=within_days) <= weekend < release - dt.timedelta(days=1):
+                out.add(movie["id"])
+    return out
 
 
 def write_json(path: pathlib.Path, payload: dict) -> None:

@@ -16,6 +16,9 @@ struct Position: Identifiable, Codable, Hashable {
     /// reads right after the film leaves the Slate. Nil on older saves.
     var movieTitle: String? = nil
     var posterEmoji: String? = nil
+    /// Refunded at cost because the film's market was void (it had
+    /// already opened in limited release). Nil on older saves.
+    var voided: Bool? = nil
 
     var cost: Double { entryPremium * Double(quantity) }
     var isOpen: Bool { settledPayout == nil }

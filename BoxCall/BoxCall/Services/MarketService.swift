@@ -106,17 +106,18 @@ final class MarketService: ObservableObject {
         }
     }
 
-    /// Merge remote movies with the local catalog:
-    /// - Existing movie ids get their metadata refreshed (poster, tagline, etc)
-    ///   without touching the chain or history.
-    /// - New ids get freshly generated chains and are marked as NEW.
-    /// - Local-only movies (verified offline seeds not in remote) are kept as long as
-    ///   they haven't opened yet OR the user has an open position on them.
     /// How far ahead a film is listed for trading (matches the data feed).
     nonisolated static let listingWindowDays = 90
     /// How far ahead the catalog is read, to catch date moves.
     nonisolated static let lookaheadDays = 400
 
+    /// Merge remote movies with the local catalog:
+    /// - Existing movie ids get their metadata and release date refreshed
+    ///   without touching the chain or history.
+    /// - New ids inside the listing window get freshly generated chains and
+    ///   are marked as NEW; titles taken off the Slate are never re-listed.
+    /// - Local-only movies are kept until they've opened and settled, and
+    ///   for as long as anyone holds an open position on them.
     @discardableResult
     private func merge(remote: [Movie], listUntil: Date) -> Set<String> {
         var byId: [String: Movie] = Dictionary(uniqueKeysWithValues: movies.map { ($0.id, $0) })
@@ -129,6 +130,7 @@ final class MarketService: ObservableObject {
         var remoteIds: Set<String> = []
         let heldMovieIds = Set(PortfolioService.shared.positions
             .filter { $0.isOpen }.map { $0.movieId })
+        let delisted = Self.delistedTitleKeys
 
         for r in remote {
             let id = byId[r.id] != nil ? r.id : (idByTitle[Movie.titleKey(r.title)] ?? r.id)
@@ -156,7 +158,8 @@ final class MarketService: ObservableObject {
                    let moved = byId[id] {
                     NotificationsService.shared.scheduleOpeningReminder(movie: moved)
                 }
-            } else if r.releaseDate <= listUntil {
+            } else if r.releaseDate <= listUntil,
+                      !delisted.contains(Movie.titleKey(r.title)) {
                 byId[r.id] = r
                 chainsById[r.id] = generateChain(for: r)
                 movieSentiment[r.id] = 1.0
@@ -171,7 +174,7 @@ final class MarketService: ObservableObject {
             if !m.isSettled { continue }
             byId.removeValue(forKey: id)
             chainsById.removeValue(forKey: id)
-            history = history.filter { !$0.key.hasPrefix(id) }
+            history = history.filter { !$0.key.hasPrefix(id + "_") }
             consensusHistory.removeValue(forKey: id)
         }
 
@@ -535,8 +538,10 @@ final class MarketService: ObservableObject {
         let held = Set(PortfolioService.shared.positions.filter(\.isOpen).map(\.movieId))
         let saved = Self.loadSavedCatalog()
         let savedKeys = Set(saved.map { Movie.titleKey($0.title) })
+        let delisted = Self.delistedTitleKeys
         let seeds = VerifiedMovieProvider.builtInSeed()
-            .filter { !savedKeys.contains(Movie.titleKey($0.title)) }
+            .filter { !savedKeys.contains(Movie.titleKey($0.title))
+                && !delisted.contains(Movie.titleKey($0.title)) }
         let catalog = (saved + seeds)
             .filter { !$0.isSettled || held.contains($0.id) }
             .sorted { $0.releaseDate < $1.releaseDate }
@@ -566,6 +571,28 @@ final class MarketService: ObservableObject {
                 ($0.side.rawValue, $0.strikeMillions) < ($1.side.rawValue, $1.strikeMillions)
             }
         }
+    }
+
+    /// Takes a film off the Slate for good: it turned out to have opened
+    /// already. Its title is remembered so no source can list it again.
+    func delist(movieId: String) {
+        guard let movie = movie(id: movieId) else { return }
+        var delisted = Self.delistedTitleKeys
+        delisted.insert(Movie.titleKey(movie.title))
+        UserDefaults.standard.set(Array(delisted), forKey: Self.delistedKey)
+
+        movies.removeAll { $0.id == movieId }
+        chains.removeValue(forKey: movieId)
+        history = history.filter { !$0.key.hasPrefix(movieId + "_") }
+        consensusHistory.removeValue(forKey: movieId)
+        movieSentiment.removeValue(forKey: movieId)
+        SentimentEngine.shared.prune(keeping: Set(movies.map(\.id)))
+        persistCatalog()
+    }
+
+    private static let delistedKey = "catalog.delistedTitles"
+    private static var delistedTitleKeys: Set<String> {
+        Set(UserDefaults.standard.stringArray(forKey: delistedKey) ?? [])
     }
 
     // MARK: - Saved catalog

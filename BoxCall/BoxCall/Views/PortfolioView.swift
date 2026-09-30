@@ -239,6 +239,14 @@ struct PositionRow: View {
                     .buttonStyle(.borderless)
                     .foregroundStyle(.orange)
                 }
+            } else if position.voided == true {
+                Text("Refunded — the film opened early in limited release")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("Closed before opening")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
         .padding(.vertical, 4)

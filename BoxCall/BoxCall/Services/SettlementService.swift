@@ -46,22 +46,22 @@ final class SettlementService: ObservableObject {
     func checkAndSettle() async {
         let portfolio = PortfolioService.shared
         let market = MarketService.shared
+        guard !market.movies.isEmpty else { return }
+
+        let actuals = await fetchActuals()
+        lastCheckAt = Date()
+        voidAlreadyOpened(actuals)
 
         let openMovieIds = Set(
             portfolio.positions
                 .filter { $0.isOpen }
                 .map { $0.movieId }
         )
-        guard !openMovieIds.isEmpty else { return }
-
         // Opened (trading locked) is enough: results can land Sunday.
         let settledMovies = market.movies.filter { movie in
             openMovieIds.contains(movie.id) && !movie.isTradingOpen
         }
         guard !settledMovies.isEmpty else { return }
-
-        let actuals = await fetchActuals()
-        lastCheckAt = Date()
 
         var count = 0
         for movie in settledMovies {
@@ -88,6 +88,23 @@ final class SettlementService: ObservableObject {
         if count > 0 {
             settledThisSession += count
             portfolio.refreshLeaderboard()
+        }
+    }
+
+    /// A listed film whose opening is already on file opened earlier than
+    /// listed — a limited release that goes wide later. Its result is
+    /// known, so it can't be traded: refund every open trade at cost and
+    /// take it off the Slate.
+    private func voidAlreadyOpened(_ actuals: [String: PublishedOpening]) {
+        for movie in MarketService.shared.movies {
+            guard let opening = actuals[movie.id] ?? actuals[Movie.titleKey(movie.title)],
+                  opening.predates(movie) else { continue }
+            let refund = PortfolioService.shared.voidMarket(movieId: movie.id)
+            MarketService.shared.delist(movieId: movie.id)
+            if refund > 0 {
+                NotificationsService.shared.notifyMarketVoided(movieId: movie.id,
+                                                               title: movie.title, refund: refund)
+            }
         }
     }
 
@@ -118,6 +135,16 @@ final class SettlementService: ObservableObject {
             // slack covers time zones.
             let earliest = Calendar.current.date(byAdding: .day, value: -1, to: movie.opensAt) ?? movie.opensAt
             return weekendOf >= earliest
+        }
+
+        /// This film opened before its listed date (limited, then wide).
+        /// Only a recent opening counts: an old film with the same title
+        /// is a different film.
+        func predates(_ movie: Movie) -> Bool {
+            guard let weekendOf, !belongs(to: movie),
+                  let window = Calendar.current.date(byAdding: .day, value: -120, to: movie.opensAt)
+            else { return false }
+            return weekendOf >= window
         }
     }
 
