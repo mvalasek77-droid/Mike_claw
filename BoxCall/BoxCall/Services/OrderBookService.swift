@@ -134,7 +134,8 @@ final class OrderBookService: ObservableObject {
                     multiplier: order.multiplier, quantity: order.quantity,
                     entryPremium: fillPrice, openedAt: Date(),
                     settledPayout: nil, actualOWMillions: nil,
-                    movieTitle: listed?.title, posterEmoji: listed?.posterEmoji
+                    movieTitle: listed?.title, posterEmoji: listed?.posterEmoji,
+                    genre: listed?.genre
                 )
                 PortfolioService.shared.appendPosition(position)
                 MarketService.shared.recordBuy(contractId: order.contractId,

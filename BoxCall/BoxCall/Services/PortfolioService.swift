@@ -95,6 +95,8 @@ final class PortfolioService: ObservableObject {
             u.membership = .free
             u.weeklyAllowance = Membership.free.weeklyAllowance
         }
+        // Exclusive icons go with the membership.
+        Task { await AppIconChoice.classic.apply() }
     }
 
     // MARK: - Trading
@@ -138,7 +140,8 @@ final class PortfolioService: ObservableObject {
             settledPayout: nil,
             actualOWMillions: nil,
             movieTitle: movie.title,
-            posterEmoji: movie.posterEmoji
+            posterEmoji: movie.posterEmoji,
+            genre: movie.genre
         ))
         MarketService.shared.recordBuy(contractId: contract.id, quantity: quantity)
         Haptics.trade()

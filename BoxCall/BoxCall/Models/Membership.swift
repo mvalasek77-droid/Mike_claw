@@ -2,7 +2,7 @@ import Foundation
 import SwiftUI
 
 /// Subscription plan. Paid plans add tools (early access, limit orders,
-/// stats) and a name badge — never extra Reel Coins, so
+/// stats, analytics, history export, app icons) and a name badge — never extra Reel Coins, so
 /// every player trades the same bankroll and profit, rank and the review
 /// spotlight stay a measure of skill.
 enum Membership: String, Codable, CaseIterable, Identifiable {
@@ -58,6 +58,16 @@ enum Membership: String, Codable, CaseIterable, Identifiable {
         }
     }
 
+    /// Mogul: win rate and P&L split by side and genre, average return,
+    /// best and worst trade.
+    var hasProAnalytics: Bool { self == .mogul }
+
+    /// Mogul: share the full trade history as a CSV file.
+    var canExportHistory: Bool { self == .mogul }
+
+    /// Mogul: choose an alternate home-screen icon.
+    var hasAlternateIcons: Bool { self == .mogul }
+
     /// SF Symbol badge shown next to the subscriber's handle.
     var badgeIcon: String? {
         switch self {
@@ -92,6 +102,9 @@ enum Membership: String, Codable, CaseIterable, Identifiable {
         case .mogul:
             return [
                 "Crown badge next to your name",
+                "Pro analytics: win rate and profit by side and genre, best and worst calls",
+                "Export your full trade history as a spreadsheet (CSV)",
+                "Exclusive app icons: Emerald, Midnight and Noir",
                 "Unlimited limit orders",
                 "Everything in Producer's Pass"
             ]

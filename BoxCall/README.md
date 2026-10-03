@@ -208,7 +208,7 @@ Subscriptions sell tools and a name badge. Trader ranks, leaderboard spots and t
 | **Free** | — | — | 1 limit order |
 | **Backstage** | $3.99/mo | ticket | 24-hour early access to new markets, 3 limit orders |
 | **Producer's Pass** | $9.99/mo | star | Portfolio performance stats, 10 limit orders |
-| **Mogul** | $24.99/mo | crown | Unlimited limit orders, plus everything in Producer's Pass |
+| **Mogul** | $24.99/mo | crown | Pro analytics (by side and genre, best/worst calls), CSV trade-history export, exclusive app icons, unlimited limit orders, plus everything in Producer's Pass |
 
 Implementation:
 - `Models/Membership.swift` — the four cases with pricing, perks, colors, product IDs

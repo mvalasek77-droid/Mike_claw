@@ -78,6 +78,13 @@ Ship-ready test matrix. Run through this before every App Store submission. Auto
 
 - [ ] Profile → Challenge friends: the share sheet opens with the App Store link. No codes, no coin rewards.
 
+## 9b · Mogul tools
+
+- [ ] Buy Mogul in the StoreKit sandbox. Portfolio shows a **Pro analytics** section: average return, best and worst call, and win rate and profit by side and by genre. Refunded trades and open trades aren't counted.
+- [ ] **Export trade history (CSV)** opens the share sheet with "BoxCall trades.csv". Open it in Numbers: one row per trade with status (open / settled / closed early / refunded).
+- [ ] Profile shows **App icon** with Classic, Emerald, Midnight and Noir. Picking one shows the iOS "You have changed the icon" alert and the home-screen icon changes.
+- [ ] Let the subscription lapse (or downgrade in StoreKit). The icon returns to Classic, and the Mogul sections disappear.
+
 ## 10 · Edge cases
 
 - [ ] Airplane mode: pull-to-refresh on Slate shows the "Refresh failed" footer but keeps the cached slate. No crash.

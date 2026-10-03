@@ -50,6 +50,9 @@ targets:
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        # Mogul's exclusive home-screen icons.
+        ASSETCATALOG_COMPILER_ALTERNATE_APP_ICON_NAMES: "AppIcon-Emerald AppIcon-Midnight AppIcon-Noir"
+        ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: NO
         ENABLE_PREVIEWS: YES
         DEVELOPMENT_ASSET_PATHS: '"BoxCall/Preview Content"'
   BoxCallWidget:

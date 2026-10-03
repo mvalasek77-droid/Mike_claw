@@ -19,6 +19,7 @@ struct ProfileView: View {
                     identityCard
                     AuthCard()
                     membershipCard
+                    if user.membership.hasAlternateIcons { AppIconPicker() }
                     tierProgressCard
                     statsRow
                     badgeShelf

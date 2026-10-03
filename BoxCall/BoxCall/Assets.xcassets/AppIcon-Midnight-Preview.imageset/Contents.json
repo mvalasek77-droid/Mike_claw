@@ -1,0 +1,12 @@
+{
+  "images": [
+    {
+      "filename": "AppIcon-Midnight-Preview.png",
+      "idiom": "universal"
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  }
+}

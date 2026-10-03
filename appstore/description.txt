@@ -19,7 +19,7 @@ Every player trades the same 1,000 RC weekly stake, so the leaderboard measures 
 
   Backstage — $3.99/mo — ticket badge, 24-hour early access to new markets, 3 limit orders
   Producer's Pass — $9.99/mo — star badge, portfolio performance stats, 10 limit orders
-  Mogul — $24.99/mo — crown badge, portfolio performance stats, unlimited limit orders
+  Mogul — $24.99/mo — crown badge, Pro analytics (win rate and profit by side and genre), trade-history export (CSV), exclusive app icons, unlimited limit orders, plus everything in Producer's Pass
 
 WHAT'S IN THE APP
 • Slate — every upcoming release with its live implied opening and consensus sparkline

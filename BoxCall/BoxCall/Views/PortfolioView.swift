@@ -22,6 +22,14 @@ struct PortfolioView: View {
                         performanceStats
                     }
                 }
+                if portfolio.user.membership.hasProAnalytics {
+                    Section("Pro analytics") {
+                        ProAnalyticsSection(positions: portfolio.positions)
+                        if portfolio.user.membership.canExportHistory, !portfolio.positions.isEmpty {
+                            ExportHistoryButton(positions: portfolio.positions)
+                        }
+                    }
+                }
                 if !book.openOrders.isEmpty {
                     let cap = portfolio.user.membership.maxLimitOrders
                     Section("Working limit orders (\(book.openOrders.count)/\(cap == .max ? "∞" : "\(cap)"))") {

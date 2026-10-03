@@ -65,7 +65,7 @@
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "Crown badge, stats, unlimited limit orders",
+              "description" : "Pro analytics, CSV export, app icons, unlimited orders",
               "displayName" : "Mogul",
               "locale" : "en_US"
             }
