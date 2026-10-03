@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
 
 // MARK: - Pro analytics
 
@@ -199,15 +200,29 @@ struct ProAnalyticsSection: View {
     }
 }
 
+/// The trade history as a shareable CSV file. The file is written only
+/// when the share sheet asks for it, not every time the view redraws.
+struct TradeHistoryExport: Transferable {
+    let positions: [Position]
+
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(exportedContentType: .commaSeparatedText) { export in
+            guard let url = TradeHistoryCSV.file(positions: export.positions) else {
+                throw CocoaError(.fileWriteUnknown)
+            }
+            return SentTransferredFile(url)
+        }
+    }
+}
+
 /// Share-sheet button for Mogul's trade-history export.
 struct ExportHistoryButton: View {
     let positions: [Position]
 
     var body: some View {
-        if let url = TradeHistoryCSV.file(positions: positions) {
-            ShareLink(item: url) {
-                Label("Export trade history (CSV)", systemImage: "square.and.arrow.up")
-            }
+        ShareLink(item: TradeHistoryExport(positions: positions),
+                  preview: SharePreview("BoxCall trades.csv")) {
+            Label("Export trade history (CSV)", systemImage: "square.and.arrow.up")
         }
     }
 }

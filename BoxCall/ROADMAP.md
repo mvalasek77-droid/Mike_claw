@@ -21,7 +21,7 @@ Six months. Grouped by quarter. Every item has an owner-facing "why".
 
 **Goal: D30 retention above 15%, average 3 trades/user/week.**
 
-- [ ] **Real APNs push server** — replace local notifications with server-driven pushes from the Monday settlement cron. Retention lift target: +30% D7.
+- [ ] **Real APNs push server** — replace local notifications with server-driven pushes when Sunday results publish. Retention lift target: +30% D7.
 - [ ] **Cloud sync live** — `/me` endpoint backed by Postgres. Positions, XP, badges follow you across devices.
 - [ ] **Deep links from every notification** — settlement push → Portfolio; badge push → Profile; opening reminder → Movie Detail.
 - [ ] **Season Oracle ceremony** — 12-week seasons resolve with the top-3 traders getting animated trophy reveals and a broadcast Feed post.

@@ -2,15 +2,15 @@ import Foundation
 import Combine
 
 /// Live market. Premium moves continuously as users and NPCs trade,
-/// plus periodic news events shock a movie's whole chain.
+/// plus the crowd's mood on each movie moves its whole chain.
 ///
 /// Pricing model per contract:
 ///   mark = basePremium × exp(demand / liquidity) × movieSentiment × (1 + micro-noise)
 ///
 /// Positive demand (net buys) drives mark up; negative (net sells) drops it.
 /// A single movie-wide sentiment multiplier moves ALL of a movie's strikes
-/// in one direction when a news event lands — bullish news lifts Calls
-/// and drops Puts; bearish news does the reverse.
+/// in one direction when the crowd's mood shifts — a bullish read lifts Calls
+/// and drops Puts; a bearish read does the reverse.
 @MainActor
 final class MarketService: ObservableObject {
     static let shared = MarketService()
@@ -275,7 +275,7 @@ final class MarketService: ObservableObject {
     }
 
     /// The current crowd-forecast opening. Base tracker × movie sentiment,
-    /// where sentiment is nudged by every buy/sell/news event on the movie.
+    /// where sentiment is nudged by every buy and sell on the movie.
     func impliedConsensus(for movieId: String) -> Double {
         guard let m = movie(id: movieId) else { return 0 }
         let s = movieSentiment[movieId] ?? 1.0

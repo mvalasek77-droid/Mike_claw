@@ -4,7 +4,8 @@ import Foundation
 ///
 /// - Friday: a movie opens and trading on it locks.
 /// - Sunday 00:00: the week's stake is taken back. Profit stays.
-/// - Monday 00:00: opening weekends settle and a fresh stake lands.
+/// - Sunday afternoon: opening weekends settle on the studios' estimate.
+/// - Monday 00:00: a fresh stake lands.
 ///
 /// A user who misses a week gets exactly one reset and one stake on
 /// next launch — never a stacked backlog.

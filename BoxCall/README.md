@@ -8,7 +8,7 @@ Open the app and you're standing under a marquee:
 
 - **A scrolling LED ticker** across the top streams live at-the-money CALL and PUT marks for every film now showing, framed by two rows of flickering theater bulbs.
 - **Opening Night hero** — the next film to open gets a full-bleed card with its poster, director, implied opening, and a ticking `DAYS : HRS : MIN : SEC` countdown.
-- **Weekend Recap** — the Monday after your positions settle, a velvet-red card summarizes wins, losses, net, and your biggest swing. If you came out ahead, confetti.
+- **Weekend Recap** — once your opening-weekend positions settle (Sunday), a velvet-red card summarizes wins, losses, net, and your biggest swing. If you came out ahead, confetti.
 - **Real upcoming films.** Fifteen studio-announced titles on the fall 2026 → summer 2027 calendar, each with its announced studio, release date, director, cast, and synopsis: *Practical Magic 2*, *Resident Evil*, *Verity*, *The Social Reckoning*, *Clayface*, *The Cat in the Hat*, *The Hunger Games: Sunrise on the Reaping*, *Focker-In-Law*, *Jumanji: Open World*, *Avengers: Doomsday*, *Dune: Part Three*, *Ice Age: Boiling Point*, *Narnia: The Magician's Nephew*, *Sonic the Hedgehog 4*, and *Star Wars: Starfighter*. The built-in provider filters out settled films on launch.
 - **Trailers in-app.** Every movie page plays the official trailer inline via a YouTube search-embed — no API key required.
 - **Real posters in 30 seconds.** Profile → *Turn on real posters* walks you through pasting a free TMDB key; the catalog re-fetches and every one-sheet blooms in. Key stays on-device.

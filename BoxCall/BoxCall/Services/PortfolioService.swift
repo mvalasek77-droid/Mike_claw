@@ -81,6 +81,8 @@ final class PortfolioService: ObservableObject {
             u.membership = new
             u.weeklyAllowance = new.weeklyAllowance
         }
+        // Exclusive icons go with Mogul, including on a move to a cheaper plan.
+        if !new.hasAlternateIcons { Task { await AppIconChoice.classic.apply() } }
         if isNewPurchase, new.isPaid, new != previous {
             RewardsService.shared.celebrate("Welcome to \(new.displayName)",
                                             subtitle: "Your badge and tools are live",
