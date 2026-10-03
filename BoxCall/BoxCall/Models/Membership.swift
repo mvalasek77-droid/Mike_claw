@@ -27,7 +27,7 @@ enum Membership: String, Codable, CaseIterable, Identifiable {
         case .free:           return "Free"
         case .backstage:      return "$3.99 / month"
         case .producersPass:  return "$9.99 / month"
-        case .mogul:          return "$24.99 / month"
+        case .mogul:          return "$14.99 / month"
         }
     }
 
