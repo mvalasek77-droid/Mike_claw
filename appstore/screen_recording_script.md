@@ -25,7 +25,7 @@ Apple wants one continuous recording on a **physical iPhone on the latest iOS**,
 | 9 | Positions | Show a settled position with its payout (record this after a Sunday settlement, or splice in a second clip) | Settlement |
 | 10 | Box Office, then Marquee | Scroll the profit leaderboard, then show the Featured critics spotlight on Marquee | Leaderboard + review spotlight |
 | 11 | Marquee | Open the ••• menu on another trader's post: show Report, Block, Not interested. Report one post. Open a comment and show the same menu | UGC moderation |
-| 12 | Profile › Upgrade | Show the paywall, buy Backstage with the sandbox account, show coins increase, tap Restore Purchases | Paid content |
+| 12 | Profile › Upgrade | Show the paywall, buy Backstage with the sandbox account, show the ticket badge appear next to your name and the limit-order count rise to 3 (coins stay the same), tap Restore Purchases | Paid content |
 | 13 | Profile | Tap Sign in with Apple, complete it, show "Signed in with Apple" | Login |
 | 14 | Profile | Tap Delete account and data › Delete. App returns to the age check | Account deletion |
 
