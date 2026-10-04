@@ -1,5 +1,5 @@
 {
-  "generated_for": "2026-10-04T09",
+  "generated_for": "2026-10-04T11",
   "posts": [
     {
       "community": {
@@ -12,16 +12,39 @@
       },
       "title": "Tips for a 5am toddler?",
       "body": "He's up before the sun. How do you bros keep your sanity?",
-      "score": 98,
+      "score": 150,
       "reactions": [],
       "my_reaction": null,
-      "awards": [
-        {
-          "kind": "champ",
-          "count": 2
-        }
-      ],
-      "id": "7fcbb535-9351-b648-c31a-7c0a4ecb0ebe",
+      "awards": [],
+      "id": "4810eea3-40e6-5224-72c5-2b7cda17c146",
+      "author": {
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
+      },
+      "image_url": null,
+      "comment_count": 30,
+      "created_at": "2026-10-04T08:42:52+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "1e27fcd8-c8ff-7cac-af7b-60a88268cbe1",
+        "name": "Garage Gearheads",
+        "slug": "cars",
+        "member_count": 141200,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/cars.png",
+        "is_joined": true
+      },
+      "title": "Finally finished the brake job",
+      "body": "New rotors, pads, fresh fluid. Pedal feel is night and day.",
+      "score": 78,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [],
+      "id": "e6cd2df5-73cd-436f-dbfd-62cd93682820",
       "author": {
         "id": "550c58e9-f006-03d7-e005-01cf109b1c20",
         "handle": "@coachmike",
@@ -30,64 +53,8 @@
         "bro_cred": 4200
       },
       "image_url": null,
-      "comment_count": 73,
-      "created_at": "2026-10-04T07:02:47+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": {
-        "id": "e6e12bde-c99f-f89a-5f96-3cfdd3839629",
-        "name": "Stoic Bros",
-        "slug": "philosophy",
-        "member_count": 22300,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/philosophy.png",
-        "is_joined": true
-      },
-      "title": "On discipline vs motivation",
-      "body": "Motivation gets you started. Discipline is what shows up at 5am.",
-      "score": 241,
-      "reactions": [],
-      "my_reaction": null,
-      "awards": [],
-      "id": "ddc12a8d-be3b-2806-abf7-b20452646e89",
-      "author": {
-        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
-        "handle": "@coachdave",
-        "display_name": "Dave",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
-        "bro_cred": 9300
-      },
-      "image_url": null,
-      "comment_count": 88,
-      "created_at": "2026-10-04T05:53:47+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": {
-        "id": "e6e12bde-c99f-f89a-5f96-3cfdd3839629",
-        "name": "Stoic Bros",
-        "slug": "philosophy",
-        "member_count": 22300,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/philosophy.png",
-        "is_joined": true
-      },
-      "title": "On discipline vs motivation",
-      "body": "Motivation gets you started. Discipline is what shows up at 5am.",
-      "score": 136,
-      "reactions": [],
-      "my_reaction": null,
-      "awards": [],
-      "id": "dc5a4a9b-77bb-4ea5-8cb5-ecbb7072973a",
-      "author": {
-        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
-        "handle": "@ironbro",
-        "display_name": "Marcus",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
-        "bro_cred": 4820
-      },
-      "image_url": null,
-      "comment_count": 109,
-      "created_at": "2026-10-04T04:31:47+00:00",
+      "comment_count": 27,
+      "created_at": "2026-10-04T10:38:52+00:00",
       "my_vote": 0
     },
     {
@@ -99,62 +66,85 @@
         "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/cars.png",
         "is_joined": true
       },
-      "title": "Manual or auto for a first project car?",
-      "body": "Want something I can wrench on cheaply. Thoughts?",
-      "score": 115,
+      "title": "Detailing Sunday",
+      "body": "Clay bar, two-stage polish, ceramic. Paint looks wet. Worth it.",
+      "score": 281,
       "reactions": [],
       "my_reaction": null,
-      "awards": [
-        {
-          "kind": "champ",
-          "count": 1
-        }
-      ],
-      "id": "6d26cad4-7a82-041d-5a1c-0ebf70eb6cee",
+      "awards": [],
+      "id": "c918302f-775b-c740-76a3-5241c205d083",
       "author": {
-        "id": "bb5a2bd9-5ff6-b2d4-8c47-662f9908097f",
-        "handle": "@rajlifts",
-        "display_name": "Raj",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/rajlifts.png",
-        "bro_cred": 3050
+        "id": "550c58e9-f006-03d7-e005-01cf109b1c20",
+        "handle": "@coachmike",
+        "display_name": "Coach Mike",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachmike.png",
+        "bro_cred": 4200
       },
       "image_url": null,
-      "comment_count": 81,
-      "created_at": "2026-10-04T05:19:47+00:00",
+      "comment_count": 69,
+      "created_at": "2026-10-04T09:43:52+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "ad1f28f2-deee-3630-ebff-760d7a720f9e",
+        "name": "Dad Mode",
+        "slug": "fatherhood",
+        "member_count": 58700,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fatherhood.png",
+        "is_joined": true
+      },
+      "title": "Tips for a 5am toddler?",
+      "body": "He's up before the sun. How do you bros keep your sanity?",
+      "score": 66,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [],
+      "id": "3204e6e5-86d7-65b5-c3d3-aeedec4afea7",
+      "author": {
+        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
+        "handle": "@newbro",
+        "display_name": "Sam",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
+        "bro_cred": 40
+      },
+      "image_url": null,
+      "comment_count": 2,
+      "created_at": "2026-10-04T08:07:52+00:00",
       "my_vote": 0
     },
     {
       "community": null,
       "title": null,
-      "body": "Just hit a year sober. Grateful for this crew.",
-      "score": 80,
+      "body": "Pickup basketball this Saturday at Riverside. Who's in?",
+      "score": 59,
       "reactions": [
         {
-          "kind": "respect",
-          "count": 13
-        },
-        {
           "kind": "strong",
-          "count": 37
+          "count": 28
         },
         {
-          "kind": "like",
-          "count": 42
+          "kind": "respect",
+          "count": 21
+        },
+        {
+          "kind": "lol",
+          "count": 16
         }
       ],
       "my_reaction": null,
       "awards": [],
-      "id": "030ed7af-ac1c-d287-4f33-0cb96b79c5b9",
+      "id": "0ff26005-ddc4-390f-09e0-296959a7529e",
       "author": {
-        "id": "43f16f34-9942-cb48-49d9-122dc9237e11",
-        "handle": "@leobuilds",
-        "display_name": "Leo",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/leobuilds.png",
-        "bro_cred": 760
+        "id": "550c58e9-f006-03d7-e005-01cf109b1c20",
+        "handle": "@coachmike",
+        "display_name": "Coach Mike",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachmike.png",
+        "bro_cred": 4200
       },
       "image_url": null,
-      "comment_count": 17,
-      "created_at": "2026-10-04T02:48:47+00:00",
+      "comment_count": 42,
+      "created_at": "2026-10-04T04:58:52+00:00",
       "my_vote": 0
     },
     {
@@ -168,21 +158,21 @@
       },
       "title": "Manual or auto for a first project car?",
       "body": "Want something I can wrench on cheaply. Thoughts?",
-      "score": 267,
+      "score": 146,
       "reactions": [],
       "my_reaction": null,
       "awards": [],
-      "id": "104686df-2da8-2776-4228-4e0ddda9bc3c",
+      "id": "28edb0b4-1e26-fd28-7e03-c341090dc001",
       "author": {
-        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
-        "handle": "@ironbro",
-        "display_name": "Marcus",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
-        "bro_cred": 4820
+        "id": "337023ca-f0d6-6b4b-335e-42aa37ae608b",
+        "handle": "@you",
+        "display_name": "You",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/you.png",
+        "bro_cred": 1280
       },
       "image_url": null,
-      "comment_count": 103,
-      "created_at": "2026-10-04T04:15:47+00:00",
+      "comment_count": 108,
+      "created_at": "2026-10-04T07:07:52+00:00",
       "my_vote": 0
     }
   ],
