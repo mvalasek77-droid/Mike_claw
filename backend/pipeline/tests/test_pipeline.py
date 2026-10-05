@@ -466,6 +466,20 @@ class TestBoxOffice:
         assert results[0].is_opening_weekend is True
         assert results[1].is_opening_weekend is False
 
+    def test_a_totals_table_below_the_chart_is_ignored(self):
+        page = NUMBERS_FIXTURE + (
+            "<table><tr><th>Movie</th><th>Gross</th></tr>"
+            "<tr><td>$32,618,776</td><td>2,940</td></tr></table>")
+        titles = [r.title for r in boxoffice.parse_chart(page, source="the-numbers")]
+        assert "$32,618,776" not in titles and titles[0] == "Resident Evil"
+
+    def test_a_row_whose_title_is_a_number_is_skipped(self):
+        page = ("<table><tr><th>Movie</th><th>Gross</th><th>Weeks</th></tr>"
+                "<tr><td>$32,618,776</td><td>$2,940</td><td>1</td></tr>"
+                "<tr><td>Verity</td><td>$32,618,776</td><td>1</td></tr></table>")
+        results = boxoffice.parse_chart(page, source="the-numbers")
+        assert [r.title for r in results] == ["Verity"]
+
     def test_a_page_without_a_header_row_yields_nothing(self):
         assert boxoffice.parse_chart("<table><tr><td>1</td></tr></table>", source="x") == []
 
@@ -729,6 +743,14 @@ class TestActualsHistory:
         actuals = self._collect(monkeypatch, [self._opening("Resident Evil", 61.0, estimate=False)],
                                 previous=previous)
         assert actuals["seed_resident_evil"]["domesticOpeningMillions"] == 60.1
+
+    def test_a_stored_row_titled_with_a_gross_is_dropped(self, monkeypatch):
+        previous = {"title:32-618-776": {"title": "$32,618,776", "domesticOpeningMillions": 0.0,
+                                         "weekendOf": "2026-10-02"},
+                    "title:verity": {"title": "Verity", "domesticOpeningMillions": 32.62,
+                                     "weekendOf": "2026-10-02"}}
+        actuals = self._collect(monkeypatch, [], previous=previous)
+        assert list(actuals) == ["title:verity"]
 
     def test_same_title_on_a_later_weekend_is_a_new_film(self, monkeypatch):
         previous = {"title:the-mummy": {"title": "The Mummy", "domesticOpeningMillions": 12.0,

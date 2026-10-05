@@ -63,6 +63,8 @@ struct BoxCallApp: App {
                 if phase == .active {
                     portfolio.applyWeeklyCycle()
                     Task { await settlement.checkAndSettle() }
+                } else if phase == .background {
+                    BackgroundRefresh.schedule()
                 }
             }
             .onReceive(weeklyTick) { _ in
@@ -84,6 +86,10 @@ struct BoxCallApp: App {
             .environmentObject(coordinator)
             .environmentObject(store)
             .environmentObject(auth)
+        }
+        // Sunday results settle even when the app isn't opened.
+        .backgroundTask(.appRefresh(BackgroundRefresh.identifier)) {
+            await BackgroundRefresh.run()
         }
     }
 }

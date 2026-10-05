@@ -340,7 +340,10 @@ def collect_actuals(
     aren't in the catalog are still published by title, because the
     catalog drops a film the moment it opens.
     """
-    actuals = dict(previous or {})
+    # Drop rows a chart's totals line put there before the parser knew
+    # better: a film title has letters, a gross like "$32,618,776" doesn't.
+    actuals = {k: v for k, v in (previous or {}).items()
+               if re.search(r"[^\W\d_]", v.get("title", ""))}
     try:
         with httpx.Client(
             headers={"User-Agent": boxoffice.USER_AGENT},

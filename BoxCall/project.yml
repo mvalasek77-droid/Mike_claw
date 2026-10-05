@@ -18,6 +18,14 @@ targets:
   BoxCall:
     type: application
     platform: iOS
+    info:
+      path: BoxCall/Info.plist
+      properties:
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        # Background refresh settles Sunday results while the app is closed.
+        UIBackgroundModes: [fetch]
+        BGTaskSchedulerPermittedIdentifiers: [com.boxcall.app.settle]
     sources:
       - path: BoxCall
         excludes:

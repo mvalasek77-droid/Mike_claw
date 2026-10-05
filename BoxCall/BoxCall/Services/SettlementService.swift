@@ -7,7 +7,8 @@ import Foundation
 /// The Numbers as fallback) hourly on Sunday and publishes every opening
 /// in `actuals.json`. The first figure published for a film is frozen, so
 /// every player settles on the same number. The app checks on launch, on
-/// returning to the foreground, and every 15 minutes while open.
+/// returning to the foreground, every 15 minutes while open, and when iOS
+/// wakes it for background refresh (see `BackgroundRefresh`).
 ///
 /// Positions wait for the reported number — settling early on a guess
 /// would permanently skew the profit leaderboard. Only if no number has

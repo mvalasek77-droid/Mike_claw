@@ -116,15 +116,32 @@ def _find(headers: list[str], *names: str, exclude: tuple[str, ...] = ()) -> int
     return None
 
 
+_TABLE = re.compile(r"<table[^>]*>(.*?)</table>", re.DOTALL | re.IGNORECASE)
+
+
 def parse_chart(page: str, *, source: str, friday: dt.date | None = None) -> list[OpeningResult]:
-    """Rows of one weekend chart, located by header names."""
+    """Rows of one weekend chart, located by header names.
+
+    Chart pages carry other tables too (weekend totals, sidebars). Only
+    the first table whose header names a title and a gross is read, so a
+    totals row can never be taken for a film.
+    """
+    for table in _TABLE.findall(page) or [page]:
+        results = _parse_table(table, source=source, friday=friday)
+        if results is not None:
+            return results
+    return []
+
+
+def _parse_table(page: str, *, source: str, friday: dt.date | None) -> list[OpeningResult] | None:
+    """The chart rows in one table, or None when it isn't the chart."""
     rows = [[(kind.lower(), _text(body)) for kind, body in _CELL.findall(row)]
             for row in _ROW.findall(page)]
 
     header_index = next((i for i, cells in enumerate(rows)
                          if cells and any(kind == "h" for kind, _ in cells)), None)
     if header_index is None:
-        return []
+        return None
     headers = [text for _, text in rows[header_index]]
 
     title_col = _find(headers, "release", "movie", "title")
@@ -133,7 +150,7 @@ def parse_chart(page: str, *, source: str, friday: dt.date | None = None) -> lis
     weeks_col = _find(headers, "weeks", "week", exclude=("change", "new this"))
     estimate_col = _find(headers, "estimated")
     if title_col is None or gross_col is None:
-        return []
+        return None
 
     weekend_of = friday.isoformat() if friday else ""
     results: list[OpeningResult] = []
@@ -143,7 +160,10 @@ def parse_chart(page: str, *, source: str, friday: dt.date | None = None) -> lis
             continue
         title = values[title_col]
         gross = _parse_gross(values[gross_col])
-        if not title or gross is None or gross <= 0:
+        # A film title has letters; "$32,618,776" or "54" is a totals cell.
+        if not re.search(r"[^\W\d_]", title) or title.lstrip().startswith("$"):
+            continue
+        if gross is None or gross <= 0:
             continue
 
         def column(index: int | None) -> int | None:
