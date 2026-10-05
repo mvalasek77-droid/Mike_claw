@@ -48,8 +48,8 @@ struct LeaderboardEntry: Identifiable, Codable, Hashable {
     let id: String
     let handle: String
     let tier: Tier
-    /// Total realized trading profit — the ranking metric. Stakes,
-    /// subscription bonuses never count.
+    /// Total realized trading profit — the ranking metric. The weekly
+    /// stake never counts, and subscriptions never add coins.
     let profit: Double
     let weeklyPnL: Double
     let winRate: Double

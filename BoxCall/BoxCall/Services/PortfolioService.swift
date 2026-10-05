@@ -52,7 +52,7 @@ final class PortfolioService: ObservableObject {
     }
 
     private static func freshUser() -> User {
-        // Every account starts identical. Paid tiers layer bonuses on top.
+        // Every account starts identical, and paid tiers never add coins.
         User(
             handle: "you",
             reelCoins: StartingGrant.reelCoins,
@@ -355,7 +355,7 @@ final class PortfolioService: ObservableObject {
     }
 
     /// Ranked by total trading profit (`lifetimePnL`). The weekly reset
-    /// and subscription bonuses never move it, so the top
+    /// and subscriptions never move it, so the top
     /// spot — and the homepage review spotlight — can only be won by trading.
     func refreshLeaderboard(now: Date = Date()) {
         let settled = positions.filter { !$0.isOpen && $0.voided != true }

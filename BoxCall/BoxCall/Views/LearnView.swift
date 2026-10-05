@@ -168,7 +168,7 @@ struct TheBigIdeaSection: View {
                 Text("The 30-second version")
                     .font(.caption.weight(.bold))
                     .foregroundStyle(.orange)
-                Text("Most movies open on a Friday. By Sunday afternoon the studios report the number — say, **$92M for Toy Story 5**.")
+                Text("Most movies open on a Friday. By Sunday afternoon the studios report the number — say, **$92M for a big animated sequel**.")
                     .font(.callout)
                 Text("BoxCall lets you place a friendly bet before that number comes in.")
                     .font(.callout)
@@ -192,7 +192,7 @@ struct TheBigIdeaSection: View {
             // Concrete analogy — a friend making the same bet at a bar.
             VStack(alignment: .leading, spacing: 6) {
                 Text("Like this:").font(.caption.weight(.bold)).foregroundStyle(.secondary)
-                Text("Your friend bets you \\$5 that Avengers: Doomsday opens above \\$180M. If it opens at \\$200M, you owe him \\$5. If it opens at \\$150M, he owes you \\$5. BoxCall is that, times ten movies, on your phone, in play-money.")
+                Text("A friend bets you \\$5 that the next Avengers movie opens above \\$180M. If it opens at \\$200M, you owe them \\$5. If it opens at \\$150M, they owe you \\$5. BoxCall is that, for every wide release on the calendar, on your phone, in play money.")
                     .font(.callout)
             }
             .padding(12)
@@ -224,7 +224,7 @@ struct CallSection: View {
             Text("Green area = profit. Red area = loss. Orange dashed line is your strike. Blue dashed line is your break-even.")
                 .font(.caption2).foregroundStyle(.secondary)
             WorkedExample(
-                title: "Example — Dune: Part Three (consensus $85M)",
+                title: "Example — a big sci-fi sequel (consensus $85M)",
                 lines: [
                     ("You buy",         "10 Calls at $85M strike"),
                     ("Premium (each)",  "12 RC"),
@@ -252,7 +252,7 @@ struct PutSection: View {
             PayoffChart(side: .put, strike: 40, premium: 6, multiplier: 1)
                 .padding(.top, 4)
             WorkedExample(
-                title: "Example — Verity (consensus $24M)",
+                title: "Example — a mid-budget thriller (consensus $24M)",
                 lines: [
                     ("You buy",         "5 Puts at $22M strike"),
                     ("Premium (each)",  "3.40 RC"),
@@ -274,7 +274,7 @@ struct StrikeSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             LearnHeader(index: 4, title: LearnSection.strike.title)
-            LearnParagraph("The strike is the dividing line between profit and loss. Every movie's chain has ten strikes — five above and five below the current consensus opening.")
+            LearnParagraph("The strike is the dividing line between profit and loss. Every movie's chain has five strikes, spaced about 10% of the consensus apart: two below it, one right at it, and two above. Each strike trades as both a Call and a Put.")
             LearnParagraph("Picking the strike IS the game. Two things move in opposite directions:")
             HStack(alignment: .top, spacing: 10) {
                 Column(head: "Deep ITM strike",
@@ -304,10 +304,10 @@ struct PremiumSection: View {
             LearnParagraph("The premium is the cost per contract — what you pay up front. Three things drive it:")
             bullet("Intrinsic value", "The payoff the contract would produce if the movie opened at today's consensus. In-the-money strikes are more expensive.")
             bullet("Time to expiry (DTE)", "The further out the release date, the more time for things to change — so options cost more. Premiums decay as the release approaches (real options traders call this theta).")
-            bullet("Implied volatility (IV)", "How wide the range of plausible outcomes is. A $6M A24 indie has 70% IV because it could triple or bomb. A Marvel sequel has 22% IV — the outcome is more predictable. High IV = more expensive premiums on both Call AND Put.")
-            FormulaBox(title: "Rough pricing model used in the mock chain",
+            bullet("Implied volatility (IV)", "How wide the range of plausible outcomes is. A small indie can carry around 70% IV because it could triple or bomb. A big franchise sequel sits closer to 20% — the outcome is more predictable. High IV = more expensive premiums on both Call AND Put.")
+            FormulaBox(title: "How every chain is priced",
                        formula: "premium ≈ intrinsic + consensus × IV × √(DTE/30) × exp(-|moneyness| × 1.8) × 0.5")
-            LearnParagraph("In a live version, premiums come from an order book — the marginal buyer sets the price, and it moves in real time as tracking updates, reviews land, and presales roll in.")
+            LearnParagraph("That's the starting price. From there the live market moves it: trades, the crowd's mood on the movie, and the desk's bids and asks, covered in the next two sections.")
         }
     }
 
@@ -392,7 +392,7 @@ struct TheDeskSection: View {
             LearnParagraph("Whichever agent is most willing to trade sets the price. Nothing special-cases a 'volatile' state — when sentiment splits the agents, the spread widens on its own, and when two of them cross, the market prints tight because they would have traded with each other.")
 
             bullet("Watch the desk live.",
-                   "Open any contract's Trade Sheet and tap through to the Trading Desk. You get the crowd gauge, every agent's current market, the reason each one gives in plain English, and the stream of chatter that moved them.")
+                   "Open any contract's Trade Sheet and tap through to the Trading Desk. You get the crowd gauge, every agent's current market, the reason each one gives in plain English, and a \"What moved it\" list of the real inputs: trailer and mention data, reviews, Hot Takes and trades.")
             bullet("Trade when the desk is deep.",
                    "The spread meter grades every market from Deep to Fractured. Entering a Fractured market and exiting it later can cost more than the move you were right about.")
             bullet("Your own trades feed it.",
@@ -476,7 +476,7 @@ struct LosingCoinsSection: View {
 
             LearnParagraph("Every week follows the box office. Friday: the movie opens and trading on it locks. Sunday at 12:00 AM (your local time): your weekly stake is taken back and you keep any profit above it. Sunday afternoon: studios report the weekend, opening-weekend trades settle and winners are paid. Monday at 12:00 AM: every account gets a fresh stake.")
             LearnParagraph("Example: you start the week with a 1,000 RC stake and finish Saturday at 1,350 RC. Sunday the 1,000 goes back and you keep 350. Monday your 1,000 stake returns — 1,350 again. If you'd lost it all, Monday still puts you back at 1,000.")
-            LearnParagraph("Trades still running on Sunday — this weekend's opener, or a movie that hasn't opened yet like Avengers: Doomsday — are never closed by the reset. If part of your stake is riding on one, that trade pays the stake back out of its winnings when it settles or you sell it, and you keep everything above that. If it loses, nothing is owed. Unfilled limit orders are cancelled and refunded just before the reset.")
+            LearnParagraph("Trades still running on Sunday — this weekend's opener, or a movie that hasn't opened yet — are never closed by the reset. If part of your stake is riding on one, that trade pays the stake back out of its winnings when it settles or you sell it, and you keep everything above that. If it loses, nothing is owed. Unfilled limit orders are cancelled and refunded just before the reset.")
 
             HStack(spacing: 10) {
                 resetBullet("1,000", "Every player's weekly stake — free or paid", .orange)
@@ -496,7 +496,7 @@ struct LosingCoinsSection: View {
                 Text("This is not real money.")
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(.orange)
-                Text("Reel Coins are play-money. They can't be bought as balance (only via subscription bonuses), can't be redeemed for cash, and can't be transferred. Losing them costs nothing but time and pride. Winning them earns you status.")
+                Text("Reel Coins are play-money. They can't be bought (subscriptions never add coins), can't be redeemed for cash, and can't be transferred. Losing them costs nothing but time and pride. Winning them earns you status.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             .padding(12)
@@ -576,7 +576,7 @@ struct MultiplierSection: View {
             LearnParagraph("Every contract has a multiplier — the number of Reel Coins each dollar of intrinsic value converts to.")
             FormulaBox(title: "Default multiplier",
                        formula: "1 RC per $1M of intrinsic value")
-            LearnParagraph("A Call at strike $12M that settles at $18M produces $6M intrinsic × 1 = 6 RC per contract. Multiply by your quantity. Future \"boosted\" markets (e.g. season finales) may run at 2× or 3× to spice up rare high-visibility releases.")
+            LearnParagraph("A Call at strike $12M that settles at $18M produces $6M intrinsic × 1 = 6 RC per contract. Multiply by your quantity.")
         }
     }
 }
