@@ -38,10 +38,14 @@ final class PortfolioFlowTests: XCTestCase {
         try portfolio.buy(contract: contract, quantity: 10)
         let cost = contract.premium * 10
 
-        let actual = contract.strikeMillions + 50
+        // Far enough above the strike to beat the premium on any film the
+        // live catalog offers (a deep in-the-money Call can cost 80+ RC).
+        let beat = contract.premium / contract.multiplier + 50
+        let actual = contract.strikeMillions + beat
         portfolio.settle(movieId: contract.movieId, actualMillions: actual)
 
-        let payout = 50 * contract.multiplier * 10
+        let payout = beat * contract.multiplier * 10
+        XCTAssertGreaterThan(payout - cost, 0)
         XCTAssertEqual(portfolio.user.reelCoins, 1_000 - cost + payout, accuracy: 0.001)
         XCTAssertEqual(portfolio.user.lifetimePnL, payout - cost, accuracy: 0.001)
         XCTAssertEqual(portfolio.user.bestProfit ?? 0, payout - cost, accuracy: 0.001)
@@ -155,8 +159,10 @@ final class PortfolioFlowTests: XCTestCase {
         XCTAssertEqual(portfolio.user.reelCoins, 1_000, accuracy: 0.001)
         XCTAssertEqual(portfolio.user.stakeOwed ?? 0, cost, accuracy: 0.001)
 
-        let payout = 100 * contract.multiplier * Double(quantity)
-        portfolio.settle(movieId: contract.movieId, actualMillions: contract.strikeMillions + 100)
+        // A clear win whatever the film: beats the premium by $100M.
+        let beat = contract.premium / contract.multiplier + 100
+        let payout = beat * contract.multiplier * Double(quantity)
+        portfolio.settle(movieId: contract.movieId, actualMillions: contract.strikeMillions + beat)
 
         XCTAssertEqual(portfolio.user.reelCoins, 1_000 + payout - cost, accuracy: 0.001,
                        "The trade repays the stake it held; profit above that is kept")
