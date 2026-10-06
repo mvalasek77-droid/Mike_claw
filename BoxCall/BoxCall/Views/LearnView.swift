@@ -57,7 +57,7 @@ enum LearnSection: String, CaseIterable, Identifiable {
         case .theDesk:      return "The desk — bid, ask, and social sentiment"
         case .settlement:   return "Opening weekend & settlement"
         case .losingCoins:  return "Losing coins — what actually happens"
-        case .closeEarly:   return "Closing early at the mark"
+        case .closeEarly:   return "Closing early"
         case .multiplier:   return "Multiplier"
         case .rewards:      return "What you win"
         case .glossary:     return "Glossary"
@@ -332,7 +332,7 @@ struct LiveMarketSection: View {
             bullet("Buys push the mark up.",
                    "Every contract you buy adds to the demand imbalance for that strike. The next tick, the mark reprices higher. Slippage is small when demand is small, larger when the whole crowd piles into one strike.")
             bullet("Sells push the mark down.",
-                   "Closing a position at the mark removes demand and drops the price for the next buyer.")
+                   "Selling a position removes demand and drops the price for the next buyer.")
             bullet("Mood moves the whole chain.",
                    "Each movie has a sentiment multiplier fed by trade flow, Hot Takes, reviews and the data feed's crowd signals. When it rises, every Call mark goes up and every Put mark goes down; when it falls, the reverse. The Trading Desk's \"What moved it\" list shows the real inputs.")
             bullet("Market makers buy support, sell resistance.",
@@ -459,7 +459,7 @@ struct LosingCoinsSection: View {
             LossScenarioCard(
                 number: 2,
                 title: "You close early at a worse mark.",
-                explanation: "You bought a Put at 3.40 RC. Reviews came in strong, the movie's implied consensus jumped, and the mark on your Put dropped to 1.20 RC. You close to cut your losses: you get back 1.20 × 10 = 12 RC. Your loss is 22 RC (the difference), not the full 34 RC premium.",
+                explanation: "You bought a Put at 3.40 RC. Reviews came in strong, the movie's implied consensus jumped, and the bid on your Put dropped to 1.20 RC. You close to cut your losses: you get back 1.20 × 10 = 12 RC. Your loss is 22 RC (the difference), not the full 34 RC premium.",
                 verdict: "Closing early lets you cap losses partway through — a fixed loss beats an uncertain one when news moves against you."
             )
             LossScenarioCard(
@@ -550,7 +550,7 @@ struct CloseEarlySection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             LearnHeader(index: 10, title: LearnSection.closeEarly.title)
-            LearnParagraph("You don't have to hold until settlement. Every open position has a Close button that sells at the current mark price.")
+            LearnParagraph("You don't have to hold until settlement. Every open position has a Close button that sells to the desk at its current bid — a little below the mark, by the spread.")
             bullet("Take profit early", "If tracking spikes and your Call's mark doubles, you can lock in the gain without waiting for opening weekend to actually deliver.")
             bullet("Cut losses",         "If the movie's buzz collapses (bad reviews, marketing disaster) and your position is underwater, close early rather than eating the full premium.")
             bullet("Free up Reel Coins", "Closing releases the coins you tied up, so you can redeploy into a hotter market.")
@@ -625,7 +625,8 @@ struct GlossarySection: View {
         ("Time value",       "The part of the premium beyond intrinsic — pays for optionality. Decays as opening day approaches."),
         ("IV (Implied Vol)", "How wide the plausible range of outcomes is. Higher IV → higher premiums."),
         ("DTE",              "Days to expiry — days until the movie opens."),
-        ("Mark",             "The current mid-price for a contract. What you'd get if you closed right now."),
+        ("Mark",             "The current mid-price for a contract — halfway between the bid and the ask."),
+        ("Bid / Ask",        "The bid is what you get when you sell; the ask is what you pay when you buy. The gap is the spread."),
         ("Open interest",    "How many contracts are outstanding on a line in BoxCall's simulated market."),
         ("Moneyness",        "How far your strike is from consensus. ITM = in-the-money (already profitable). OTM = out-of-the-money (needs movement)."),
         ("Consensus",        "The current crowd/tracker estimate of opening weekend. The chain is built around it."),

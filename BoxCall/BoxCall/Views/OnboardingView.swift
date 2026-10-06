@@ -171,11 +171,11 @@ struct OnboardingView: View {
                         .foregroundStyle(.secondary)
                     HStack {
                         Image(systemName: "checkmark.seal.fill").foregroundStyle(.green)
-                        Text("Resident Evil opened at $60.1M").font(.subheadline.weight(.semibold))
+                        Text("Resident Evil opened at $60.15M").font(.subheadline.weight(.semibold))
                     }
-                    Text("A 5-contract CALL at $40M finished $20.1M in the money.")
+                    Text("A 5-contract CALL at $40M finished $20.15M in the money.")
                         .font(.caption).foregroundStyle(.secondary)
-                    mockLine("Payout", "+100.50 RC", valueColor: .green)
+                    mockLine("Payout", "+100.75 RC", valueColor: .green)
                 }
             }
         }
@@ -308,7 +308,8 @@ struct OnboardingView: View {
     }
 
     /// A real contract on the soonest film: the CALL strike nearest the
-    /// market's prediction, priced at its current premium for 5 contracts.
+    /// market's prediction, priced at the desk's ask (what a buy fills at)
+    /// for 5 contracts.
     private var exampleTrade: (emoji: String, title: String, strike: Int, cost: Double) {
         guard let film = tourFilms.first else { return ("🎬", "Next week's opener", 30, 22.50) }
         let implied = market.impliedConsensus(for: film.id)
@@ -316,7 +317,8 @@ struct OnboardingView: View {
             .filter { $0.side == .call }
             .min { abs($0.strikeMillions - implied) < abs($1.strikeMillions - implied) }
         guard let call else { return (film.posterEmoji, film.title, Int(implied.rounded()), 22.50) }
-        return (film.posterEmoji, film.title, Int(call.strikeMillions), call.premium * 5)
+        let ask = market.ask(contractId: call.id)
+        return (film.posterEmoji, film.title, Int(call.strikeMillions), (ask > 0 ? ask : call.premium) * 5)
     }
 
     // MARK: - Slide scaffolding
