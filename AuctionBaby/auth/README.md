@@ -25,6 +25,10 @@ npx wrangler d1 create auctionbaby-users
 # 2. Apply the schema.
 npx wrangler d1 execute auctionbaby-users --file=schema.sql
 
+#    schema.sql is the full current schema. Do NOT also run migrations/ on a
+#    fresh database — they ALTER columns schema.sql already has and will fail
+#    on duplicates. Migrations are only for databases created before them.
+
 # 3. Set the session-signing secret (any long random string).
 npx wrangler secret put SESSION_SECRET
 
@@ -35,6 +39,21 @@ npx wrangler deploy --env staging       # staging (repeat step 1-3 with --env st
 
 # 5. Paste the deployed URL into Config/Secrets.xcconfig as AB_AUTH_URL, rebuild the app.
 ```
+
+### Local development
+
+```bash
+npx wrangler d1 execute auctionbaby-users --local --file=schema.sql   # schema only, no migrations
+printf 'SESSION_SECRET=%s\n' "$(openssl rand -hex 24)" >> .dev.vars  # gitignored
+npx wrangler dev
+```
+
+`wrangler dev` reads secrets from `.dev.vars`, not from shell environment
+variables — without `SESSION_SECRET` there, every authenticated route returns
+500. If you also run the matching Worker locally, its `.dev.vars` needs the
+same `SESSION_SECRET`. Local Miniflare does not enforce Cloudflare's CPU or
+WebCrypto limits (e.g. the PBKDF2 iteration cap), so a green local run does
+not prove a crypto change works in production — confirm with `wrangler tail`.
 
 ## Sessions: a note on statelessness
 
