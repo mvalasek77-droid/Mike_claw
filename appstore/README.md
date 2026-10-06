@@ -20,73 +20,71 @@ Everything App Store Connect needs.
 | subtitle.txt | 30 | 25 |
 | promotional_text.txt | 170 | 146 |
 | keywords.txt | 100 | 98 |
-| review_notes.txt | 4000 | 3948 |
+| review_notes.txt | 4000 | 3977 |
 
 Keywords leave out words already in the name and subtitle (movie, box office,
 opening weekend): Apple indexes those, so repeating them wastes characters.
 
-## Submission checklist (answers Apple's Guideline 2.1 request)
+## How to respond to Apple (Guideline 2.1 – Information Needed)
 
-Status as of Oct 3, 2026. Code is on `claude/movie-betting-app-hspuu3`, and CI
-(build plus all unit and UI tests on an iPhone simulator) passes.
+Status as of Oct 6, 2026. Code is on `claude/movie-betting-app-hspuu3`, and CI
+(the build plus every unit and UI test on an iPhone simulator) passes.
 
-### Done in the repo
+Apple asked for six things: (1) a screen recording, (2) the app's purpose and
+audience, (3) how to use it, (4) external services, (5) regional differences,
+and (6) regulated-industry material. Answers 2–6 are written in
+`review_notes.txt`; the recording is yours to shoot.
 
-- [x] Written answers 2–6 in `review_notes.txt`: purpose and audience, how to use
-      it (no login needed), external services, no regional differences, not a
-      regulated industry
-- [x] Recording shot list in `screen_recording_script.md`
-- [x] App Store description, promotional text, What's New, keywords, rating notes
-- [x] Screenshot storyboard in `screenshots.md`
+### Already done in the repo
+
+- [x] Answers 2–6 in `review_notes.txt` (3,977 of 4,000 characters)
+- [x] Recording template with this week's dates in `screen_recording_script.md`
+- [x] Description, promotional text, What's New, keywords, age-rating notes, screenshot storyboard
 - [x] Subscription descriptions in `../BoxCall/BoxCall/Products.storekit`
-- [x] No features that don't work and no false claims: custom markets, fake
-      followers and likes, and invented news are removed, and simulated traders
-      are marked SIM
-- [x] Mogul at $14.99 with Pro analytics, CSV export and exclusive app icons
-- [x] Account deletion: Profile › Delete account and data
-- [x] Reporting and blocking on every post, comment and review
-- [x] Data feed refreshes on schedule; results settle on Sunday
+- [x] Tutorial, store copy and review notes match what the app does
+- [x] Account deletion, plus Report / Block / Not interested on every post, comment and review
+- [x] Sunday results settle automatically, including in the background
 
-### Build and test (you, on a Mac)
+### Step 1 — Build (Mac)
 
-- [ ] Set `CURRENT_PROJECT_VERSION` to 2 in `../BoxCall/project.yml`, run `xcodegen generate`
+- [ ] In `../BoxCall/project.yml` set `CURRENT_PROJECT_VERSION` to 2 (one higher than the last upload), then run `xcodegen generate`
 - [ ] Xcode › Product › Archive › Distribute App › App Store Connect › Upload
-- [ ] Install from TestFlight on a physical iPhone and test:
-  - [ ] Tour, buying and closing trades, quitting and reopening the app
-  - [ ] Sandbox purchase of each plan, then Restore
-  - [ ] Mogul: Pro analytics, CSV export, switching the app icon
-  - [ ] Sign in with Apple, then Delete account
-  - [ ] Notifications, widgets, Watch app
+- [ ] Wait for the build to finish processing in App Store Connect › TestFlight
 
-### Apple's request
+### Step 2 — Test on your iPhone (TestFlight)
 
-- [ ] **1. Screen recording** on a physical iPhone running the latest iOS,
-      starting from tapping the app icon (follow `screen_recording_script.md`):
-  - [ ] Normal flow: age check, tour, a Call, a Put, Positions, Close
-  - [ ] Sign in with Apple and account deletion
-  - [ ] Report, Block and Not interested on a post and a comment
-  - [ ] Paywall, a sandbox purchase and Restore
-  - [ ] A settled trade (buy before a Friday opening, record after Sunday)
-- [ ] **2–6.** Fill in the contact line at the bottom of `review_notes.txt`
-- [ ] Reply to Apple's message with the full text of `review_notes.txt` plus the video
-- [ ] Paste the same text into the version's App Review Information › Notes
-- [ ] Leave "Sign-in required" unchecked; no demo account is needed
+- [ ] Tour, buy a Call and a Put, Close one, force-quit and reopen
+- [ ] Sandbox purchase of each plan, then Restore purchases
+- [ ] Mogul: Pro analytics, CSV export, switching the app icon
+- [ ] Sign in with Apple, notifications, widget, Watch app
+- [ ] Hold a trade over a weekend and check it settles with a payout notification
 
-### App Store Connect
+### Step 3 — Record (follow `screen_recording_script.md`)
 
-- [ ] Mogul Monthly: set the price to **$14.99** and the description to
-      "Pro analytics, CSV export, app icons, unlimited orders"
+- [ ] Session A, any day before Thu Oct 8 midnight: launch → age check → tour → Call → Put → Positions → Close → reopen → leaderboard → moderation → paywall and sandbox purchase → Restore → Sign in with Apple
+- [ ] Session B, Sunday Oct 11 after about 3 PM ET: the settled trade, then Delete account and data
+- [ ] Join the clips without cutting steps 1–3; keep the file under 500 MB
+
+### Step 4 — Fill in and send
+
+- [ ] Replace `[YOUR NAME] - [YOUR EMAIL] - [YOUR PHONE]` at the bottom of `review_notes.txt` (keep it under 4,000 characters)
+- [ ] App Store Connect › your app › App Review › open Apple's message › Reply: paste all of `review_notes.txt` and attach the video
+- [ ] Paste the same text into your version › App Review Information › Notes
+- [ ] Leave "Sign-in required" unchecked: no demo account is needed
+- [ ] Select the new build (build 2) on the version page
+
+### Step 5 — App Store Connect listing
+
+- [ ] Mogul Monthly: price **$14.99**, description "Pro analytics, CSV export, app icons, unlimited orders"
 - [ ] Backstage and Producer's Pass descriptions: copy from `Products.storekit`
-- [ ] Attach all three subscriptions to this version (Ready to Submit)
-- [ ] Retake screenshots on the new build (6.7" 1290×2796 and 6.1" 1179×2556):
-      the real app in use, with no news ticker, followers or custom markets
-- [ ] Paste the description, promotional text, What's New and keywords
-- [ ] Publish privacy policy and support pages; enter both URLs
-- [ ] Age rating questionnaire and App Privacy answers from `category_and_rating.txt`
+- [ ] Attach all three subscriptions to this version (status Ready to Submit)
+- [ ] Screenshots from the new build: 6.7" (1290×2796) and 6.1" (1179×2556)
+- [ ] Description, promotional text, What's New and keywords from this folder
+- [ ] Privacy policy and support pages published; both URLs entered
+- [ ] Age-rating questionnaire and App Privacy answers from `category_and_rating.txt`
 - [ ] Submit for review
 
 ### Optional
 
-- [ ] Add `BLUESKY_HANDLE` and `BLUESKY_APP_PASSWORD` repository secrets
-      (Bluesky search currently returns 403 errors)
-- [ ] Add a `TMDB_API_KEY` repository secret for real posters
+- [ ] `BLUESKY_HANDLE` and `BLUESKY_APP_PASSWORD` repository secrets (Bluesky search returns 403 without them)
+- [ ] `TMDB_API_KEY` repository secret for real posters
