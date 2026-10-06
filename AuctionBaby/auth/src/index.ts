@@ -789,9 +789,13 @@ async function handleDevLogin(request: Request, env: Env, ctx?: ExecutionContext
 
 const PASSWORD_MIN = 8;
 const PASSWORD_MAX = 200;
-/** OWASP's 2023 floor for PBKDF2-SHA256. Workers bill CPU time, not wall time,
- *  and this lands well inside the per-request limit. */
-const PBKDF2_ITERATIONS = 210_000;
+/** Cloudflare's WebCrypto rejects PBKDF2 above 100k iterations (and it also
+ *  bounds CPU per request), so 100k is the ceiling here. Hashes are stored as
+ *  `pbkdf2-sha256$<iterations>$<hex>` so this can change without breaking
+ *  existing accounts; an untagged hex hash is legacy at 210k. */
+const PBKDF2_ITERATIONS = 100_000;
+const LEGACY_PBKDF2_ITERATIONS = 210_000;
+const HASH_PREFIX = "pbkdf2-sha256";
 const PASSWORD_LOGIN_MAX_FAILS = 8;
 const PASSWORD_LOGIN_WINDOW_MS = 15 * 60_000;
 
@@ -806,16 +810,36 @@ const fromHex = (h: string) =>
 
 /** PBKDF2-SHA256 → 256-bit hex digest. Salt is hex in, so a stored salt round
  *  trips without re-encoding. */
-async function derivePasswordHash(password: string, saltHex: string): Promise<string> {
+async function derivePasswordHash(password: string, saltHex: string, iterations: number): Promise<string> {
   const key = await crypto.subtle.importKey(
     "raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"],
   );
   const bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", hash: "SHA-256", salt: fromHex(saltHex), iterations: PBKDF2_ITERATIONS },
+    { name: "PBKDF2", hash: "SHA-256", salt: fromHex(saltHex), iterations },
     key, 256,
   );
   return toHex(new Uint8Array(bits));
 }
+
+async function hashNewPassword(password: string, saltHex: string): Promise<string> {
+  const hex = await derivePasswordHash(password, saltHex, PBKDF2_ITERATIONS);
+  return `${HASH_PREFIX}$${PBKDF2_ITERATIONS}$${hex}`;
+}
+
+async function verifyPassword(password: string, saltHex: string, stored: string): Promise<boolean> {
+  let iterations = LEGACY_PBKDF2_ITERATIONS;
+  let expected = stored;
+  if (stored.startsWith(`${HASH_PREFIX}$`)) {
+    const [, iter, hex] = stored.split("$");
+    iterations = Number(iter);
+    expected = hex ?? "";
+    if (!Number.isInteger(iterations) || iterations <= 0 || !expected) return false;
+  }
+  const candidate = await derivePasswordHash(password, saltHex, iterations);
+  return constantTimeEqual(candidate, expected);
+}
+
+const HASH_FAILED = "Couldn't process your password right now. Please try again.";
 
 /** Lowercased + trimmed, or null when it isn't plausibly an address. Kept
  *  deliberately loose — the only real proof of an address is delivery, and we
@@ -865,7 +889,13 @@ async function handleRegister(request: Request, env: Env, ctx?: ExecutionContext
 
   const id = crypto.randomUUID();
   const saltHex = toHex(crypto.getRandomValues(new Uint8Array(16)));
-  const hash = await derivePasswordHash(password, saltHex);
+  let hash: string;
+  try {
+    hash = await hashNewPassword(password, saltHex);
+  } catch (e: any) {
+    console.log(`register: password hashing failed: ${String(e?.message ?? e)}`);
+    return err(HASH_FAILED, 500);
+  }
   const now = Date.now();
 
   try {
@@ -936,8 +966,14 @@ async function handlePasswordLogin(request: Request, env: Env): Promise<Response
   ).bind(email).first<PasswordRow>();
   if (!row || !row.password_hash || !row.password_salt) { noteFailure(); return err(REJECT, 401); }
 
-  const candidate = await derivePasswordHash(password, row.password_salt);
-  if (!(await constantTimeEqual(candidate, row.password_hash))) {
+  let matches: boolean;
+  try {
+    matches = await verifyPassword(password, row.password_salt, row.password_hash);
+  } catch (e: any) {
+    console.log(`login: password verification failed: ${String(e?.message ?? e)}`);
+    return err(HASH_FAILED, 500);
+  }
+  if (!matches) {
     noteFailure();
     return err(REJECT, 401);
   }
@@ -981,10 +1017,14 @@ async function handleSetPassword(request: Request, env: Env): Promise<Response> 
   if (row.password_hash && row.password_salt) {
     const current = String(body?.currentPassword ?? "");
     if (!current) return err("Enter your current password", 400);
-    const candidate = await derivePasswordHash(current, row.password_salt);
-    if (!(await constantTimeEqual(candidate, row.password_hash))) {
-      return err("Current password is incorrect", 401);
+    let matches: boolean;
+    try {
+      matches = await verifyPassword(current, row.password_salt, row.password_hash);
+    } catch (e: any) {
+      console.log(`set-password: verification failed: ${String(e?.message ?? e)}`);
+      return err(HASH_FAILED, 500);
     }
+    if (!matches) return err("Current password is incorrect", 401);
   }
 
   // Without an email there is nothing to sign in WITH, so refuse rather than
@@ -998,7 +1038,13 @@ async function handleSetPassword(request: Request, env: Env): Promise<Response> 
   if (clash) return err("That email is already used by another account", 409);
 
   const saltHex = toHex(crypto.getRandomValues(new Uint8Array(16)));
-  const hash = await derivePasswordHash(password, saltHex);
+  let hash: string;
+  try {
+    hash = await hashNewPassword(password, saltHex);
+  } catch (e: any) {
+    console.log(`set-password: hashing failed: ${String(e?.message ?? e)}`);
+    return err(HASH_FAILED, 500);
+  }
   await env.DB.prepare(
     "UPDATE users SET email = ?, password_hash = ?, password_salt = ?, password_set_at = ? WHERE id = ?",
   ).bind(email, hash, saltHex, Date.now(), userId).run();
