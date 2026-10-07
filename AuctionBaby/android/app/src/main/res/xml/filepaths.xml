@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
     <files-path name="share" path="share/" />
+    <!-- androidbrowserhelper writes the splash image here and hands it to
+         Chrome through this FileProvider; without it launch crashes. -->
+    <files-path name="twa_splash" path="twa_splash/" />
 </paths>
