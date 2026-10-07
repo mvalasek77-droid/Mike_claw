@@ -11,11 +11,11 @@ android {
         applicationId = "com.valasek.auctionbaby.android"
         minSdk = 24
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.0.2"
+        versionCode = 4
+        versionName = "1.0.3"
 
         manifestPlaceholders["hostName"] = "mvalasek77-droid.github.io"
-        manifestPlaceholders["defaultUrl"] = "https://mvalasek77-droid.github.io/Mike_claw/auctionbaby/app/"
+        manifestPlaceholders["defaultUrl"] = "https://mvalasek77-droid.github.io/Mike_claw/auctionbaby/app/?src=twa"
         manifestPlaceholders["launcherName"] = "Auction Baby"
         manifestPlaceholders["assetStatements"] = """[{"relation": ["delegate_permission/common.handle_all_urls"], "target": {"namespace": "web", "site": "https://mvalasek77-droid.github.io"}}]"""
     }

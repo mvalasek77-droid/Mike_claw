@@ -25,6 +25,19 @@
   const verifiedBadge = (size) => `<span class="vbadge${size === "sm" ? " sm" : size === "lg" ? " lg" : ""}" title="Verified">${VERIFIED_SVG}</span>`;
   const masterpieceBadge = () => `<span class="mp-badge"><span class="mp-icon">&#127942;</span> Masterpiece</span>`;
   const copycatTag = () => `<span class="cc-tag">&#10024; Copycat</span>`;
+  // Inside the Google Play app (TWA), digital goods must go through Play
+  // Billing, so the Stripe store for Gavels/passes/boost/status is hidden there.
+  // The TWA launches with ?src=twa; sessionStorage (per tab, not shared with
+  // the user's Chrome tabs) keeps the flag across hash routes and sign-in
+  // redirects that drop the query string.
+  const ANDROID_APP = (() => {
+    const fromTwa = new URLSearchParams(location.search).get("src") === "twa" ||
+      document.referrer.startsWith("android-app://com.valasek.auctionbaby.android");
+    try {
+      if (fromTwa) sessionStorage.setItem("ab_twa", "1");
+      return fromTwa || sessionStorage.getItem("ab_twa") === "1";
+    } catch { return fromTwa; }
+  })();
   const GAVEL_PACK_ID = { 1000: "gavels_handful", 5000: "gavels_stack", 14000: "gavels_chest", 30000: "gavels_vault" };
   const PASS_ID = { "Paddle": "pass_paddle", "Reserve": "pass_reserve", "Black Card": "pass_blackcard" };
 
@@ -416,8 +429,8 @@
     const first = ["floor", "▦", "Floor"];
     const unread = (S.matches || []).filter(m => m.unread).length;
     return `<div class="tabbar">
-      ${[first, ["matches", "❤", "Matches"], ["store", "⚖", "Store"], ["you", "◉", "You"]]
-        .map(([k, ic, l]) => `<button data-tab="${k}" class="${tab === k ? "on" : ""}"><span class="ic">${ic}${k === "matches" && unread ? `<span class="badge">${unread}</span>` : ""}</span>${l}</button>`).join("")}
+      ${[first, ["matches", "❤", "Matches"], ANDROID_APP ? null : ["store", "⚖", "Store"], ["you", "◉", "You"]]
+        .filter(Boolean).map(([k, ic, l]) => `<button data-tab="${k}" class="${tab === k ? "on" : ""}"><span class="ic">${ic}${k === "matches" && unread ? `<span class="badge">${unread}</span>` : ""}</span>${l}</button>`).join("")}
     </div>`;
   };
 
@@ -1247,20 +1260,23 @@
         <div class="grow"><div style="font-family:var(--serif);font-weight:800;font-size:14px;color:var(--ink)">Bid Insurance</div><div class="faint" style="font-size:11px">If she declines, your premium comes back — and the gild fee too, if you gilded.</div></div>
         <span style="font:800 13px/1 var(--sans);color:${insure ? "var(--verify)" : "var(--ink-faint)"}">${BID_INSURANCE_COST} ⚖</span>
       </button>` : ""}
-      <div class="row" style="margin-top:10px;padding:8px 12px;border-radius:20px;background:rgba(230,184,0,.08);cursor:pointer" data-gavels>
+      ${ANDROID_APP ? `<div class="row" style="margin-top:10px;padding:8px 12px;border-radius:20px;background:rgba(230,184,0,.08)">
+        <span style="font-size:11px">⚖</span>
+        <span style="font:800 12px/1 var(--sans);color:var(--gold)">${(S.wallet || 0).toLocaleString()} Gavels</span>
+      </div>` : `<div class="row" style="margin-top:10px;padding:8px 12px;border-radius:20px;background:rgba(230,184,0,.08);cursor:pointer" data-gavels>
         <span style="font-size:11px">⚖</span>
         <span style="font:800 12px/1 var(--sans);color:${S.wallet < GILDED_BID_COST ? "var(--rose)" : "var(--gold)"}">${(S.wallet || 0).toLocaleString()} Gavels</span>
         ${S.wallet < GILDED_BID_COST ? '<span style="font:700 11px/1 var(--sans);color:var(--rose)">· low</span>' : ""}
         <span class="grow"></span>
         <span style="font:700 12px/1 var(--sans);color:var(--gold)">Get more</span>
         <span style="font-size:12px;color:var(--gold)">＋</span>
-      </div>
+      </div>`}
       <div class="card" style="margin:10px 0;padding:12px;border-color:rgba(230,184,0,.3);background:rgba(230,184,0,.06)">
         <div class="row" style="gap:10px"><span style="font-size:18px">✍️</span><div class="grow"><div style="font-family:var(--serif);font-weight:800;font-size:13px;color:var(--ink)">The money you'll spend on the date</div><div class="faint" style="font-size:11px;margin-top:2px">Dinner, drinks, the experience — not a payment to her. She keeps the receipts so it can be confirmed after.</div></div></div>
       </div>
       ${atFreeLimit ? `<div style="text-align:center;margin-top:10px">
         <div style="font:700 13px/1 var(--sans);color:var(--warning)">You've used all ${FREE_ACTIVE_BID_LIMIT} free live bids.</div>
-        <button class="btn" style="margin-top:8px;background:var(--rose)" data-go="paywall">Get a Pass for unlimited bids</button>
+        ${ANDROID_APP ? "" : `<button class="btn" style="margin-top:8px;background:var(--rose)" data-go="paywall">Get a Pass for unlimited bids</button>`}
       </div>` : `<button class="btn" id="bid-place">${gild ? "Send Gilded Bid · " + money(amount) : "Place " + money(amount) + " bid"}</button>`}
       ${!w.copycat ? `<button class="chip" data-whisper style="width:100%;margin-top:8px;border:1px solid rgba(224,96,122,.5);color:var(--rose);background:none;padding:11px 14px;border-radius:24px;font:700 13px/1 var(--sans);text-align:center;cursor:pointer"> whisper — no Gavels, no credit hit</button>` : ""}
       <div class="disclosure">Spend your bid on the date — the meal, the drinks, the night. She keeps the receipts and confirms it after. Never wire money or send a personal deposit; the app has no way to send money to another user, by design.</div>
@@ -1270,7 +1286,7 @@
     sheet.addEventListener("click", e => {
       const add = e.target.closest("[data-add]"); if (add) { amount += +add.dataset.add; draw(); }
       if (e.target.closest("[data-reset]")) { amount = Number(w.startingBid) || 100; draw(); }
-      if (e.target.closest("[data-gild]")) { gild = !gild; if (gild && S.wallet < GILDED_BID_COST) { toast("Not enough Gavels to gild. Visit the Store."); gild = false; } draw(); }
+      if (e.target.closest("[data-gild]")) { gild = !gild; if (gild && S.wallet < GILDED_BID_COST) { toast(ANDROID_APP ? "Not enough Gavels to gild." : "Not enough Gavels to gild. Visit the Store."); gild = false; } draw(); }
       if (e.target.closest("[data-insure]")) { insure = !insure; if (insure && S.wallet < BID_INSURANCE_COST) { toast("Not enough Gavels for insurance."); insure = false; } draw(); }
       if (e.target.closest("[data-gavels]")) { sheet.remove(); go("/store"); }
       if (e.target.closest("[data-whisper]")) { sheet.remove(); placeWhisper(w); }
@@ -1657,7 +1673,19 @@
     general:      { headline: "Win the bid<br>you can't see.", icon: "👑", suggested: 0 },
   };
 
+  function purchasesUnavailable() {
+    app.innerHTML = `<div class="screen">
+      <div class="topbar"><h1 class="display" style="font-size:28px">Gavels</h1><span class="pill">⚖ ${(S.wallet || 0).toLocaleString()}</span></div>
+      <div class="card" style="margin-top:12px">
+        <div style="font-family:var(--serif);font-weight:800">Purchases aren't available in this version of the app.</div>
+        <div class="faint" style="margin-top:6px">You can keep bidding with your free bids and the Gavels you have.</div>
+      </div>
+    </div>${tabbar()}`;
+    wire();
+  }
+
   function store() {
+    if (ANDROID_APP) return purchasesUnavailable();
     const packs = [["Handful", 1000, 4.99], ["Stack", 5000, 19.99], ["Chest", 14000, 49.99], ["Vault", 30000, 99.99]];
     const isMan = S.role === "man";
     app.innerHTML = `<div class="screen">
@@ -1698,7 +1726,8 @@
   // and a single CTA — exactly like the iOS paywall.
   let paywallSelected = 0; // index into PASS_TIERS
   function paywall(trigger) {
-    const t = PAYWALL_TRIGGERS[trigger] || PAYWALL_TRIGGERS.general;
+    if (ANDROID_APP) return purchasesUnavailable();
+    const t =PAYWALL_TRIGGERS[trigger] || PAYWALL_TRIGGERS.general;
     paywallSelected = t.suggested;
     const activePass = S.pass || null; // track active pass in demo mode
     function render() {
@@ -1757,6 +1786,7 @@
   }
 
   function checkout(kind, a, price) {
+    if (ANDROID_APP) return purchasesUnavailable();
     // LIVE: Gavel packs via Stripe Checkout (consumables Worker).
     if (kind === "gavels" && CONFIGURED() && SIGNED_IN() && window.AB_CONFIG.CONSUMABLES_URL) {
       const packId = GAVEL_PACK_ID[a] || String(a);
@@ -1838,8 +1868,8 @@
       ${photoBlockedOnProfile && !me.photo ? `<button class="btn ghost" id="addphoto-files" style="margin-top:8px">Browse files instead</button>
       <div class="faint" style="font-size:12px;line-height:1.5;margin-top:8px;text-align:left">Camera blocked? Samsung Internet → Settings → Sites and downloads → Site permissions → Camera. Or Android Settings → Apps → your browser → Permissions.</div>` : ""}
       <button class="btn ghost" id="verify" style="margin-top:10px;color:var(--verify);border-color:var(--verify)">${S.me.verified ? "✓ Verified" : "Verify me"}</button>
-      <button class="btn ghost" data-tab="store" style="margin-top:10px">Open the Store</button>
-      ${S.role === "man" && !S.pass ? `<button class="btn" style="margin-top:10px" data-go="paywall">Get an Auction Baby Pass</button>` : ""}
+      ${ANDROID_APP ? "" : `<button class="btn ghost" data-tab="store" style="margin-top:10px">Open the Store</button>`}
+      ${S.role === "man" && !S.pass && !ANDROID_APP ?`<button class="btn" style="margin-top:10px" data-go="paywall">Get an Auction Baby Pass</button>` : ""}
       ${(CONFIGURED() && SIGNED_IN() && window.AB_CONFIG.VAPID_PUBLIC_KEY) ? `<button class="btn ghost" id="notif" style="margin-top:10px">Enable notifications</button>` : ""}
       ${SIGNED_IN() ? `<button class="btn ghost" id="signout" style="margin-top:10px">Sign out</button>` : ""}
       <button class="btn ghost" id="bugreport" style="margin-top:10px">Report a bug</button>
