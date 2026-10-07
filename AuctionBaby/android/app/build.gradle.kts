@@ -11,8 +11,8 @@ android {
         applicationId = "com.valasek.auctionbaby.android"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.0.1"
 
         manifestPlaceholders["hostName"] = "mvalasek77-droid.github.io"
         manifestPlaceholders["defaultUrl"] = "https://mvalasek77-droid.github.io/Mike_claw/auctionbaby/app/"
