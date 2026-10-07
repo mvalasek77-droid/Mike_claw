@@ -1237,7 +1237,9 @@
     const sheet = document.createElement("div"); sheet.className = "sheet";
     const getNote = () => { const el = sheet.querySelector("#bid-note"); return el ? el.value : defaultNote; };
     const isTrillionaire = (S.ownedStatus || []).includes("status_trillionaire");
-    const atFreeLimit = !S.pass && (S.pendingBids || 0) >= FREE_ACTIVE_BID_LIMIT;
+    // No Pass can be bought inside the Android app, so the free-bid cap there
+    // would be a permanent dead end; the server's hourly bid limit still applies.
+    const atFreeLimit = !ANDROID_APP && !S.pass && (S.pendingBids || 0) >= FREE_ACTIVE_BID_LIMIT;
     const draw = () => { const savedNote = getNote(); sheet.innerHTML = `<div class="panel">
       <div class="grab"></div>
       <div class="row" style="margin-bottom:8px">${gradSm(w.hue, w.name, w.photo)}<div class="grow"><div style="font-family:var(--serif);font-weight:800;font-size:18px">Bidding on ${esc(w.name)}</div><div class="faint">Floor ${money(w.startingBid)}${promptCtx ? " · mentioning her answer" : ""}</div></div></div>
