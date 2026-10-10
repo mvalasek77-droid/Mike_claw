@@ -1,0 +1,402 @@
+{
+  "actuals": {
+    "seed_resident_evil": {
+      "domesticOpeningMillions": 60.15,
+      "isEstimate": false,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-09-28T22:12:00Z",
+      "source": "boxofficemojo",
+      "title": "Resident Evil",
+      "weekendOf": "2026-09-18"
+    },
+    "title:appofeniacs": {
+      "domesticOpeningMillions": 0.02,
+      "isEstimate": false,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-10-04T15:16:56Z",
+      "source": "the-numbers",
+      "title": "Appofeniacs",
+      "weekendOf": "2026-10-02"
+    },
+    "title:atonement": {
+      "domesticOpeningMillions": 0.02,
+      "isEstimate": false,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-10-04T16:16:07Z",
+      "source": "the-numbers",
+      "title": "Atonement",
+      "weekendOf": "2026-10-02"
+    },
+    "title:avengers-endgame-encore": {
+      "domesticOpeningMillions": 4.4,
+      "isEstimate": false,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-10-04T15:16:56Z",
+      "source": "the-numbers",
+      "title": "Avengers Endgame: Encore",
+      "weekendOf": "2026-10-02"
+    },
+    "title:avengers-endgame-encore-2026-re-release": {
+      "domesticOpeningMillions": 26.0,
+      "isEstimate": true,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-09-28T22:12:00Z",
+      "source": "boxofficemojo",
+      "title": "Avengers Endgame: Encore 2026 Re-release",
+      "weekendOf": "2026-09-25"
+    },
+    "title:begotten": {
+      "domesticOpeningMillions": 0.0,
+      "isEstimate": false,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-10-05T23:53:51Z",
+      "source": "boxofficemojo",
+      "title": "Begotten",
+      "weekendOf": "2026-10-02"
+    },
+    "title:beware-boiuna": {
+      "domesticOpeningMillions": 0.55,
+      "isEstimate": false,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-10-04T15:16:56Z",
+      "source": "the-numbers",
+      "title": "Beware Boi\u00fana",
+      "weekendOf": "2026-10-02"
+    },
+    "title:charlie-harper": {
+      "domesticOpeningMillions": 0.11,
+      "isEstimate": true,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-09-29T21:37:22Z",
+      "source": "boxofficemojo",
+      "title": "Charlie Harper",
+      "weekendOf": "2026-09-25"
+    },
+    "title:daniel-and-the-fiery-furnace": {
+      "domesticOpeningMillions": 3.3,
+      "isEstimate": false,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-09-28T22:12:00Z",
+      "source": "boxofficemojo",
+      "title": "Daniel and the Fiery Furnace",
+      "weekendOf": "2026-09-18"
+    },
+    "title:deep-in-the-heart-2-texas-rivers": {
+      "domesticOpeningMillions": 0.06,
+      "isEstimate": true,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-09-28T22:12:00Z",
+      "source": "boxofficemojo",
+      "title": "Deep in the Heart 2: Texas Rivers",
+      "weekendOf": "2026-09-25"
+    },
+    "title:digger": {
+      "domesticOpeningMillions": 8.0,
+      "isEstimate": false,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-10-04T16:16:07Z",
+      "source": "the-numbers",
+      "title": "Digger",
+      "weekendOf": "2026-10-02"
+    },
+    "title:drishyam-the-conclusion": {
+      "domesticOpeningMillions": 2.71,
+      "isEstimate": true,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-10-04T21:04:33Z",
+      "source": "boxofficemojo",
+      "title": "Drishyam: The Conclusion",
+      "weekendOf": "2026-10-02"
+    },
+    "title:first-they-came-for-my-college": {
+      "domesticOpeningMillions": 0.01,
+      "isEstimate": false,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-09-29T21:37:22Z",
+      "source": "boxofficemojo",
+      "title": "First They Came for My College",
+      "weekendOf": "2026-09-18"
+    },
+    "title:forgotten-island": {
+      "domesticOpeningMillions": 12.8,
+      "isEstimate": true,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-09-28T22:12:00Z",
+      "source": "boxofficemojo",
+      "title": "Forgotten Island",
+      "weekendOf": "2026-09-25"
+    },
+    "title:ghost-in-the-shell-2026-re-release": {
+      "domesticOpeningMillions": 0.49,
+      "isEstimate": false,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-09-28T22:12:00Z",
+      "source": "boxofficemojo",
+      "title": "Ghost in the Shell 2026 Re-release",
+      "weekendOf": "2026-09-18"
+    },
+    "title:ha-chan-shake-your-booty": {
+      "domesticOpeningMillions": 0.24,
+      "isEstimate": true,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-09-28T22:12:00Z",
+      "source": "boxofficemojo",
+      "title": "Ha-Chan, Shake Your Booty!",
+      "weekendOf": "2026-09-25"
+    },
+    "title:heart-of-the-beast": {
+      "domesticOpeningMillions": 20.0,
+      "isEstimate": true,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-09-28T22:12:00Z",
+      "source": "boxofficemojo",
+      "title": "Heart of the Beast",
+      "weekendOf": "2026-09-25"
+    },
+    "title:last-train-to-fortune": {
+      "domesticOpeningMillions": 0.01,
+      "isEstimate": false,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-09-28T22:12:00Z",
+      "source": "boxofficemojo",
+      "title": "Last Train to Fortune",
+      "weekendOf": "2026-09-18"
+    },
+    "title:linkin-park-unshatter": {
+      "domesticOpeningMillions": 0.34,
+      "isEstimate": true,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-10-05T01:55:45Z",
+      "source": "boxofficemojo",
+      "title": "Linkin Park: Unshatter",
+      "weekendOf": "2026-10-02"
+    },
+    "title:moonlight-10th-anniversary": {
+      "domesticOpeningMillions": 0.3,
+      "isEstimate": true,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-10-04T21:04:33Z",
+      "source": "boxofficemojo",
+      "title": "Moonlight 10th Anniversary",
+      "weekendOf": "2026-10-02"
+    },
+    "title:moonlight-10th-anniversary-remastered": {
+      "domesticOpeningMillions": 0.3,
+      "isEstimate": false,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-10-04T15:16:56Z",
+      "source": "the-numbers",
+      "title": "Moonlight 10th Anniversary Remastered",
+      "weekendOf": "2026-10-02"
+    },
+    "title:mozart-cosi-fan-tutte": {
+      "domesticOpeningMillions": 0.56,
+      "isEstimate": true,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-10-05T14:05:16Z",
+      "source": "boxofficemojo",
+      "title": "Mozart: Cosi Fan Tutte",
+      "weekendOf": "2026-10-02"
+    },
+    "title:my-brother-s-wedding-2026-re-release": {
+      "domesticOpeningMillions": 0.01,
+      "isEstimate": false,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-09-28T22:12:00Z",
+      "source": "boxofficemojo",
+      "title": "My Brother's Wedding 2026 Re-release",
+      "weekendOf": "2026-09-18"
+    },
+    "title:naza": {
+      "domesticOpeningMillions": 0.06,
+      "isEstimate": true,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-10-04T21:04:33Z",
+      "source": "boxofficemojo",
+      "title": "Naza",
+      "weekendOf": "2026-10-02"
+    },
+    "title:never-after-dark": {
+      "domesticOpeningMillions": 0.01,
+      "isEstimate": false,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-09-29T21:37:22Z",
+      "source": "boxofficemojo",
+      "title": "Never After Dark",
+      "weekendOf": "2026-09-25"
+    },
+    "title:primetime": {
+      "domesticOpeningMillions": 19.2,
+      "isEstimate": true,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-09-28T22:12:00Z",
+      "source": "boxofficemojo",
+      "title": "Primetime",
+      "weekendOf": "2026-09-25"
+    },
+    "title:princess-mononoke-studio-ghibli-fest-2026": {
+      "domesticOpeningMillions": 0.85,
+      "isEstimate": true,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-09-30T16:26:15Z",
+      "source": "boxofficemojo",
+      "title": "Princess Mononoke Studio Ghibli Fest 2026",
+      "weekendOf": "2026-09-25"
+    },
+    "title:rolling-loud": {
+      "domesticOpeningMillions": 0.47,
+      "isEstimate": true,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-10-04T21:04:33Z",
+      "source": "boxofficemojo",
+      "title": "Rolling Loud",
+      "weekendOf": "2026-10-02"
+    },
+    "title:rolling-loud-the-movie": {
+      "domesticOpeningMillions": 0.47,
+      "isEstimate": false,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-10-04T16:16:07Z",
+      "source": "the-numbers",
+      "title": "Rolling Loud: The Movie",
+      "weekendOf": "2026-10-02"
+    },
+    "title:shaun-the-sheep-the-beast-of-mossy-bottom": {
+      "domesticOpeningMillions": 1.84,
+      "isEstimate": false,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-09-28T22:12:00Z",
+      "source": "boxofficemojo",
+      "title": "Shaun the Sheep: The Beast of Mossy Bottom",
+      "weekendOf": "2026-09-18"
+    },
+    "title:the-deputy": {
+      "domesticOpeningMillions": 0.0,
+      "isEstimate": false,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-09-29T21:37:22Z",
+      "source": "boxofficemojo",
+      "title": "The Deputy",
+      "weekendOf": "2026-09-25"
+    },
+    "title:the-history-of-concrete": {
+      "domesticOpeningMillions": 0.09,
+      "isEstimate": false,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-09-28T22:12:00Z",
+      "source": "boxofficemojo",
+      "title": "The History of Concrete",
+      "weekendOf": "2026-09-18"
+    },
+    "title:the-incomer": {
+      "domesticOpeningMillions": 0.02,
+      "isEstimate": true,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-09-28T22:12:00Z",
+      "source": "boxofficemojo",
+      "title": "The Incomer",
+      "weekendOf": "2026-09-25"
+    },
+    "title:the-influencer-project": {
+      "domesticOpeningMillions": 0.36,
+      "isEstimate": false,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-10-05T23:53:51Z",
+      "source": "boxofficemojo",
+      "title": "The Influencer Project",
+      "weekendOf": "2026-10-02"
+    },
+    "title:the-musical": {
+      "domesticOpeningMillions": 0.14,
+      "isEstimate": false,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-09-28T22:12:00Z",
+      "source": "boxofficemojo",
+      "title": "The Musical",
+      "weekendOf": "2026-09-18"
+    },
+    "title:the-paradise": {
+      "domesticOpeningMillions": 0.41,
+      "isEstimate": true,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-09-30T16:26:15Z",
+      "source": "boxofficemojo",
+      "title": "The Paradise",
+      "weekendOf": "2026-09-25"
+    },
+    "title:the-scout": {
+      "domesticOpeningMillions": 0.01,
+      "isEstimate": true,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-09-28T22:12:00Z",
+      "source": "boxofficemojo",
+      "title": "The Scout",
+      "weekendOf": "2026-09-25"
+    },
+    "title:the-stunt-driver": {
+      "domesticOpeningMillions": 0.1,
+      "isEstimate": true,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-09-28T22:12:00Z",
+      "source": "boxofficemojo",
+      "title": "The Stunt Driver",
+      "weekendOf": "2026-09-25"
+    },
+    "title:the-transformers-the-movie-40th-anniversary": {
+      "domesticOpeningMillions": 3.1,
+      "isEstimate": true,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-09-28T22:12:00Z",
+      "source": "boxofficemojo",
+      "title": "The Transformers: The Movie 40th Anniversary",
+      "weekendOf": "2026-09-18"
+    },
+    "title:the-weight": {
+      "domesticOpeningMillions": 2.3,
+      "isEstimate": false,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-09-28T22:12:00Z",
+      "source": "boxofficemojo",
+      "title": "The Weight",
+      "weekendOf": "2026-09-18"
+    },
+    "title:traces-of-home": {
+      "domesticOpeningMillions": 0.02,
+      "isEstimate": true,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-09-28T22:12:00Z",
+      "source": "boxofficemojo",
+      "title": "Traces of Home",
+      "weekendOf": "2026-09-18"
+    },
+    "title:verity": {
+      "domesticOpeningMillions": 32.62,
+      "isEstimate": false,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-10-04T15:16:56Z",
+      "source": "the-numbers",
+      "title": "Verity",
+      "weekendOf": "2026-10-02"
+    },
+    "title:you-had-to-be-there-how-the-toronto-godspell-ignited-the-comedy-revolution-spread-love-overalls-and-created-a-community-that-changed-the-world-in-a-canadian-kind-of-way": {
+      "domesticOpeningMillions": 0.02,
+      "isEstimate": false,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-09-28T22:12:00Z",
+      "source": "boxofficemojo",
+      "title": "You Had to Be There: How the Toronto Godspell Ignited the Comedy Revolution, Spread Love & Overalls, and Created a Community That Changed the World (in a Canadian Kind of Way)",
+      "weekendOf": "2026-09-18"
+    },
+    "title:your-mother-your-mother-your-mother": {
+      "domesticOpeningMillions": 0.2,
+      "isEstimate": true,
+      "isOpeningWeekend": true,
+      "reportedAt": "2026-09-28T22:12:00Z",
+      "source": "boxofficemojo",
+      "title": "Your Mother Your Mother Your Mother",
+      "weekendOf": "2026-09-25"
+    }
+  },
+  "generatedAt": "2026-10-10T12:10:30Z",
+  "version": 1
+}
