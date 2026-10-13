@@ -1,83 +1,56 @@
 {
-  "generated_for": "2026-10-13T06",
+  "generated_for": "2026-10-13T09",
   "posts": [
     {
       "community": {
-        "id": "1e27fcd8-c8ff-7cac-af7b-60a88268cbe1",
-        "name": "Garage Gearheads",
-        "slug": "cars",
-        "member_count": 141200,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/cars.png",
+        "id": "22aca3d4-e132-fb9a-d97f-d6efb9771f45",
+        "name": "Iron Bro-hood",
+        "slug": "fitness",
+        "member_count": 182000,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fitness.png",
         "is_joined": true
       },
-      "title": "Manual or auto for a first project car?",
-      "body": "Want something I can wrench on cheaply. Thoughts?",
-      "score": 87,
+      "title": "PSA: warm up your rotator cuffs, bros",
+      "body": "Saved my bench after years of nagging pain. Here's the routine.",
+      "score": 272,
       "reactions": [],
       "my_reaction": null,
       "awards": [],
-      "id": "7388228e-7c63-4eb9-866d-4d52a7ace91a",
+      "id": "2974fc2e-0dab-da4e-5005-23f93ff4d52d",
       "author": {
-        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
-        "handle": "@newbro",
-        "display_name": "Sam",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
-        "bro_cred": 40
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
       },
       "image_url": null,
-      "comment_count": 118,
-      "created_at": "2026-10-13T05:37:28+00:00",
+      "comment_count": 14,
+      "created_at": "2026-10-13T06:35:30+00:00",
       "my_vote": 0
     },
     {
-      "community": {
-        "id": "1e27fcd8-c8ff-7cac-af7b-60a88268cbe1",
-        "name": "Garage Gearheads",
-        "slug": "cars",
-        "member_count": 141200,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/cars.png",
-        "is_joined": true
-      },
-      "title": "Finally finished the brake job",
-      "body": "New rotors, pads, fresh fluid. Pedal feel is night and day.",
-      "score": 134,
-      "reactions": [],
-      "my_reaction": null,
-      "awards": [
+      "community": null,
+      "title": null,
+      "body": "Pickup basketball this Saturday at Riverside. Who's in?",
+      "score": 72,
+      "reactions": [
         {
-          "kind": "champ",
-          "count": 3
+          "kind": "strong",
+          "count": 32
+        },
+        {
+          "kind": "respect",
+          "count": 25
+        },
+        {
+          "kind": "lol",
+          "count": 17
         }
       ],
-      "id": "77028408-b17d-f958-3a04-96fc5c653016",
-      "author": {
-        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
-        "handle": "@coachdave",
-        "display_name": "Dave",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
-        "bro_cred": 9300
-      },
-      "image_url": null,
-      "comment_count": 44,
-      "created_at": "2026-10-13T04:29:28+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": {
-        "id": "1e27fcd8-c8ff-7cac-af7b-60a88268cbe1",
-        "name": "Garage Gearheads",
-        "slug": "cars",
-        "member_count": 141200,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/cars.png",
-        "is_joined": true
-      },
-      "title": "Manual or auto for a first project car?",
-      "body": "Want something I can wrench on cheaply. Thoughts?",
-      "score": 91,
-      "reactions": [],
       "my_reaction": null,
       "awards": [],
-      "id": "f7b1da68-54f6-ee1e-74da-4c6a07628503",
+      "id": "8c79d42d-4f12-ca24-7ec8-ac1ae81b486f",
       "author": {
         "id": "550c58e9-f006-03d7-e005-01cf109b1c20",
         "handle": "@coachmike",
@@ -86,8 +59,72 @@
         "bro_cred": 4200
       },
       "image_url": null,
-      "comment_count": 101,
-      "created_at": "2026-10-13T01:52:28+00:00",
+      "comment_count": 76,
+      "created_at": "2026-10-13T05:11:30+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Pickup basketball this Saturday at Riverside. Who's in?",
+      "score": 60,
+      "reactions": [
+        {
+          "kind": "strong",
+          "count": 26
+        },
+        {
+          "kind": "respect",
+          "count": 18
+        },
+        {
+          "kind": "lol",
+          "count": 33
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "7b63d619-4fb4-f82c-3c29-31dfffdb7148",
+      "author": {
+        "id": "88da342c-12c1-951a-f0bc-99247785f086",
+        "handle": "@theoknows",
+        "display_name": "Theo",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/theoknows.png",
+        "bro_cred": 1120
+      },
+      "image_url": null,
+      "comment_count": 5,
+      "created_at": "2026-10-13T06:18:30+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Grilling at my place Sunday \u2014 bring a chair and a story.",
+      "score": 88,
+      "reactions": [
+        {
+          "kind": "respect",
+          "count": 35
+        },
+        {
+          "kind": "strong",
+          "count": 31
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "189d434c-4ad4-2651-4214-18569b75bc04",
+      "author": {
+        "id": "337023ca-f0d6-6b4b-335e-42aa37ae608b",
+        "handle": "@you",
+        "display_name": "You",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/you.png",
+        "bro_cred": 1280
+      },
+      "image_url": null,
+      "comment_count": 85,
+      "created_at": "2026-10-13T05:05:30+00:00",
       "my_vote": 0
     },
     {
@@ -99,13 +136,13 @@
         "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fatherhood.png",
         "is_joined": true
       },
-      "title": "Built a treehouse this weekend",
-      "body": "Kid 'helped'. Took twice as long. Best two days of the year.",
-      "score": 187,
+      "title": "First steps today",
+      "body": "Caught it on video. Did not expect to tear up. Worth every sleepless night.",
+      "score": 192,
       "reactions": [],
       "my_reaction": null,
       "awards": [],
-      "id": "7bbac99a-cc81-0c91-ac10-2edf2867d7e2",
+      "id": "e5cc9e6f-1d0d-d074-44e7-2fef4f8bfb90",
       "author": {
         "id": "88da342c-12c1-951a-f0bc-99247785f086",
         "handle": "@theoknows",
@@ -114,38 +151,8 @@
         "bro_cred": 1120
       },
       "image_url": null,
-      "comment_count": 8,
-      "created_at": "2026-10-13T02:58:28+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": null,
-      "title": null,
-      "body": "Anyone up for a sunrise hike this weekend?",
-      "score": 31,
-      "reactions": [
-        {
-          "kind": "strong",
-          "count": 3
-        },
-        {
-          "kind": "like",
-          "count": 34
-        }
-      ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "8e491e66-5e15-4ce5-ff17-d10e1b2fc4c5",
-      "author": {
-        "id": "88da342c-12c1-951a-f0bc-99247785f086",
-        "handle": "@theoknows",
-        "display_name": "Theo",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/theoknows.png",
-        "bro_cred": 1120
-      },
-      "image_url": null,
-      "comment_count": 59,
-      "created_at": "2026-10-13T00:56:28+00:00",
+      "comment_count": 42,
+      "created_at": "2026-10-13T06:08:30+00:00",
       "my_vote": 0
     },
     {
@@ -157,23 +164,28 @@
         "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/philosophy.png",
         "is_joined": true
       },
-      "title": "Memento mori \u2014 keeps me grounded",
-      "body": "Read a page of Marcus Aurelius every morning. Recommend it.",
-      "score": 54,
+      "title": "On discipline vs motivation",
+      "body": "Motivation gets you started. Discipline is what shows up at 5am.",
+      "score": 59,
       "reactions": [],
       "my_reaction": null,
-      "awards": [],
-      "id": "de0979ae-83a4-1b42-5904-64ee94363b55",
+      "awards": [
+        {
+          "kind": "champ",
+          "count": 1
+        }
+      ],
+      "id": "fac92072-9da3-4096-0868-0d528a71ddec",
       "author": {
-        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
-        "handle": "@ironbro",
-        "display_name": "Marcus",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
-        "bro_cred": 4820
+        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
+        "handle": "@coachdave",
+        "display_name": "Dave",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
+        "bro_cred": 9300
       },
       "image_url": null,
-      "comment_count": 87,
-      "created_at": "2026-10-12T23:48:28+00:00",
+      "comment_count": 43,
+      "created_at": "2026-10-13T02:43:30+00:00",
       "my_vote": 0
     }
   ],
