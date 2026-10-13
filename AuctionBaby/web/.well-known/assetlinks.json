@@ -1,11 +1,14 @@
 [
   {
-    "relation": ["delegate_permission/common.handle_all_urls"],
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
     "target": {
       "namespace": "android_app",
       "package_name": "com.valasek.auctionbaby.android",
       "sha256_cert_fingerprints": [
-        "A0:83:98:80:B2:A7:22:AB:1D:9D:AF:E2:7E:CF:12:6F:25:80:98:E4:D5:8F:4E:49:01:0C:F2:07:B9:9C:05:C6"
+        "A0:83:98:80:B2:A7:22:AB:1D:9D:AF:E2:7E:CF:12:6F:25:80:98:E4:D5:8F:4E:49:01:0C:F2:07:B9:9C:05:C6",
+        "05:C1:44:7A:37:F2:FE:E8:12:6D:33:93:92:46:10:7F:B6:D1:B7:9E:EF:C9:F6:6B:CF:06:A7:3A:DD:78:A1:82"
       ]
     }
   }
