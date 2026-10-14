@@ -1,102 +1,6 @@
 {
-  "generated_for": "2026-10-13T21",
+  "generated_for": "2026-10-14T00",
   "posts": [
-    {
-      "community": {
-        "id": "ad1f28f2-deee-3630-ebff-760d7a720f9e",
-        "name": "Dad Mode",
-        "slug": "fatherhood",
-        "member_count": 58700,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fatherhood.png",
-        "is_joined": true
-      },
-      "title": "Built a treehouse this weekend",
-      "body": "Kid 'helped'. Took twice as long. Best two days of the year.",
-      "score": 145,
-      "reactions": [],
-      "my_reaction": null,
-      "awards": [],
-      "id": "7531c152-19bc-a46e-2227-7b31faf2f672",
-      "author": {
-        "id": "550c58e9-f006-03d7-e005-01cf109b1c20",
-        "handle": "@coachmike",
-        "display_name": "Coach Mike",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachmike.png",
-        "bro_cred": 4200
-      },
-      "image_url": null,
-      "comment_count": 89,
-      "created_at": "2026-10-13T21:22:57+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": null,
-      "title": null,
-      "body": "Just hit a year sober. Grateful for this crew.",
-      "score": 88,
-      "reactions": [
-        {
-          "kind": "respect",
-          "count": 24
-        },
-        {
-          "kind": "strong",
-          "count": 11
-        },
-        {
-          "kind": "like",
-          "count": 41
-        }
-      ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "ac931b74-9358-7a8a-ed11-68e989bb0cd5",
-      "author": {
-        "id": "550c58e9-f006-03d7-e005-01cf109b1c20",
-        "handle": "@coachmike",
-        "display_name": "Coach Mike",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachmike.png",
-        "bro_cred": 4200
-      },
-      "image_url": null,
-      "comment_count": 40,
-      "created_at": "2026-10-13T20:40:57+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": null,
-      "title": null,
-      "body": "Pickup basketball this Saturday at Riverside. Who's in?",
-      "score": 37,
-      "reactions": [
-        {
-          "kind": "strong",
-          "count": 7
-        },
-        {
-          "kind": "respect",
-          "count": 34
-        },
-        {
-          "kind": "lol",
-          "count": 15
-        }
-      ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "7130cdc8-7fc5-ac7c-3b6f-56298f3d88cd",
-      "author": {
-        "id": "88da342c-12c1-951a-f0bc-99247785f086",
-        "handle": "@theoknows",
-        "display_name": "Theo",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/theoknows.png",
-        "bro_cred": 1120
-      },
-      "image_url": null,
-      "comment_count": 61,
-      "created_at": "2026-10-13T16:39:57+00:00",
-      "my_vote": 0
-    },
     {
       "community": {
         "id": "ad1f28f2-deee-3630-ebff-760d7a720f9e",
@@ -108,7 +12,7 @@
       },
       "title": "First steps today",
       "body": "Caught it on video. Did not expect to tear up. Worth every sleepless night.",
-      "score": 185,
+      "score": 77,
       "reactions": [],
       "my_reaction": null,
       "awards": [
@@ -117,7 +21,7 @@
           "count": 3
         }
       ],
-      "id": "f08866a9-d268-8b26-8dac-efe35277956a",
+      "id": "43770351-9965-3168-1df3-4f5671d293da",
       "author": {
         "id": "88da342c-12c1-951a-f0bc-99247785f086",
         "handle": "@theoknows",
@@ -126,8 +30,8 @@
         "bro_cred": 1120
       },
       "image_url": null,
-      "comment_count": 106,
-      "created_at": "2026-10-13T17:50:57+00:00",
+      "comment_count": 8,
+      "created_at": "2026-10-14T00:02:48+00:00",
       "my_vote": 0
     },
     {
@@ -141,21 +45,21 @@
       },
       "title": "Hit a new deadlift PR today",
       "body": "405 for a clean triple. Sleep and protein, that's the whole secret.",
-      "score": 103,
+      "score": 165,
       "reactions": [],
       "my_reaction": null,
       "awards": [],
-      "id": "f0fb044f-767f-222b-722a-39dd501dc616",
+      "id": "7a0f5449-a612-b2e5-9b25-91ac2df618f4",
       "author": {
-        "id": "bb5a2bd9-5ff6-b2d4-8c47-662f9908097f",
-        "handle": "@rajlifts",
-        "display_name": "Raj",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/rajlifts.png",
-        "bro_cred": 3050
+        "id": "43f16f34-9942-cb48-49d9-122dc9237e11",
+        "handle": "@leobuilds",
+        "display_name": "Leo",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/leobuilds.png",
+        "bro_cred": 760
       },
       "image_url": null,
-      "comment_count": 47,
-      "created_at": "2026-10-13T17:20:57+00:00",
+      "comment_count": 76,
+      "created_at": "2026-10-13T21:18:48+00:00",
       "my_vote": 0
     },
     {
@@ -169,21 +73,125 @@
       },
       "title": "Best cheap smoker under $300?",
       "body": "Looking to upgrade from the kettle. What are you bros running?",
-      "score": 146,
+      "score": 241,
       "reactions": [],
       "my_reaction": null,
-      "awards": [],
-      "id": "0f34c640-444c-6dc9-3793-e2db58d3ca8d",
+      "awards": [
+        {
+          "kind": "champ",
+          "count": 1
+        }
+      ],
+      "id": "4eed56b5-8ae3-9c2f-465e-4db28bddc670",
       "author": {
-        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
-        "handle": "@coachdave",
-        "display_name": "Dave",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
-        "bro_cred": 9300
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
       },
       "image_url": null,
-      "comment_count": 109,
-      "created_at": "2026-10-13T16:16:57+00:00",
+      "comment_count": 104,
+      "created_at": "2026-10-13T21:08:48+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "1e27fcd8-c8ff-7cac-af7b-60a88268cbe1",
+        "name": "Garage Gearheads",
+        "slug": "cars",
+        "member_count": 141200,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/cars.png",
+        "is_joined": true
+      },
+      "title": "Detailing Sunday",
+      "body": "Clay bar, two-stage polish, ceramic. Paint looks wet. Worth it.",
+      "score": 221,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [
+        {
+          "kind": "champ",
+          "count": 1
+        }
+      ],
+      "id": "0dc3de7e-a34b-b8b6-dc0f-7d2114a2c4c9",
+      "author": {
+        "id": "43f16f34-9942-cb48-49d9-122dc9237e11",
+        "handle": "@leobuilds",
+        "display_name": "Leo",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/leobuilds.png",
+        "bro_cred": 760
+      },
+      "image_url": null,
+      "comment_count": 116,
+      "created_at": "2026-10-13T18:16:48+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "369ccbe1-980c-cd6b-4b8b-e6cb2c492438",
+        "name": "Grill Masters",
+        "slug": "bbq",
+        "member_count": 96400,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/bbq.png",
+        "is_joined": true
+      },
+      "title": "Best cheap smoker under $300?",
+      "body": "Looking to upgrade from the kettle. What are you bros running?",
+      "score": 281,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [
+        {
+          "kind": "champ",
+          "count": 1
+        }
+      ],
+      "id": "049fd184-22c6-d7db-cae3-debc2d8633f5",
+      "author": {
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
+      },
+      "image_url": null,
+      "comment_count": 8,
+      "created_at": "2026-10-13T19:22:48+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "e6e12bde-c99f-f89a-5f96-3cfdd3839629",
+        "name": "Stoic Bros",
+        "slug": "philosophy",
+        "member_count": 22300,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/philosophy.png",
+        "is_joined": true
+      },
+      "title": "Memento mori \u2014 keeps me grounded",
+      "body": "Read a page of Marcus Aurelius every morning. Recommend it.",
+      "score": 128,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [
+        {
+          "kind": "champ",
+          "count": 1
+        }
+      ],
+      "id": "29410e1b-7ec1-ad97-4302-af6b78e763bd",
+      "author": {
+        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
+        "handle": "@newbro",
+        "display_name": "Sam",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
+        "bro_cred": 40
+      },
+      "image_url": null,
+      "comment_count": 113,
+      "created_at": "2026-10-13T20:28:48+00:00",
       "my_vote": 0
     }
   ],
