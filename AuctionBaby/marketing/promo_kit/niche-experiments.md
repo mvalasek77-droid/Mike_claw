@@ -40,3 +40,36 @@ score ≥ 3 or new comments — not met).
 **Blog index health:** all 6 URLs now HTTP 200, including `blog/index.html`
 (404 yesterday — one transient 404 observed today before 6 consecutive 200s;
 dir URL `.../blog/` also 200). 6/6 OK.
+
+## 2026-10-15 — Reddit niche sweep (first data via PullPush archive)
+
+**Status: FETCH OK, ZERO QUALIFYING POSTS.** `www.reddit.com/search.json`,
+`api.reddit.com`, and `old.reddit.com/search.json` again 403/block-walled this
+host (curl and Safari same-origin XHR — 189,906-B HTML wall / "Not Found").
+Worked around via the PullPush Reddit archive
+(`api.pullpush.io/reddit/search/submission/?q=...&since=<now-7d>`), which
+returned real JSON for all four queries. Parsed 400 submissions total
+(100/query, `since` = 7 days ago):
+
+- "dinner date": 100 — max score 23 (2.1d old). None >100.
+- "who pays": 100 — max score 7. None >100.
+- "dating apps are broken": 100 — max score 231 but it is 85d old; within
+  7 days max score is single digits. None >100 qualify. (Near-miss context:
+  r/TrueAnon "Dating apps are so much more broken than just a few years ago",
+  141 pts, 65d old — outside window.)
+- "deleted the apps": 100 — max score 5. None >100.
+
+**Conclusion: no post this week meets the >100-upvote bar, so none logged as
+opportunities.** Zero fabricated entries. Note for future runs: PullPush is a
+usable fallback while direct Reddit JSON stays 403; it lags a couple of days
+and skews to smaller subs, so treat as partial coverage, not exhaustive.
+
+**HN pulse:** item 49517518 still hard-404 on Algolia
+(`api/v1/items/49517518`); Firebase returns `dead:true`, score 1, no comment
+count/children; Algolia search for "Auction Baby" in story titles: 0 hits.
+Not gaining traction → watchdog NOT recreated (condition: score ≥ 3 or new
+comments — unmet).
+
+**Blog index health:** 6/6 HTTP 200 — index.html, who-pays-on-the-first-date,
+how-much-should-a-first-date-cost, dating-apps-without-photos,
+dating-app-red-flags, why-dating-apps-are-broken (dir URL `.../blog/` 200).
