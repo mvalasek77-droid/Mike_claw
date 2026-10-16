@@ -93,6 +93,8 @@
 		A1B2C3D40001WHEREISMYAPP /* WhereIsMyAppView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D40002WHEREISMYAPP /* WhereIsMyAppView.swift */; };
 		F964F192A3D071EE809F6EA5 /* FirstBuildPromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17DC2294F78DE7C7AC09A403 /* FirstBuildPromptView.swift */; };
 		08D59B17F74238A25FC58FB5 /* TermsAndPrivacyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 355E53B16CF13DCA46E9290C /* TermsAndPrivacyView.swift */; };
+		D1A2B3C40001SUBSVCBLD01 /* SubscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A2B3C40002SUBSVCREF02 /* SubscriptionService.swift */; };
+		D1A2B3C40003PAYWALLBL01 /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A2B3C40004PAYWALLRF02 /* PaywallView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -184,6 +186,8 @@
 		A1B2C3D40002WHEREISMYAPP /* WhereIsMyAppView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhereIsMyAppView.swift; sourceTree = "<group>"; };
 		17DC2294F78DE7C7AC09A403 /* FirstBuildPromptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstBuildPromptView.swift; sourceTree = "<group>"; };
 		355E53B16CF13DCA46E9290C /* TermsAndPrivacyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TermsAndPrivacyView.swift; sourceTree = "<group>"; };
+		D1A2B3C40002SUBSVCREF02 /* SubscriptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionService.swift; sourceTree = "<group>"; };
+		D1A2B3C40004PAYWALLRF02 /* PaywallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -363,6 +367,7 @@
 				BF6ED841F20A9C7F3225ABD7 /* QRScannerView.swift */,
 				50A201442AF088A90E59B839 /* SettingsView.swift */,
 				EDE6C4536E3528EAEDECAAD9 /* SnapshotCapSettingsView.swift */,
+				D1A2B3C40004PAYWALLRF02 /* PaywallView.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -388,6 +393,7 @@
 				C3EB1A90979FDA616FE84D6F /* SwarmClient.swift */,
 				42ADB9437727A0570D3125D5 /* Telemetry.swift */,
 				EB48BB43C3B90C30E779F369 /* UploadProgressTracker.swift */,
+				D1A2B3C40002SUBSVCREF02 /* SubscriptionService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -617,6 +623,8 @@
 				D82C83C78213D1B70123B03B /* UploadProgressTracker.swift in Sources */,
 				3E3E164D391BADDB70C0A1BB /* WorkspaceFullBanner.swift in Sources */,
 				BDE2BB3124A3947BED81FF41 /* XcodeInstructionsView.swift in Sources */,
+				D1A2B3C40001SUBSVCBLD01 /* SubscriptionService.swift in Sources */,
+				D1A2B3C40003PAYWALLBL01 /* PaywallView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
