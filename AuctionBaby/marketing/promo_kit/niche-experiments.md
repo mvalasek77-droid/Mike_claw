@@ -73,3 +73,45 @@ comments — unmet).
 **Blog index health:** 6/6 HTTP 200 — index.html, who-pays-on-the-first-date,
 how-much-should-a-first-date-cost, dating-apps-without-photos,
 dating-app-red-flags, why-dating-apps-are-broken (dir URL `.../blog/` 200).
+
+## 2026-10-16 — Niche sweep day 3: reddit RSS works for titles, PullPush confirms zero >100
+
+**Status: FETCH PARTIAL (titles only), ZERO QUALIFYING POSTS.** Direct Reddit
+`.json` endpoints still 403/block-walled this host (curl, Safari same-origin
+via `osascript do JavaScript` — all four queries returned the 145-byte "blocked
+by network security" wall; `api.reddit.com` also 403). New workaround this run:
+`https://www.reddit.com/search.rss??...` Atom feeds DO work via curl (severe
+429 rate-limiting — needs 30-60s sleeps between queries, one failed query
+after 4 retries). Parsed 142 real posts (t3_) with titles/subs/timestamps,
+**but Reddit RSS does not expose upvote or comment counts**, so the >100
+upvote bar cannot be evaluated from RSS alone. Cross-checked with PullPush
+archive (`api.pullpush.io`, `after=<epoch-7d>`): all four queries returned
+data, **zero posts >100 upvotes in the last 7 days** (max single digits;
+PullPush scores are mostly placeholder 1s, treated as unreliable — used only
+to rule out >100 candidates). Reddit rate-limit note: queries that return HTTP
+200 are 350-450 KB; a 5 KB body means the query matched ~nothing (e.g.
+"dating apps are broken" → 0 posts in window).
+
+Query-level detail (last 7 days):
+- "dinner date": RSS 50 entries, PullPush 100 — notable title: r/dating_advice
+  "Feeling burnt out always paying and planning first dates. Is it okay to ask
+  her to split…", 3.5d old, score/unknown, small. Relevant theme (first-date
+  payment fatigue) but not >100.
+- "who pays" date: RSS + PullPush — nothing relevant >100.
+- "dating apps are broken": PullPush 0 hits in window; RSS n/a matchable.
+- "deleted the apps": PullPush 8 — none relevant, none >100.
+
+**Conclusion: no post this week meets the >100-upvote bar; nothing logged as
+an opportunity.** No fabricated entries.
+
+**HN pulse:** `hn.algolia.com/api/v1/items/49517518` returns 404 {"error":"Not
+Found"} (previously returned dead-flag JSON — now fully gone from the index);
+live HN page shows the submission tagged **[dead]** (45 days old, no score, no
+comments). Algolia search: 0 hits for "Auction Baby" in titles. Not gaining
+traction → watchdog NOT recreated (condition: score ≥ 3 or new comments —
+unmet; post is dead/removed, not just low-scored). Existing disabled watch
+cron `c644f32eb7d0` left as-is.
+
+**Blog index health:** 6/6 HTTP 200 — index.html, who-pays-on-the-first-date,
+how-much-should-a-first-date-cost, dating-apps-without-photos,
+dating-app-red-flags, why-dating-apps-are-broken.
