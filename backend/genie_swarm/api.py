@@ -17,8 +17,10 @@ import json
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse, StreamingResponse
+
+from .middleware import register_middleware
 
 from .llm import AnthropicClient, LLMClient
 from .asc_coach import CoachContext, answer as asc_answer, suggested_questions
@@ -65,6 +67,11 @@ class SwarmState:
 
 state = SwarmState()
 router = APIRouter(prefix="/api/coding/swarm", tags=["genie-swarm"])
+
+# Production-ready app with auth, rate-limiting, request tracing, and logging.
+app = FastAPI(title="CodeGenie Swarm API", version="0.1.0")
+register_middleware(app)
+app.include_router(router)
 
 
 def _pause_gate_for_state(job_id: str) -> asyncio.Event:
