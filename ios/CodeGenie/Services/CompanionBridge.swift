@@ -102,7 +102,15 @@ final class CompanionBridge: ObservableObject {
         status = .connecting
         let nwHost = NWEndpoint.Host(host)
         let nwPort = NWEndpoint.Port(rawValue: port) ?? .any
-        let conn = NWConnection(host: nwHost, port: nwPort, using: .tcp)
+        let tlsOptions = NWProtocolTLS.Options()
+        sec_protocol_options_set_verify_block(
+            tlsOptions.securityProtocolOptions, { _, trust, complete in
+                complete(true)
+            }, .main
+        )
+        let params = NWParameters(tls: tlsOptions)
+        params.includePeerToPeer = true
+        let conn = NWConnection(host: nwHost, port: nwPort, using: params)
         self.conn = conn
 
         let ready = await waitForReady(conn)

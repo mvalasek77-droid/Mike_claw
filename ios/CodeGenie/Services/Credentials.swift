@@ -225,6 +225,11 @@ final class Credentials: ObservableObject {
 
     func setBackendURL(_ url: String) {
         let trimmed = url.trimmingCharacters(in: .whitespaces)
+        guard let parsed = URL(string: trimmed),
+              let scheme = parsed.scheme?.lowercased(),
+              scheme == "https" || scheme == "http",
+              parsed.host != nil
+        else { return }
         backendURL = trimmed
         UserDefaults.standard.set(trimmed, forKey: "backend.url")
     }

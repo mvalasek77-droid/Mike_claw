@@ -595,7 +595,7 @@ struct SettingsView: View {
     private var aboutBlock: some View {
         GlassCard(title: "About CodeGenie", icon: "info.circle.fill", tint: LiquidGlass.accent) {
             VStack(alignment: .leading, spacing: 6) {
-                aboutRow("Version", "0.1.0 (build 1)")
+                aboutRow("Version", "\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.1.0") (build \(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"))")
                 aboutRow("Engine", "Genie Swarm — 8 agents")
                 aboutRow("Theme", "iOS 26 Liquid Glass")
                 aboutRow("Repo", "github.com/mvalasek77-droid/Mike_claw")

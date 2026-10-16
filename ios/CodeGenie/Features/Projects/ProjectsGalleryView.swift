@@ -7,6 +7,7 @@ struct ProjectsGalleryView: View {
     /// Set when the user picks "Compare with…" from a row's context menu.
     @State private var compareOrigin: BuildJob?
     @State private var showWhereIsMyApp = false
+    @State private var jobToDelete: BuildJob?
 
     private var filtered: [BuildJob] {
         let q = query.trimmingCharacters(in: .whitespaces).lowercased()
@@ -53,8 +54,7 @@ struct ProjectsGalleryView: View {
                                     }
                                 }
                                 Button(role: .destructive) {
-                                    session.deleteJob(job)
-                                    Haptics.warning()
+                                    jobToDelete = job
                                 } label: {
                                     Label("Remove from gallery", systemImage: "trash")
                                 }
@@ -87,6 +87,23 @@ struct ProjectsGalleryView: View {
                     .environmentObject(session)
                     .presentationDragIndicator(.visible)
                     .presentationBackground(.ultraThinMaterial)
+            }
+        }
+        .alert("Remove this app?", isPresented: Binding(
+            get: { jobToDelete != nil },
+            set: { if !$0 { jobToDelete = nil } }
+        )) {
+            Button("Remove", role: .destructive) {
+                if let job = jobToDelete {
+                    session.deleteJob(job)
+                    Haptics.warning()
+                }
+                jobToDelete = nil
+            }
+            Button("Cancel", role: .cancel) { jobToDelete = nil }
+        } message: {
+            if let job = jobToDelete {
+                Text(""\(job.description.title)" will be removed from your gallery. The build on the server is not affected.")
             }
         }
     }

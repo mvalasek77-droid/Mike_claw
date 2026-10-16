@@ -15,16 +15,21 @@ final class SwarmClient: ObservableObject {
 
     // MARK: - Public state
 
+    enum ConnectionState: Equatable {
+        case disconnected
+        case connecting
+        case connected
+        case reconnecting(attempt: Int, maxAttempts: Int)
+    }
+
     @Published private(set) var events: [SwarmEvent] = []
     @Published private(set) var stage: BuildJob.Stage = .planning
     @Published private(set) var lastError: String?
-    @Published private(set) var isConnected: Bool = false
+    @Published private(set) var connectionState: ConnectionState = .disconnected
     @Published private(set) var jobID: String?
-    /// Live pause state derived from `job.state` events. Flips to true
-    /// when the backend emits `paused` and back to false on `resumed`
-    /// or any subsequent normal state. Optimistic UI buttons should
-    /// trust this rather than tracking their own flag.
     @Published private(set) var isPaused: Bool = false
+
+    var isConnected: Bool { connectionState == .connected }
 
     private let session: URLSession
     private var streamTask: Task<Void, Never>?
@@ -32,6 +37,9 @@ final class SwarmClient: ObservableObject {
     private static let maxRetainedEvents = 1_500
     private static let streamBatchSize = 24
     private static let streamFlushInterval: TimeInterval = 1.0 / 30.0
+    private static let restTimeout: TimeInterval = 20
+    private static let sseMaxReconnects = 10
+    private static let sseMaxBackoff: TimeInterval = 30
 
     init(credentials: Credentials? = nil, session: URLSession = .shared) {
         self.credentials = credentials ?? Credentials.shared
@@ -355,38 +363,55 @@ final class SwarmClient: ObservableObject {
         try await postJSON("/api/coding/swarm/asc/coach", body: body)
     }
 
-    /// URL the iOS share sheet can hand off so the user can save the
-    /// generated workspace as a zip. We add the auth token via a
-    /// query parameter so `URL` can be passed straight to `ShareLink`.
+    /// Export endpoint URL without credentials for display/share-sheet
+    /// use. The actual download should use `downloadExport` which sends
+    /// the token via headers.
     func exportURL(jobID: String) -> URL? {
-        var components = URLComponents(string: credentials.backendURL + "/api/coding/swarm/\(jobID)/export")
-        if !credentials.backendToken.isEmpty {
-            components?.queryItems = [URLQueryItem(name: "token", value: credentials.backendToken)]
+        URL(string: credentials.backendURL + "/api/coding/swarm/\(jobID)/export")
+    }
+
+    /// Download the workspace zip with proper auth headers instead of
+    /// leaking the token in a URL query parameter.
+    func downloadExport(jobID: String) async throws -> URL {
+        let data: Data = try await withRetry {
+            guard let url = URL(string: self.credentials.backendURL + "/api/coding/swarm/\(jobID)/export") else {
+                throw SwarmError.malformed("bad url")
+            }
+            var req = URLRequest(url: url)
+            req.timeoutInterval = 120
+            if !self.credentials.backendToken.isEmpty {
+                req.setValue("Bearer \(self.credentials.backendToken)", forHTTPHeaderField: "Authorization")
+            }
+            let (data, response) = try await self.session.data(for: req)
+            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+                throw SwarmError.http(response: response)
+            }
+            return data
         }
-        return components?.url
+        let tempDir = FileManager.default.temporaryDirectory
+        let dest = tempDir.appendingPathComponent("\(jobID).zip")
+        try data.write(to: dest, options: .atomic)
+        return dest
     }
 
     // MARK: - SSE
 
-    /// Subscribe to a job's event stream. Calls `onEvent` for every parsed
-    /// `SwarmEvent`. Emits structured updates into `events`/`stage` for
-    /// SwiftUI bindings.
     func openStream(jobID: String, onEvent: ((SwarmEvent) -> Void)? = nil) {
         streamTask?.cancel()
         self.jobID = jobID
         events.removeAll()
-        isConnected = false
+        connectionState = .connecting
 
         streamTask = Task { [weak self] in
             guard let self else { return }
             do {
-                try await self.consumeStream(jobID: jobID, onEvent: onEvent)
+                try await self.consumeStreamWithReconnect(jobID: jobID, onEvent: onEvent)
             } catch is CancellationError {
                 // expected on teardown
             } catch {
                 await MainActor.run {
                     self.lastError = "\(error)"
-                    self.isConnected = false
+                    self.connectionState = .disconnected
                 }
             }
         }
@@ -395,12 +420,60 @@ final class SwarmClient: ObservableObject {
     func closeStream() {
         streamTask?.cancel()
         streamTask = nil
-        isConnected = false
+        connectionState = .disconnected
+    }
+
+    /// Pause the SSE stream when the app backgrounds and resume on
+    /// foreground. Avoids iOS killing the connection after ~30 seconds.
+    func suspendStream() {
+        streamTask?.cancel()
+        streamTask = nil
+        if connectionState == .connected {
+            connectionState = .disconnected
+        }
+    }
+
+    func resumeStream(onEvent: ((SwarmEvent) -> Void)? = nil) {
+        guard let jobID, connectionState == .disconnected else { return }
+        openStream(jobID: jobID, onEvent: onEvent)
     }
 
     // MARK: - Internals
 
-    private func consumeStream(jobID: String, onEvent: ((SwarmEvent) -> Void)?) async throws {
+    private func consumeStreamWithReconnect(jobID: String, onEvent: ((SwarmEvent) -> Void)?) async throws {
+        var attempt = 0
+        var backoff: TimeInterval = 1.0
+
+        while !Task.isCancelled {
+            do {
+                try await consumeStreamOnce(jobID: jobID, onEvent: onEvent)
+                return
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch let error as SwarmError {
+                if case .http(let r) = error,
+                   let http = r as? HTTPURLResponse,
+                   (400..<500).contains(http.statusCode) {
+                    throw error
+                }
+                attempt += 1
+                if attempt > Self.sseMaxReconnects { throw error }
+                connectionState = .reconnecting(attempt: attempt, maxAttempts: Self.sseMaxReconnects)
+                lastError = "Connection lost — reconnecting (\(attempt)/\(Self.sseMaxReconnects))…"
+                try await Task.sleep(nanoseconds: UInt64(backoff * 1_000_000_000))
+                backoff = min(backoff * 2, Self.sseMaxBackoff)
+            } catch {
+                attempt += 1
+                if attempt > Self.sseMaxReconnects { throw error }
+                connectionState = .reconnecting(attempt: attempt, maxAttempts: Self.sseMaxReconnects)
+                lastError = "Connection lost — reconnecting (\(attempt)/\(Self.sseMaxReconnects))…"
+                try await Task.sleep(nanoseconds: UInt64(backoff * 1_000_000_000))
+                backoff = min(backoff * 2, Self.sseMaxBackoff)
+            }
+        }
+    }
+
+    private func consumeStreamOnce(jobID: String, onEvent: ((SwarmEvent) -> Void)?) async throws {
         guard let url = URL(string: credentials.backendURL + "/api/coding/swarm/\(jobID)/stream") else {
             throw SwarmError.malformed("invalid backend URL")
         }
@@ -414,14 +487,14 @@ final class SwarmClient: ObservableObject {
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw SwarmError.http(response: response)
         }
-        await MainActor.run { self.isConnected = true; self.lastError = nil }
+        connectionState = .connected
+        lastError = nil
 
-        // Buffered SSE parsing keeps large agent transcripts from invalidating
-        // SwiftUI hundreds of times per second.
         var pendingData: String = ""
         var bufferedEvents: [SwarmEvent] = []
         bufferedEvents.reserveCapacity(Self.streamBatchSize)
         var lastFlush = Date()
+        var receivedDone = false
 
         func flushIfNeeded(force: Bool = false) async {
             guard !bufferedEvents.isEmpty else { return }
@@ -438,6 +511,7 @@ final class SwarmClient: ObservableObject {
                 if !pendingData.isEmpty,
                    let event = decodeEvent(pendingData) {
                     bufferedEvents.append(event)
+                    if event.type == "done" { receivedDone = true }
                     await flushIfNeeded()
                 }
                 pendingData = ""
@@ -446,9 +520,12 @@ final class SwarmClient: ObservableObject {
             if line.hasPrefix("data: ") {
                 pendingData += String(line.dropFirst(6))
             }
-            // We ignore "event:" / "id:" / "retry:" — the type lives inside the JSON.
         }
         await flushIfNeeded(force: true)
+
+        if !receivedDone && !Task.isCancelled {
+            throw SwarmError.malformed("stream ended without done event")
+        }
     }
 
     private func ingest(_ newEvents: [SwarmEvent], forward: ((SwarmEvent) -> Void)?) async {
@@ -504,33 +581,66 @@ final class SwarmClient: ObservableObject {
     // MARK: - HTTP helpers
 
     private func postJSON(_ path: String, body: [String: Any]) async throws -> [String: Any] {
-        guard let url = URL(string: credentials.backendURL + path) else { throw SwarmError.malformed("bad url") }
-        var req = URLRequest(url: url)
-        req.httpMethod = "POST"
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if !credentials.backendToken.isEmpty {
-            req.setValue("Bearer \(credentials.backendToken)", forHTTPHeaderField: "Authorization")
-        }
-        req.httpBody = try JSONSerialization.data(withJSONObject: body)
+        try await withRetry {
+            guard let url = URL(string: self.credentials.backendURL + path) else { throw SwarmError.malformed("bad url") }
+            var req = URLRequest(url: url)
+            req.httpMethod = "POST"
+            req.timeoutInterval = Self.restTimeout
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            if !self.credentials.backendToken.isEmpty {
+                req.setValue("Bearer \(self.credentials.backendToken)", forHTTPHeaderField: "Authorization")
+            }
+            req.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        let (data, response) = try await session.data(for: req)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            throw SwarmError.http(response: response)
+            let (data, response) = try await self.session.data(for: req)
+            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+                throw SwarmError.http(response: response)
+            }
+            return (try JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
         }
-        return (try JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
     }
 
     private func getJSON(_ path: String) async throws -> [String: Any] {
-        guard let url = URL(string: credentials.backendURL + path) else { throw SwarmError.malformed("bad url") }
-        var req = URLRequest(url: url)
-        if !credentials.backendToken.isEmpty {
-            req.setValue("Bearer \(credentials.backendToken)", forHTTPHeaderField: "Authorization")
+        try await withRetry {
+            guard let url = URL(string: self.credentials.backendURL + path) else { throw SwarmError.malformed("bad url") }
+            var req = URLRequest(url: url)
+            req.timeoutInterval = Self.restTimeout
+            if !self.credentials.backendToken.isEmpty {
+                req.setValue("Bearer \(self.credentials.backendToken)", forHTTPHeaderField: "Authorization")
+            }
+            let (data, response) = try await self.session.data(for: req)
+            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+                throw SwarmError.http(response: response)
+            }
+            return (try JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
         }
-        let (data, response) = try await session.data(for: req)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            throw SwarmError.http(response: response)
+    }
+
+    private func withRetry<T>(
+        maxAttempts: Int = 3,
+        _ operation: @Sendable () async throws -> T
+    ) async throws -> T {
+        var lastError: Error?
+        var delay: TimeInterval = 1.0
+        for attempt in 0..<maxAttempts {
+            do {
+                return try await operation()
+            } catch let error as SwarmError {
+                if case .http(let r) = error,
+                   let http = r as? HTTPURLResponse,
+                   (400..<500).contains(http.statusCode) {
+                    throw error
+                }
+                lastError = error
+            } catch {
+                lastError = error
+            }
+            if attempt < maxAttempts - 1 {
+                try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                delay = min(delay * 2, 8)
+            }
         }
-        return (try JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
+        throw lastError!
     }
 }
 
@@ -916,15 +1026,28 @@ enum PromptBrief {
     }
 }
 
-enum SwarmError: Error, CustomStringConvertible {
+enum SwarmError: Error, LocalizedError, CustomStringConvertible {
     case malformed(String)
     case http(response: URLResponse)
 
+    var statusCode: Int? {
+        if case .http(let r) = self { return (r as? HTTPURLResponse)?.statusCode }
+        return nil
+    }
+
+    var errorDescription: String? { description }
+
     var description: String {
         switch self {
-        case .malformed(let m): "malformed: \(m)"
+        case .malformed(let m): return "malformed: \(m)"
         case .http(let r):
-            if let h = r as? HTTPURLResponse { "HTTP \(h.statusCode)" } else { "HTTP error" }
+            guard let h = r as? HTTPURLResponse else { return "HTTP error" }
+            switch h.statusCode {
+            case 401: return "Authentication failed — check your API key in Settings."
+            case 429: return "Too many requests — wait a moment and try again."
+            case 503: return "Server is temporarily unavailable. Try again shortly."
+            default:  return "HTTP \(h.statusCode)"
+            }
         }
     }
 }

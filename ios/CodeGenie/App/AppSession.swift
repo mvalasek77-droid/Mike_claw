@@ -153,6 +153,26 @@ final class AppSession: ObservableObject {
         pendingASC = job
     }
 
+    // MARK: - App lifecycle
+
+    /// The active SwarmClient for the current build, if any. Set by
+    /// BuildScreen so the session can suspend/resume it across
+    /// foreground/background transitions.
+    weak var activeSwarmClient: SwarmClient?
+
+    func handleScenePhase(_ phase: ScenePhase) {
+        switch phase {
+        case .background:
+            activeSwarmClient?.suspendStream()
+        case .active:
+            activeSwarmClient?.resumeStream()
+        case .inactive:
+            break
+        @unknown default:
+            break
+        }
+    }
+
     // MARK: - Resume record
 
     func registerBackendJob(backendID: String, description: AppDescription) {

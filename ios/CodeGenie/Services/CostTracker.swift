@@ -43,6 +43,7 @@ final class CostTracker: ObservableObject {
 
     private let modelID: String
     private var cancellables: Set<AnyCancellable> = []
+    private var lastConsumedCount: Int = 0
 
     init(modelID: String = ModelCatalogue.recommendedDefault) {
         self.modelID = modelID
@@ -57,8 +58,9 @@ final class CostTracker: ObservableObject {
         retryAttempts = 0; maxRetries = 0
         backendSpendUSD = 0; backendCapUSD = nil; capHit = false
         workspaceFull = nil
+        lastConsumedCount = 0
         client.$events
-            .sink { [weak self] events in self?.consume(events) }
+            .sink { [weak self] events in self?.consumeIncremental(events) }
             .store(in: &cancellables)
     }
 
@@ -75,64 +77,49 @@ final class CostTracker: ObservableObject {
 
     // MARK: - Internals
 
-    private func consume(_ events: [SwarmEvent]) {
-        // Recompute from scratch so re-binds don't double-count.
-        var input = 0
-        var output = 0
-        var byAgent: [String: AgentCost] = [:]
-        var retries = 0
-        var maxR = 0
-        var backendSpend: Double = 0
-        var backendCap: Double? = nil
-        var hit = false
-        var wsFull: WorkspaceFullState? = nil
-        for event in events {
+    private func consumeIncremental(_ events: [SwarmEvent]) {
+        guard events.count > lastConsumedCount else { return }
+        let newSlice = events[lastConsumedCount...]
+        lastConsumedCount = events.count
+
+        for event in newSlice {
             switch event.type {
             case "agent.finished":
                 let inT = event.payload["input_tokens"] as? Int ?? 0
                 let outT = event.payload["output_tokens"] as? Int ?? 0
-                input += inT
-                output += outT
+                inputTokens += inT
+                outputTokens += outT
                 if let agent = event.agent {
-                    let prior = byAgent[agent]?.inputTokens ?? 0
-                    let priorOut = byAgent[agent]?.outputTokens ?? 0
-                    byAgent[agent] = AgentCost(
+                    var entry = perAgent[agent] ?? AgentCost(agent: agent, inputTokens: 0, outputTokens: 0, usd: 0)
+                    entry = AgentCost(
                         agent: agent,
-                        inputTokens: prior + inT,
-                        outputTokens: priorOut + outT,
-                        usd: usd(input: prior + inT, output: priorOut + outT)
+                        inputTokens: entry.inputTokens + inT,
+                        outputTokens: entry.outputTokens + outT,
+                        usd: usd(input: entry.inputTokens + inT, output: entry.outputTokens + outT)
                     )
+                    perAgent[agent] = entry
                 }
             case "retry.attempt":
                 let n = event.payload["attempt"] as? Int ?? 0
-                retries = max(retries, n)
-                if let cap = event.payload["max_retries"] as? Int { maxR = cap }
+                retryAttempts = max(retryAttempts, n)
+                if let cap = event.payload["max_retries"] as? Int { maxRetries = cap }
             case "cost.update":
-                if let spent = event.payload["spend_usd"] as? Double { backendSpend = spent }
-                if let cap = event.payload["cap_usd"] as? Double { backendCap = cap }
+                if let spent = event.payload["spend_usd"] as? Double { backendSpendUSD = spent }
+                if let cap = event.payload["cap_usd"] as? Double { backendCapUSD = cap }
             case "cost.cap_hit":
-                hit = true
-                if let spent = event.payload["spent_usd"] as? Double { backendSpend = spent }
-                if let cap = event.payload["cap_usd"] as? Double { backendCap = cap }
+                capHit = true
+                if let spent = event.payload["spent_usd"] as? Double { backendSpendUSD = spent }
+                if let cap = event.payload["cap_usd"] as? Double { backendCapUSD = cap }
             case "workspace.full":
                 let label = (event.payload["label"] as? String) ?? "(unknown)"
                 let size = (event.payload["size_bytes"] as? Int).map(Int64.init)
                     ?? (event.payload["size_bytes"] as? Int64) ?? 0
                 let cap = (event.payload["cap_bytes"] as? Int).map(Int64.init)
                     ?? (event.payload["cap_bytes"] as? Int64) ?? 0
-                wsFull = WorkspaceFullState(label: label, sizeBytes: size, capBytes: cap)
+                workspaceFull = WorkspaceFullState(label: label, sizeBytes: size, capBytes: cap)
             default: break
             }
         }
-        inputTokens = input
-        outputTokens = output
-        perAgent = byAgent
-        retryAttempts = retries
-        maxRetries = maxR
-        backendSpendUSD = backendSpend
-        backendCapUSD = backendCap
-        capHit = hit
-        workspaceFull = wsFull
     }
 
     private func usd(input: Int, output: Int) -> Double {

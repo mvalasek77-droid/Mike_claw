@@ -36,6 +36,10 @@ struct HomeView: View {
             .padding(.top, 14)
         }
         .scrollIndicators(.hidden)
+        .refreshable {
+            ascStore.objectWillChange.send()
+            session.objectWillChange.send()
+        }
         .sheet(isPresented: $showXcodeGuide) {
             XcodeInstructionsView()
                 .presentationDragIndicator(.visible)

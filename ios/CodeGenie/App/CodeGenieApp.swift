@@ -4,6 +4,7 @@ import SwiftUI
 struct CodeGenieApp: App {
     @StateObject private var session = AppSession()
     @AppStorage("hasFinishedOnboarding") private var hasFinishedOnboarding = false
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
@@ -11,6 +12,9 @@ struct CodeGenieApp: App {
                 .environmentObject(session)
                 .preferredColorScheme(session.colorScheme)
                 .tint(LiquidGlass.accent)
+                .onChange(of: scenePhase) { _, phase in
+                    session.handleScenePhase(phase)
+                }
         }
     }
 }

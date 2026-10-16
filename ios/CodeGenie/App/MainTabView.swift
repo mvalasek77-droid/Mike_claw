@@ -2,16 +2,23 @@ import SwiftUI
 
 struct MainTabView: View {
     @EnvironmentObject private var session: AppSession
-    @State private var tab: Tab = .home
+    @SceneStorage("selectedTab") private var tabRaw: String = "home"
 
-    enum Tab: Hashable { case home, build, play, apps, settings }
+    private var tab: Binding<Tab> {
+        Binding(
+            get: { Tab(rawValue: tabRaw) ?? .home },
+            set: { tabRaw = $0.rawValue }
+        )
+    }
+
+    enum Tab: String, Hashable { case home, build, play, apps, settings }
 
     var body: some View {
         ZStack(alignment: .bottom) {
             Group {
-                switch tab {
+                switch tab.wrappedValue {
                 case .home:     HomeView()
-                case .build:    BuildPlaceholderView { tab = .home }
+                case .build:    BuildPlaceholderView { tab.wrappedValue = .home }
                 case .play:     GameHomeView()
                 case .apps:     ProjectsGalleryView()
                 case .settings: SettingsView()
@@ -19,7 +26,7 @@ struct MainTabView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            TabBar(selected: $tab)
+            TabBar(selected: tab)
                 .padding(.horizontal, 20)
                 .padding(.bottom, 12)
         }
@@ -41,6 +48,8 @@ private struct TabBar: View {
             .padding(8)
         }
         .frame(maxWidth: 460)
+        .accessibilityElement(children: .contain)
+        .accessibilityAddTraits(.isTabBar)
     }
 
     private func tab(_ t: MainTabView.Tab, icon: String, label: String) -> some View {

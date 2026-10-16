@@ -81,6 +81,7 @@ struct BuildScreen: View {
             LiquidGlassBackground().ignoresSafeArea()
             VStack(spacing: 0) {
                 topBar
+                connectionBanner
                 ScrollView {
                     VStack(spacing: 18) {
                         progressBlock
@@ -190,6 +191,37 @@ struct BuildScreen: View {
     }
 
     // MARK: Sections
+
+    @ViewBuilder
+    private var connectionBanner: some View {
+        switch swarm.connectionState {
+        case .reconnecting(let attempt, let max):
+            HStack(spacing: 8) {
+                ProgressView()
+                    .tint(.white)
+                    .controlSize(.small)
+                Text("Reconnecting (\(attempt)/\(max))…")
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.9))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 6)
+            .background(LiquidGlass.warning.opacity(0.85))
+        case .disconnected where stage != .readyForTest && stage != .failed:
+            HStack(spacing: 8) {
+                Image(systemName: "wifi.slash")
+                    .font(.system(size: 12, weight: .semibold))
+                Text("Disconnected")
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+            }
+            .foregroundStyle(.white.opacity(0.9))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 6)
+            .background(LiquidGlass.error.opacity(0.75))
+        default:
+            EmptyView()
+        }
+    }
 
     private var topBar: some View {
         HStack {
@@ -758,6 +790,7 @@ struct BuildScreen: View {
     }
 
     private func runRemoteBuild() async {
+        session.activeSwarmClient = swarm
         costs.bind(to: swarm)
         diffStream.bind(to: swarm)
         uploadProgress.bind(to: swarm)

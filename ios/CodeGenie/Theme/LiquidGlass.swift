@@ -76,13 +76,14 @@ struct LiquidGlassBackground: View {
                 .opacity(colorScheme == .light ? 0.30 : 0.45)
                 .accessibilityHidden(true)
             } else {
-                TimelineView(.animation(minimumInterval: 1 / 30)) { context in
+                TimelineView(.animation(minimumInterval: 1 / 10)) { context in
                     Canvas { ctx, size in
                         let t = context.date.timeIntervalSinceReferenceDate
                         drawOrb(in: ctx, size: size, t: t, hueShift: 0)
                         drawOrb(in: ctx, size: size, t: t + 5, hueShift: 0.18)
                         drawOrb(in: ctx, size: size, t: t + 11, hueShift: -0.12)
                     }
+                    .drawingGroup()
                 }
                 .blendMode(.screen)
                 .opacity(colorScheme == .light ? 0.34 : 0.55)
