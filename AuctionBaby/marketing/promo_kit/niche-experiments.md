@@ -123,3 +123,6 @@ Sweep attempted for: "dinner date" pain, "who pays" debates, "dating apps are br
 - reddit.com search.json returned an HTML "blocked by network security" page to curl, and the same wall via Safari (`document 1` fetch returned empty; loading the URL directly in Safari showed the blocked-interstitial body). old.reddit.com now requires login for search.json.
 - No posts could be evaluated; nothing appended this run. No Fabrication.
 - HN context: item 49517518 (Auction Baby story) returns 404 from Algolia API and no "Auction Baby" story is indexed — fetch failed, no numbers reported.
+
+### 2026-10-17 amendment — HN item verified via Firebase API
+hacker-news.firebaseio.com/v0/item/49517518.json: `{"by":"mvalasek","dead":true,"id":49517518,"score":1}` — no kids/comments. Third consecutive day the story is dead/flagged (score 1, 0 comments). Cron-recreation trigger (score>=3 or new comments) NOT met.
