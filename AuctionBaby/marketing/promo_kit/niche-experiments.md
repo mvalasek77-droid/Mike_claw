@@ -115,3 +115,11 @@ cron `c644f32eb7d0` left as-is.
 **Blog index health:** 6/6 HTTP 200 — index.html, who-pays-on-the-first-date,
 how-much-should-a-first-date-cost, dating-apps-without-photos,
 dating-app-red-flags, why-dating-apps-are-broken.
+
+## 2026-10-17 — Niche sweep (blocked)
+
+Sweep attempted for: "dinner date" pain, "who pays" debates, "dating apps are broken", "deleted the apps" (top/week, >100 upvotes filter).
+
+- reddit.com search.json returned an HTML "blocked by network security" page to curl, and the same wall via Safari (`document 1` fetch returned empty; loading the URL directly in Safari showed the blocked-interstitial body). old.reddit.com now requires login for search.json.
+- No posts could be evaluated; nothing appended this run. No Fabrication.
+- HN context: item 49517518 (Auction Baby story) returns 404 from Algolia API and no "Auction Baby" story is indexed — fetch failed, no numbers reported.
