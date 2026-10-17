@@ -60,13 +60,13 @@ final class ASCStatusPoller: ObservableObject {
 
     @Published private(set) var status: Status?
     @Published private(set) var isChecking = false
+    @Published private(set) var isPolling = false
     @Published private(set) var lastError: String?
 
     private let session: URLSession
-    /// Keyed by bundle ID, not a bare "have we looked yet" flag —
-    /// otherwise checking a second app on the same instance would
-    /// silently report the first app's build.
     private var appIDCache: [String: String] = [:]
+    private var pollTask: Task<Void, Never>?
+    private static let defaultPollInterval: TimeInterval = 60
 
     init(session: URLSession = .shared) {
         self.session = session
@@ -85,6 +85,31 @@ final class ASCStatusPoller: ObservableObject {
         } catch {
             lastError = (error as? LocalizedError)?.errorDescription ?? "\(error)"
         }
+    }
+
+    /// Start polling Apple at a regular interval until the build reaches
+    /// a terminal state (VALID, INVALID, FAILED, EXPIRED) or `stopPolling`
+    /// is called. Safe to call multiple times — restarts the timer.
+    func startPolling(bundleID: String, interval: TimeInterval = defaultPollInterval, credentials: Credentials? = nil) {
+        stopPolling()
+        isPolling = true
+        pollTask = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self else { return }
+                await self.check(bundleID: bundleID, credentials: credentials)
+                if let s = self.status, s.isFinished {
+                    self.isPolling = false
+                    return
+                }
+                try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+            }
+        }
+    }
+
+    func stopPolling() {
+        pollTask?.cancel()
+        pollTask = nil
+        isPolling = false
     }
 
     // MARK: - Apple

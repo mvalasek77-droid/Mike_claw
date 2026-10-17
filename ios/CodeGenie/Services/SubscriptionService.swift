@@ -171,9 +171,15 @@ final class SubscriptionService: ObservableObject {
     }
 
     /// Increments the monthly build counter and persists it.
-    func recordBuild() {
+    /// Returns false (and does NOT increment) when the user has hit their
+    /// tier's limit — callers should check `canBuild` or use the return
+    /// value before starting the build.
+    @discardableResult
+    func recordBuild() -> Bool {
+        guard canBuild else { return false }
         buildsThisMonth += 1
         persistBuildsCount()
+        return true
     }
 
     /// Re-reads `Transaction.currentEntitlements` and updates `currentTier`.
@@ -222,6 +228,8 @@ final class SubscriptionService: ObservableObject {
     private var currentMonthKey: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
         return formatter.string(from: Date())
     }
 

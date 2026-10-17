@@ -425,7 +425,9 @@ final class SwarmClient: ObservableObject {
 
     /// Pause the SSE stream when the app backgrounds and resume on
     /// foreground. Avoids iOS killing the connection after ~30 seconds.
+    /// Saves the last event timestamp so resume can skip already-seen events.
     func suspendStream() {
+        lastEventTimestamp = events.last?.ts
         streamTask?.cancel()
         streamTask = nil
         if connectionState == .connected {
@@ -437,6 +439,8 @@ final class SwarmClient: ObservableObject {
         guard let jobID, connectionState == .disconnected else { return }
         openStream(jobID: jobID, onEvent: onEvent)
     }
+
+    private var lastEventTimestamp: Double?
 
     // MARK: - Internals
 
@@ -505,11 +509,19 @@ final class SwarmClient: ObservableObject {
             lastFlush = Date()
         }
 
+        let resumeAfter = lastEventTimestamp
+        lastEventTimestamp = nil
+
         for try await line in bytes.lines {
             if Task.isCancelled { break }
             if line.isEmpty {
                 if !pendingData.isEmpty,
                    let event = decodeEvent(pendingData) {
+                    // Skip events the client already has from before suspend.
+                    if let cutoff = resumeAfter, event.ts <= cutoff {
+                        pendingData = ""
+                        continue
+                    }
                     bufferedEvents.append(event)
                     if event.type == "done" { receivedDone = true }
                     await flushIfNeeded()

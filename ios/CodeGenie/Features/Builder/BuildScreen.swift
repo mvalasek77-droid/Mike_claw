@@ -28,6 +28,7 @@ struct BuildScreen: View {
     @State private var jargonHelp: JargonTerm?
     @State private var shipBanner: String?
     @State private var showWhereIsMyApp: Bool = false
+    @State private var hadConnection: Bool = false
 
     enum JargonTerm: String, Identifiable {
         case pipeline, bitdrop, perfection
@@ -105,6 +106,9 @@ struct BuildScreen: View {
             if stage == .failed { failureOverlay }
         }
         .task { await runBuild() }
+        .onChange(of: swarm.connectionState) { _, newState in
+            if newState == .connected { hadConnection = true }
+        }
         .sheet(isPresented: $showDiffReview) {
             DiffPreviewView(diffs: diffStream.pending) { decisions in
                 Task {
@@ -207,7 +211,7 @@ struct BuildScreen: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 6)
             .background(LiquidGlass.warning.opacity(0.85))
-        case .disconnected where stage != .readyForTest && stage != .failed:
+        case .disconnected where hadConnection && stage != .readyForTest && stage != .failed:
             HStack(spacing: 8) {
                 Image(systemName: "wifi.slash")
                     .font(.system(size: 12, weight: .semibold))

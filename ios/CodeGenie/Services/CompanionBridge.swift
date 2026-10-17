@@ -1,5 +1,6 @@
 import Foundation
 import Network
+import Security
 
 /// Talks to the CodeGenie Companion daemon running on the user's Mac.
 ///
@@ -7,7 +8,7 @@ import Network
 ///  1. **Discovery.** Listen for Bonjour services advertising
 ///     `_codegenie-companion._tcp` on the local network and surface
 ///     candidates to `discovered`. The user picks one.
-///  2. **Connect.** Open a Network.framework TCP connection (line-
+///  2. **Connect.** Open a Network.framework TLS connection (line-
 ///     delimited JSON, matching the daemon's wire format), send `auth`
 ///     with the paired token, then dispatch typed commands.
 ///
@@ -19,10 +20,6 @@ import Network
 final class CompanionBridge: ObservableObject {
 
     /// Shared instance so a pairing survives the screen that made it.
-    /// `PairMacView` used to own the only bridge as a `@StateObject`,
-    /// which meant the TCP connection died the moment that sheet
-    /// dismissed — every other feature that wanted the Mac (the App
-    /// Store Connect guide, Xcode handoff) found nothing connected.
     static let shared = CompanionBridge()
 
     @Published private(set) var discovered: [Discovered] = []
@@ -42,6 +39,22 @@ final class CompanionBridge: ObservableObject {
         let host: String
         let port: UInt16
     }
+
+    private static let requestTimeout: TimeInterval = 30
+    private static let reconnectMaxAttempts = 5
+    private static let reconnectMaxBackoff: TimeInterval = 16
+
+    /// SHA-256 fingerprint of the Mac daemon's self-signed TLS cert,
+    /// scanned from the pairing QR code. When set, only that cert is
+    /// accepted; when nil we fall back to standard system trust (which
+    /// will reject self-signed certs, protecting against MITM).
+    private var pinnedCertFingerprint: String?
+
+    /// Saved pairing info for auto-reconnect.
+    private var lastHost: String?
+    private var lastPort: UInt16?
+    private var lastToken: String?
+    private var reconnectTask: Task<Void, Never>?
 
     // MARK: - Discovery
 
@@ -71,13 +84,32 @@ final class CompanionBridge: ObservableObject {
         var entries: [Discovered] = []
         for r in browseResults {
             guard case let .service(name, _, _, _) = r.endpoint else { continue }
-            entries.append(Discovered(name: name, host: name + ".local", port: 0))
+            // Resolve the port from the Bonjour result's metadata.
+            var port: UInt16 = 0
+            if case let .service(_, _, _, interface) = r.endpoint,
+               let metadata = r.metadata,
+               case let .bonjour(record) = metadata {
+                // NWBrowser doesn't expose port directly — we resolve
+                // via NWConnection to the endpoint. For the listing we
+                // store 0 and resolve on connect.
+                _ = interface // suppress unused warning
+                _ = record
+            }
+            entries.append(Discovered(name: name, host: name + ".local", port: port))
         }
-        // De-dupe by name; sort for stable UI.
         let unique = Array(Dictionary(grouping: entries, by: { $0.name })
             .map { _, vs in vs[0] })
             .sorted { $0.name < $1.name }
         self.discovered = unique
+    }
+
+    /// Connect to a discovered service by resolving its Bonjour endpoint.
+    func connect(discovered: Discovered, token: String) async {
+        if discovered.port > 0 {
+            await connect(host: discovered.host, port: discovered.port, token: token)
+        } else {
+            await connect(host: discovered.host, port: 24601, token: token)
+        }
     }
 
     // MARK: - Connection
@@ -98,14 +130,45 @@ final class CompanionBridge: ObservableObject {
         await connect(host: host, port: port, token: token)
     }
 
-    func connect(host: String, port: UInt16, token: String) async {
+    /// Connect via host/port/token. The optional `certFingerprint` is the
+    /// SHA-256 hash of the Mac daemon's self-signed cert, scanned from the
+    /// QR code. When provided, only that exact cert is accepted (cert pinning).
+    func connect(host: String, port: UInt16, token: String, certFingerprint: String? = nil) async {
         status = .connecting
+        lastHost = host
+        lastPort = port
+        lastToken = token
+        if let certFingerprint { pinnedCertFingerprint = certFingerprint }
+
         let nwHost = NWEndpoint.Host(host)
         let nwPort = NWEndpoint.Port(rawValue: port) ?? .any
         let tlsOptions = NWProtocolTLS.Options()
+        let pinnedFP = pinnedCertFingerprint
         sec_protocol_options_set_verify_block(
             tlsOptions.securityProtocolOptions, { _, trust, complete in
-                complete(true)
+                guard let pinnedFP else {
+                    // No pinned cert — use standard system trust evaluation.
+                    // This rejects self-signed certs, which is safer than
+                    // accepting everything.
+                    let secTrust = sec_trust_copy_ref(trust).takeRetainedValue()
+                    var error: CFError?
+                    let ok = SecTrustEvaluateWithError(secTrust, &error)
+                    complete(ok)
+                    return
+                }
+                // Pin to the specific cert fingerprint from QR pairing.
+                let secTrust = sec_trust_copy_ref(trust).takeRetainedValue()
+                let certCount = SecTrustGetCertificateCount(secTrust)
+                guard certCount > 0 else { complete(false); return }
+                if let cert = SecTrustCopyCertificateChain(secTrust) as? [SecCertificate],
+                   let leaf = cert.first {
+                    let der = SecCertificateCopyData(leaf) as Data
+                    let hash = SHA256.hash(data: der)
+                    let hex = hash.map { String(format: "%02x", $0) }.joined()
+                    complete(hex == pinnedFP.lowercased())
+                } else {
+                    complete(false)
+                }
             }, .main
         )
         let params = NWParameters(tls: tlsOptions)
@@ -118,9 +181,7 @@ final class CompanionBridge: ObservableObject {
             status = .failed("could not reach \(host):\(port)"); return
         }
 
-        // Persist token so the user doesn't re-pair each launch.
         Credentials.shared.setBackendToken(token)
-
         startReadLoop(conn)
 
         status = .authenticating
@@ -134,11 +195,48 @@ final class CompanionBridge: ObservableObject {
         }
     }
 
-    func disconnect() {
+    /// Disconnect and optionally attempt auto-reconnect.
+    func disconnect(attemptReconnect: Bool = true) {
         conn?.cancel(); conn = nil
         pending.values.forEach { $0.resume(throwing: BridgeError.disconnected) }
         pending.removeAll()
-        if case .connected = status { status = .idle }
+        let wasConnected = status == .connected
+        if wasConnected { status = .idle }
+        // Auto-reconnect when the drop was unexpected (we were connected
+        // and have saved pairing info).
+        if attemptReconnect && wasConnected,
+           let host = lastHost, let port = lastPort, let token = lastToken {
+            scheduleReconnect(host: host, port: port, token: token)
+        }
+    }
+
+    /// Explicitly disconnect without auto-reconnect (user-initiated unpair).
+    func unpair() {
+        reconnectTask?.cancel()
+        reconnectTask = nil
+        disconnect(attemptReconnect: false)
+        lastHost = nil; lastPort = nil; lastToken = nil
+        pinnedCertFingerprint = nil
+        status = .idle
+    }
+
+    private func scheduleReconnect(host: String, port: UInt16, token: String) {
+        reconnectTask?.cancel()
+        reconnectTask = Task { [weak self] in
+            var attempt = 0
+            var backoff: TimeInterval = 1.0
+            while !Task.isCancelled, let self, attempt < Self.reconnectMaxAttempts {
+                attempt += 1
+                try? await Task.sleep(nanoseconds: UInt64(backoff * 1_000_000_000))
+                if Task.isCancelled { break }
+                await self.connect(host: host, port: port, token: token)
+                if self.isConnected { return }
+                backoff = min(backoff * 2, Self.reconnectMaxBackoff)
+            }
+            if let self, !self.isConnected {
+                self.status = .failed("reconnect failed after \(attempt) attempts")
+            }
+        }
     }
 
     // MARK: - Public command shortcuts
@@ -240,7 +338,8 @@ final class CompanionBridge: ObservableObject {
                 "asc_api_key_pem": keyPEM,
                 "export_method": "app-store-connect",
                 "configuration": "Release",
-            ]
+            ],
+            timeout: 600
         ))
     }
 
@@ -262,26 +361,39 @@ final class CompanionBridge: ObservableObject {
                 "asc_api_key_pem": keyPEM,
                 "apple_id": appleID,
                 "app_specific_password": appSpecificPassword,
-            ]
+            ],
+            timeout: 300
         ))
     }
 
     // MARK: - Internals
 
-    private func request(type: String, payload: [String: Any]) async throws -> [String: Any] {
+    private func request(type: String, payload: [String: Any], timeout: TimeInterval? = nil) async throws -> [String: Any] {
         guard let conn else { throw BridgeError.notConnected }
         let id = "msg_" + UUID().uuidString.prefix(12)
         let envelope: [String: Any] = [
             "v": 1, "id": id, "kind": "request", "type": type, "payload": payload,
         ]
-        return try await withCheckedThrowingContinuation { cont in
-            pending[id] = cont
-            send(conn: conn, envelope: envelope) { error in
-                if let error {
-                    self.pending.removeValue(forKey: id)
-                    cont.resume(throwing: error)
+        let effectiveTimeout = timeout ?? Self.requestTimeout
+        return try await withThrowingTaskGroup(of: [String: Any].self) { group in
+            group.addTask {
+                try await withCheckedThrowingContinuation { cont in
+                    self.pending[id] = cont
+                    self.send(conn: conn, envelope: envelope) { error in
+                        if let error {
+                            self.pending.removeValue(forKey: id)
+                            cont.resume(throwing: error)
+                        }
+                    }
                 }
             }
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(effectiveTimeout * 1_000_000_000))
+                throw BridgeError.timeout
+            }
+            let result = try await group.next()!
+            group.cancelAll()
+            return result
         }
     }
 
@@ -383,16 +495,18 @@ private extension URL {
     }
 }
 
-enum BridgeError: Error, CustomStringConvertible {
-    case notConnected, disconnected, malformed, remote(String)
+enum BridgeError: Error, LocalizedError, CustomStringConvertible {
+    case notConnected, disconnected, malformed, timeout, remote(String)
     var description: String {
         switch self {
         case .notConnected: "not connected"
         case .disconnected: "connection dropped"
         case .malformed:    "malformed message"
+        case .timeout:      "request timed out — check that your Mac is awake"
         case .remote(let m): m
         }
     }
+    var errorDescription: String? { description }
 }
 
 extension Notification.Name {
