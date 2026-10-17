@@ -1,0 +1,686 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		1D24C127CD732DF3A6E6EB8F /* WatchsmashTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A0B311B44BEB932AD662EC7 /* WatchsmashTheme.swift */; };
+		24FA6690194DE109042BD711 /* AutoPlayDriver.swift in Sources */ = {isa = PBXBuildFile; fileRef = E742D8DCD6B34C22A25428DD /* AutoPlayDriver.swift */; };
+		28658C9F9843B30377726FF3 /* kick.aiff in Resources */ = {isa = PBXBuildFile; fileRef = FEE6145A3077BBF69564D04B /* kick.aiff */; };
+		2EE8249484BF8AA5CF29D786 /* WatchsmashCanvas.swift in Sources */ = {isa = PBXBuildFile; fileRef = D39C2A7F98BF2706BFF0B537 /* WatchsmashCanvas.swift */; };
+		4F178266C7C40BB7A4DDAA4D /* fight.aiff in Resources */ = {isa = PBXBuildFile; fileRef = FA9E72ED81637821E5B5AD4F /* fight.aiff */; };
+		61F8CEDC08D83381554415F3 /* combo.aiff in Resources */ = {isa = PBXBuildFile; fileRef = 3D2E762E83ADB0E1F65D3330 /* combo.aiff */; };
+		6638BEAF153CF9E33516C4EC /* WatchsmashEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 010E2F88FCE970A2907D8D73 /* WatchsmashEngine.swift */; };
+		6A696960C1500605C727C3D3 /* fight-theme.wav in Resources */ = {isa = PBXBuildFile; fileRef = 4BFA96636954825F0DEE7E45 /* fight-theme.wav */; };
+		6E834E2F34E996DE804B5E8C /* RunSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = A405097029ED08D22DD9D975 /* RunSnapshot.swift */; };
+		75120182BF843201FF3646CC /* ko.aiff in Resources */ = {isa = PBXBuildFile; fileRef = 7944A518A5C632B791865BD1 /* ko.aiff */; };
+		751CF75CBA31AF8DDFD019B5 /* million.aiff in Resources */ = {isa = PBXBuildFile; fileRef = 8F1ABE32C63A20A6474B20B1 /* million.aiff */; };
+		769DCE8B848DBD05DCCCA509 /* GameScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E61AB4B2510FD185FCA2EB2 /* GameScreen.swift */; };
+		77F0183C06A3844E5DACE6A3 /* guard.aiff in Resources */ = {isa = PBXBuildFile; fileRef = 19347C1F38413163D57B3A8B /* guard.aiff */; };
+		7B8D8D838F63E21CCE48BA52 /* WatchsmashApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 960F635A7C3E8D74D5F614AC /* WatchsmashApp.swift */; };
+		7BDD2085ECD9981974932D2A /* WatchsmashEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3346D94AEF5FA43A6A0C04FF /* WatchsmashEngineTests.swift */; };
+		7CB190DC08EC739C220E3F61 /* BalanceAndCoverageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 366BFE9751331CD754485C5E /* BalanceAndCoverageTests.swift */; };
+		85070A09249622E1DC8FF270 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 875E904DDD6EB23540E90E27 /* PrivacyInfo.xcprivacy */; };
+		8D58891863A95A26E00C5880 /* RunPersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7BF0ADBE028310904C0A3DA /* RunPersistenceTests.swift */; };
+		9E0E7EB05CAD8922FB4F7D29 /* special-impact.aiff in Resources */ = {isa = PBXBuildFile; fileRef = 6F5521CCBCAB52B1D4E4E418 /* special-impact.aiff */; };
+		A4EE16B861EBA1E25EA80712 /* PurchaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC71A762AD017734190A943C /* PurchaseManager.swift */; };
+		ABFFB77CAEA7C01F76F5AA24 /* StoryboardFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A975958CA4EBE0BD4E99363F /* StoryboardFlowTests.swift */; };
+		AC15721852EB944C56A43B3B /* AutoPlayDriverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CCF17D846B7D3734FD41941 /* AutoPlayDriverTests.swift */; };
+		B49A6964DAFFE24B9F1DB5B1 /* Watchsmash.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = EB20991359FFC3E74BF4C46A /* Watchsmash.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		BB4DDE783AD961860A2D54C6 /* GameModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AFEBD38D596AACB66A6E31F /* GameModels.swift */; };
+		C007D15E55265B905B79891E /* FFLayerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58DDD228A41D421F69426C98 /* FFLayerTests.swift */; };
+		C168C952100A880D3D8628AE /* finish.aiff in Resources */ = {isa = PBXBuildFile; fileRef = B29138994A4A67976C1558AE /* finish.aiff */; };
+		C5C58B4C2A05E1FB27D844E1 /* punch.aiff in Resources */ = {isa = PBXBuildFile; fileRef = 3797009E7072E8E0791D3261 /* punch.aiff */; };
+		D868754BA763CB202C9156F2 /* titan.aiff in Resources */ = {isa = PBXBuildFile; fileRef = 50E53434432EB7173D7179C9 /* titan.aiff */; };
+		EC3995145CB559D35F79F4B0 /* CrashMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = C74A1252CCF9A69F25E4B27A /* CrashMonitor.swift */; };
+		FA11FC3E20E5F8E909324D3F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 16861E3C5D2DDBBB463023EA /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		9444FD68DA834CEF4B131950 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E83C0E4BFB2A9B1DB9EEDF9A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 2738D6C9DE62ECDCB710B4D1;
+			remoteInfo = Watchsmash;
+		};
+		9C602445AAAC98AB62FF2069 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E83C0E4BFB2A9B1DB9EEDF9A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 2738D6C9DE62ECDCB710B4D1;
+			remoteInfo = Watchsmash;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		7316DA46657394B8B1704409 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				B49A6964DAFFE24B9F1DB5B1 /* Watchsmash.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		010E2F88FCE970A2907D8D73 /* WatchsmashEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchsmashEngine.swift; sourceTree = "<group>"; };
+		0A0B311B44BEB932AD662EC7 /* WatchsmashTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchsmashTheme.swift; sourceTree = "<group>"; };
+		1176301A4B45C80506CA3422 /* WatchsmashTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WatchsmashTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		16861E3C5D2DDBBB463023EA /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		19347C1F38413163D57B3A8B /* guard.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = guard.aiff; sourceTree = "<group>"; };
+		3346D94AEF5FA43A6A0C04FF /* WatchsmashEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchsmashEngineTests.swift; sourceTree = "<group>"; };
+		366BFE9751331CD754485C5E /* BalanceAndCoverageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BalanceAndCoverageTests.swift; sourceTree = "<group>"; };
+		3797009E7072E8E0791D3261 /* punch.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = punch.aiff; sourceTree = "<group>"; };
+		3D2E762E83ADB0E1F65D3330 /* combo.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = combo.aiff; sourceTree = "<group>"; };
+		4BFA96636954825F0DEE7E45 /* fight-theme.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "fight-theme.wav"; sourceTree = "<group>"; };
+		50E53434432EB7173D7179C9 /* titan.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = titan.aiff; sourceTree = "<group>"; };
+		58DDD228A41D421F69426C98 /* FFLayerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FFLayerTests.swift; sourceTree = "<group>"; };
+		5CCF17D846B7D3734FD41941 /* AutoPlayDriverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoPlayDriverTests.swift; sourceTree = "<group>"; };
+		5E61AB4B2510FD185FCA2EB2 /* GameScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameScreen.swift; sourceTree = "<group>"; };
+		6AFEBD38D596AACB66A6E31F /* GameModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameModels.swift; sourceTree = "<group>"; };
+		6F5521CCBCAB52B1D4E4E418 /* special-impact.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = "special-impact.aiff"; sourceTree = "<group>"; };
+		7944A518A5C632B791865BD1 /* ko.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = ko.aiff; sourceTree = "<group>"; };
+		875E904DDD6EB23540E90E27 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		8F1ABE32C63A20A6474B20B1 /* million.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = million.aiff; sourceTree = "<group>"; };
+		960F635A7C3E8D74D5F614AC /* WatchsmashApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchsmashApp.swift; sourceTree = "<group>"; };
+		A405097029ED08D22DD9D975 /* RunSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunSnapshot.swift; sourceTree = "<group>"; };
+		A975958CA4EBE0BD4E99363F /* StoryboardFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoryboardFlowTests.swift; sourceTree = "<group>"; };
+		B29138994A4A67976C1558AE /* finish.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = finish.aiff; sourceTree = "<group>"; };
+		B549FC041263D83539043711 /* WatchsmashContainer.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = WatchsmashContainer.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C74A1252CCF9A69F25E4B27A /* CrashMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrashMonitor.swift; sourceTree = "<group>"; };
+		D39C2A7F98BF2706BFF0B537 /* WatchsmashCanvas.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchsmashCanvas.swift; sourceTree = "<group>"; };
+		D7BF0ADBE028310904C0A3DA /* RunPersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunPersistenceTests.swift; sourceTree = "<group>"; };
+		E742D8DCD6B34C22A25428DD /* AutoPlayDriver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoPlayDriver.swift; sourceTree = "<group>"; };
+		EB20991359FFC3E74BF4C46A /* Watchsmash.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Watchsmash.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		FA9E72ED81637821E5B5AD4F /* fight.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = fight.aiff; sourceTree = "<group>"; };
+		FC71A762AD017734190A943C /* PurchaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseManager.swift; sourceTree = "<group>"; };
+		FEE6145A3077BBF69564D04B /* kick.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = kick.aiff; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		11DA0AF4D749706482E9B190 /* Voice */ = {
+			isa = PBXGroup;
+			children = (
+				3D2E762E83ADB0E1F65D3330 /* combo.aiff */,
+				FA9E72ED81637821E5B5AD4F /* fight.aiff */,
+				B29138994A4A67976C1558AE /* finish.aiff */,
+				7944A518A5C632B791865BD1 /* ko.aiff */,
+				8F1ABE32C63A20A6474B20B1 /* million.aiff */,
+				50E53434432EB7173D7179C9 /* titan.aiff */,
+			);
+			path = Voice;
+			sourceTree = "<group>";
+		};
+		202627684678A405005295FC /* Game */ = {
+			isa = PBXGroup;
+			children = (
+				E742D8DCD6B34C22A25428DD /* AutoPlayDriver.swift */,
+				C74A1252CCF9A69F25E4B27A /* CrashMonitor.swift */,
+				6AFEBD38D596AACB66A6E31F /* GameModels.swift */,
+				5E61AB4B2510FD185FCA2EB2 /* GameScreen.swift */,
+				A405097029ED08D22DD9D975 /* RunSnapshot.swift */,
+				D39C2A7F98BF2706BFF0B537 /* WatchsmashCanvas.swift */,
+				010E2F88FCE970A2907D8D73 /* WatchsmashEngine.swift */,
+			);
+			path = Game;
+			sourceTree = "<group>";
+		};
+		2F9A61C14F6D05013466564F /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				EB20991359FFC3E74BF4C46A /* Watchsmash.app */,
+				B549FC041263D83539043711 /* WatchsmashContainer.app */,
+				1176301A4B45C80506CA3422 /* WatchsmashTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		3CB45682C96FE63FAFB13875 = {
+			isa = PBXGroup;
+			children = (
+				F3A503630090588692C4F684 /* Watchsmash */,
+				B7E38FF6EB96F8268B522EFE /* WatchsmashTests */,
+				2F9A61C14F6D05013466564F /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		4479AF666BD65F2DC36A918A /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				0A0B311B44BEB932AD662EC7 /* WatchsmashTheme.swift */,
+			);
+			path = Theme;
+			sourceTree = "<group>";
+		};
+		83FE5F8C94F011523C67B7E2 /* Purchases */ = {
+			isa = PBXGroup;
+			children = (
+				FC71A762AD017734190A943C /* PurchaseManager.swift */,
+			);
+			path = Purchases;
+			sourceTree = "<group>";
+		};
+		8CA1A1096972B44675B01444 /* Impact */ = {
+			isa = PBXGroup;
+			children = (
+				19347C1F38413163D57B3A8B /* guard.aiff */,
+				FEE6145A3077BBF69564D04B /* kick.aiff */,
+				3797009E7072E8E0791D3261 /* punch.aiff */,
+				6F5521CCBCAB52B1D4E4E418 /* special-impact.aiff */,
+			);
+			path = Impact;
+			sourceTree = "<group>";
+		};
+		B7E38FF6EB96F8268B522EFE /* WatchsmashTests */ = {
+			isa = PBXGroup;
+			children = (
+				5CCF17D846B7D3734FD41941 /* AutoPlayDriverTests.swift */,
+				366BFE9751331CD754485C5E /* BalanceAndCoverageTests.swift */,
+				58DDD228A41D421F69426C98 /* FFLayerTests.swift */,
+				D7BF0ADBE028310904C0A3DA /* RunPersistenceTests.swift */,
+				A975958CA4EBE0BD4E99363F /* StoryboardFlowTests.swift */,
+				3346D94AEF5FA43A6A0C04FF /* WatchsmashEngineTests.swift */,
+			);
+			path = WatchsmashTests;
+			sourceTree = "<group>";
+		};
+		BA529CB1E8C3006B404AB798 /* Music */ = {
+			isa = PBXGroup;
+			children = (
+				4BFA96636954825F0DEE7E45 /* fight-theme.wav */,
+			);
+			path = Music;
+			sourceTree = "<group>";
+		};
+		D7A8EF9C70ED2BCDA381CDFA /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				8CA1A1096972B44675B01444 /* Impact */,
+				BA529CB1E8C3006B404AB798 /* Music */,
+				11DA0AF4D749706482E9B190 /* Voice */,
+				16861E3C5D2DDBBB463023EA /* Assets.xcassets */,
+				875E904DDD6EB23540E90E27 /* PrivacyInfo.xcprivacy */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		F3A503630090588692C4F684 /* Watchsmash */ = {
+			isa = PBXGroup;
+			children = (
+				202627684678A405005295FC /* Game */,
+				83FE5F8C94F011523C67B7E2 /* Purchases */,
+				D7A8EF9C70ED2BCDA381CDFA /* Resources */,
+				4479AF666BD65F2DC36A918A /* Theme */,
+				960F635A7C3E8D74D5F614AC /* WatchsmashApp.swift */,
+			);
+			path = Watchsmash;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		2738D6C9DE62ECDCB710B4D1 /* Watchsmash */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DDE7B7D9F24334570B359812 /* Build configuration list for PBXNativeTarget "Watchsmash" */;
+			buildPhases = (
+				FEC59E94353E93AB8A843734 /* Sources */,
+				44B506A10F7823FAF94E44AE /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Watchsmash;
+			packageProductDependencies = (
+			);
+			productName = Watchsmash;
+			productReference = EB20991359FFC3E74BF4C46A /* Watchsmash.app */;
+			productType = "com.apple.product-type.application";
+		};
+		6C9F38C06843C967B22CA15D /* WatchsmashContainer */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A82049DFF6F7F41E70A72E46 /* Build configuration list for PBXNativeTarget "WatchsmashContainer" */;
+			buildPhases = (
+				7316DA46657394B8B1704409 /* Embed Watch Content */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				7E951406BA9BFDF1CDF91DDC /* PBXTargetDependency */,
+			);
+			name = WatchsmashContainer;
+			packageProductDependencies = (
+			);
+			productName = WatchsmashContainer;
+			productReference = B549FC041263D83539043711 /* WatchsmashContainer.app */;
+			productType = "com.apple.product-type.application.watchapp2-container";
+		};
+		E81557DA1FDE8EE51DDB0E24 /* WatchsmashTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 58DEAC7BD52CB4B215DFEE8E /* Build configuration list for PBXNativeTarget "WatchsmashTests" */;
+			buildPhases = (
+				017946F815B688CF178F1F7A /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				846E082BF26A8D8F815E1DF4 /* PBXTargetDependency */,
+			);
+			name = WatchsmashTests;
+			packageProductDependencies = (
+			);
+			productName = WatchsmashTests;
+			productReference = 1176301A4B45C80506CA3422 /* WatchsmashTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		E83C0E4BFB2A9B1DB9EEDF9A /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					2738D6C9DE62ECDCB710B4D1 = {
+						DevelopmentTeam = UDM4W27W9V;
+					};
+					6C9F38C06843C967B22CA15D = {
+						DevelopmentTeam = UDM4W27W9V;
+					};
+				};
+			};
+			buildConfigurationList = 0C3BFB3A217AFE9D07FF7B12 /* Build configuration list for PBXProject "Watchsmash" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 3CB45682C96FE63FAFB13875;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 2F9A61C14F6D05013466564F /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				2738D6C9DE62ECDCB710B4D1 /* Watchsmash */,
+				6C9F38C06843C967B22CA15D /* WatchsmashContainer */,
+				E81557DA1FDE8EE51DDB0E24 /* WatchsmashTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		44B506A10F7823FAF94E44AE /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FA11FC3E20E5F8E909324D3F /* Assets.xcassets in Resources */,
+				85070A09249622E1DC8FF270 /* PrivacyInfo.xcprivacy in Resources */,
+				61F8CEDC08D83381554415F3 /* combo.aiff in Resources */,
+				6A696960C1500605C727C3D3 /* fight-theme.wav in Resources */,
+				4F178266C7C40BB7A4DDAA4D /* fight.aiff in Resources */,
+				C168C952100A880D3D8628AE /* finish.aiff in Resources */,
+				77F0183C06A3844E5DACE6A3 /* guard.aiff in Resources */,
+				28658C9F9843B30377726FF3 /* kick.aiff in Resources */,
+				75120182BF843201FF3646CC /* ko.aiff in Resources */,
+				751CF75CBA31AF8DDFD019B5 /* million.aiff in Resources */,
+				C5C58B4C2A05E1FB27D844E1 /* punch.aiff in Resources */,
+				9E0E7EB05CAD8922FB4F7D29 /* special-impact.aiff in Resources */,
+				D868754BA763CB202C9156F2 /* titan.aiff in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		017946F815B688CF178F1F7A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AC15721852EB944C56A43B3B /* AutoPlayDriverTests.swift in Sources */,
+				7CB190DC08EC739C220E3F61 /* BalanceAndCoverageTests.swift in Sources */,
+				C007D15E55265B905B79891E /* FFLayerTests.swift in Sources */,
+				8D58891863A95A26E00C5880 /* RunPersistenceTests.swift in Sources */,
+				ABFFB77CAEA7C01F76F5AA24 /* StoryboardFlowTests.swift in Sources */,
+				7BDD2085ECD9981974932D2A /* WatchsmashEngineTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DFBCA440E1B33991824E59B4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FEC59E94353E93AB8A843734 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				24FA6690194DE109042BD711 /* AutoPlayDriver.swift in Sources */,
+				EC3995145CB559D35F79F4B0 /* CrashMonitor.swift in Sources */,
+				BB4DDE783AD961860A2D54C6 /* GameModels.swift in Sources */,
+				769DCE8B848DBD05DCCCA509 /* GameScreen.swift in Sources */,
+				A4EE16B861EBA1E25EA80712 /* PurchaseManager.swift in Sources */,
+				6E834E2F34E996DE804B5E8C /* RunSnapshot.swift in Sources */,
+				7B8D8D838F63E21CCE48BA52 /* WatchsmashApp.swift in Sources */,
+				2EE8249484BF8AA5CF29D786 /* WatchsmashCanvas.swift in Sources */,
+				6638BEAF153CF9E33516C4EC /* WatchsmashEngine.swift in Sources */,
+				1D24C127CD732DF3A6E6EB8F /* WatchsmashTheme.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		7E951406BA9BFDF1CDF91DDC /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 2738D6C9DE62ECDCB710B4D1 /* Watchsmash */;
+			targetProxy = 9C602445AAAC98AB62FF2069 /* PBXContainerItemProxy */;
+		};
+		846E082BF26A8D8F815E1DF4 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 2738D6C9DE62ECDCB710B4D1 /* Watchsmash */;
+			targetProxy = 9444FD68DA834CEF4B131950 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		353D4BDFC90264C3C0C3DB9C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+		519F9B3A514C14F6A634653A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CURRENT_PROJECT_VERSION = 10;
+				DEVELOPMENT_TEAM = UDM4W27W9V;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Watch Smash";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_WKApplication = YES;
+				INFOPLIST_KEY_WKWatchOnly = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.alphaeliteholdings.watchfighter.watchkitapp;
+				PRODUCT_MODULE_NAME = Watchsmash;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+				VERSIONING_SYSTEM = "apple-generic";
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+		6D31C9BCBB21650A95E4DDB1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		74D14FED528815074376B423 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.alphaeliteholdings.watchfighter.tests;
+				PRODUCT_MODULE_NAME = WatchsmashTests;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Watchsmash.app/Watchsmash";
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		C00C896A8B2648E320FE64F0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CURRENT_PROJECT_VERSION = 10;
+				DEVELOPMENT_TEAM = UDM4W27W9V;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Watch Smash";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_WKApplication = YES;
+				INFOPLIST_KEY_WKWatchOnly = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.alphaeliteholdings.watchfighter.watchkitapp;
+				PRODUCT_MODULE_NAME = Watchsmash;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+				VERSIONING_SYSTEM = "apple-generic";
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		D02A038E4CB547533A5DB8DE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.alphaeliteholdings.watchfighter.tests;
+				PRODUCT_MODULE_NAME = WatchsmashTests;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Watchsmash.app/Watchsmash";
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+		D2028E11F626A8E1B8FAF6A7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CURRENT_PROJECT_VERSION = 10;
+				DEVELOPMENT_TEAM = UDM4W27W9V;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Watch Smash";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.alphaeliteholdings.watchfighter;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = Debug;
+		};
+		E8E38144CD93452231FF048C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CURRENT_PROJECT_VERSION = 10;
+				DEVELOPMENT_TEAM = UDM4W27W9V;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Watch Smash";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.alphaeliteholdings.watchfighter;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		0C3BFB3A217AFE9D07FF7B12 /* Build configuration list for PBXProject "Watchsmash" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6D31C9BCBB21650A95E4DDB1 /* Debug */,
+				353D4BDFC90264C3C0C3DB9C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		58DEAC7BD52CB4B215DFEE8E /* Build configuration list for PBXNativeTarget "WatchsmashTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				74D14FED528815074376B423 /* Debug */,
+				D02A038E4CB547533A5DB8DE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		A82049DFF6F7F41E70A72E46 /* Build configuration list for PBXNativeTarget "WatchsmashContainer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D2028E11F626A8E1B8FAF6A7 /* Debug */,
+				E8E38144CD93452231FF048C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		DDE7B7D9F24334570B359812 /* Build configuration list for PBXNativeTarget "Watchsmash" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C00C896A8B2648E320FE64F0 /* Debug */,
+				519F9B3A514C14F6A634653A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = E83C0E4BFB2A9B1DB9EEDF9A /* Project object */;
+}
