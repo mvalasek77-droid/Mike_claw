@@ -131,7 +131,7 @@ struct GlassSurface<Content: View>: View {
                         // iOS 26 Liquid Glass: dynamic refraction + tint
                         RoundedRectangle(cornerRadius: corner, style: .continuous)
                             .fill(.regularMaterial)
-                            .glassEffectIfAvailable()
+                            .glassEffectIfAvailable(corner: corner)
                     } else {
                         RoundedRectangle(cornerRadius: corner, style: .continuous)
                             .fill(.ultraThinMaterial)
@@ -186,10 +186,12 @@ struct GlassSurface<Content: View>: View {
 // — the modifier becomes a no-op rather than a build failure.
 private extension View {
     @ViewBuilder
-    func glassEffectIfAvailable() -> some View {
+    func glassEffectIfAvailable(corner: CGFloat) -> some View {
         #if compiler(>=6.2)
         if #available(iOS 26.0, *) {
-            self.glassEffect(.regular, in: .rect(cornerRadius: 28))
+            // Match the glass clip to the surface's own corner radius —
+            // a hardcoded radius mismatches smaller surfaces (chips, badges).
+            self.glassEffect(.regular, in: .rect(cornerRadius: corner))
         } else {
             self
         }
