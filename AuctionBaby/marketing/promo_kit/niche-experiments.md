@@ -126,3 +126,44 @@ Sweep attempted for: "dinner date" pain, "who pays" debates, "dating apps are br
 
 ### 2026-10-17 amendment — HN item verified via Firebase API
 hacker-news.firebaseio.com/v0/item/49517518.json: `{"by":"mvalasek","dead":true,"id":49517518,"score":1}` — no kids/comments. Third consecutive day the story is dead/flagged (score 1, 0 comments). Cron-recreation trigger (score>=3 or new comments) NOT met.
+
+## 2026-10-18 — Niche sweep (PullPush fallback; reddit JSON fully blocked)
+
+Access attempts: www.reddit.com/search.json → HTTP 403 netsec interstitial page
+(curl and Safari do-JavaScript both blocked: Safari body text = "You've been
+blocked by network security"); old.reddit.com/search.json → 302 to
+/login/?reason=lor2 (login required); www.reddit.com/search.rss → 403 "Blocked".
+Same walls as the 10-16 and 10-17 runs. Fallback used: api.pullpush.io (Pushshift
+mirror, worked prior runs) with after=1791738094 (7-day window), size=100.
+
+Results by query (max score per PullPush; scores there are unreliable/placeholder
+— used only to rule out >100 candidates):
+- "dinner date": 62 posts; max score 2, rest 1 (roles/nsfw/offmychest noise; no
+  dating-econ posts in window top).
+- "who pays" date: 8 posts; all score 1. Two topical-but-tiny: r/AskReddit "How
+  should couples decide who pays for dates—should the man cover the bill, or
+  should they split the expenses?" (5.6d old, score 1); r/PurplePillDebate "Why
+  focus so much on who pays for dates?" (6.3d, score 1).
+- "dating apps are broken": 0 posts in window.
+- "deleted the apps": 4 posts; all score 1, none dating-app-churn relevant.
+
+**Conclusion: zero posts >100 upvotes in the last 7 days across all four
+queries — fourth consecutive low/blocked sweep. Topical posts exist but are
+score-1 noise; per the >100 filter nothing is logged as an opportunity. No
+fabricated entries.**
+
+**HN pulse:** hacker-news.firebaseio.com/v0/item/49517518 →
+`{"by":"mvalasek","dead":true,"id":49517518,"score":1,"time":1788231679,"type":"story"}`
+— no kids/comments. hn.algolia.com/api/v1/items/49517518 → 404 NotFound;
+Algolia story search for "Auction Baby" → 0 hits. Status: dead/flagged, score 1,
+0 comments (created ~2026-08-31). NOT gaining traction.
+
+**Blog index health:** 6/6 HTTP 200 — index.html (bare request 404s but 200 via
+GitHub Pages redirect to /blog/; title confirmed "Auction Baby Blog — The
+economics of dating"), who-pays-on-the-first-date,
+how-much-should-a-first-date-cost, dating-apps-without-photos,
+dating-app-red-flags, why-dating-apps-are-broken.
+
+**Watchdog recreation: NOT triggered.** Condition (HN score ≥ 3 OR any new
+comment) unmet — story is dead with score 1 and zero comments. Existing
+completed cron `c644f32eb7d0` left as-is.
