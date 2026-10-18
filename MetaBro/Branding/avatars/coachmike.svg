@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
   <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1" gradientTransform="rotate(108 0.5 0.5)">
-      <stop offset="0" stop-color="#EF476F"/><stop offset="1" stop-color="#B5179E"/>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1" gradientTransform="rotate(111 0.5 0.5)">
+      <stop offset="0" stop-color="#00B4D8"/><stop offset="1" stop-color="#0077B6"/>
     </linearGradient>
     <clipPath id="c"><rect width="512" height="512" rx="113"/></clipPath>
   </defs>
   <g clip-path="url(#c)">
     <rect width="512" height="512" fill="url(#g)"/>
-    <circle cx="155" cy="206" r="202" fill="#FFFFFF" fill-opacity="0.21"/><circle cx="110" cy="119" r="133" fill="#FFFFFF" fill-opacity="0.21"/><circle cx="163" cy="241" r="107" fill="#FFFFFF" fill-opacity="0.25"/><circle cx="281" cy="277" r="181" fill="#FFFFFF" fill-opacity="0.19"/>
+    <circle cx="248" cy="85" r="100" fill="#FFFFFF" fill-opacity="0.13"/><circle cx="309" cy="193" r="123" fill="#FFFFFF" fill-opacity="0.13"/><circle cx="222" cy="277" r="150" fill="#FFFFFF" fill-opacity="0.11"/><circle cx="246" cy="218" r="113" fill="#FFFFFF" fill-opacity="0.17"/>
     <ellipse cx="164" cy="123" rx="307" ry="215"
              fill="#FFFFFF" fill-opacity="0.12"/>
     <circle cx="256" cy="256" r="138" fill="#FFFFFF" fill-opacity="0.16" stroke="#FFFFFF" stroke-opacity="0.35"/>
