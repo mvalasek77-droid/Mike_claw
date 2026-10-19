@@ -1,6 +1,62 @@
 {
-  "generated_for": "2026-10-19T03",
+  "generated_for": "2026-10-19T06",
   "posts": [
+    {
+      "community": {
+        "id": "1e27fcd8-c8ff-7cac-af7b-60a88268cbe1",
+        "name": "Garage Gearheads",
+        "slug": "cars",
+        "member_count": 141200,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/cars.png",
+        "is_joined": true
+      },
+      "title": "Finally finished the brake job",
+      "body": "New rotors, pads, fresh fluid. Pedal feel is night and day.",
+      "score": 121,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [],
+      "id": "2be1f33b-55d1-6395-7ab2-a74775cee2b8",
+      "author": {
+        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
+        "handle": "@newbro",
+        "display_name": "Sam",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
+        "bro_cred": 40
+      },
+      "image_url": null,
+      "comment_count": 39,
+      "created_at": "2026-10-19T05:45:10+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "22aca3d4-e132-fb9a-d97f-d6efb9771f45",
+        "name": "Iron Bro-hood",
+        "slug": "fitness",
+        "member_count": 182000,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fitness.png",
+        "is_joined": true
+      },
+      "title": "Cutting without losing strength",
+      "body": "Higher protein, slower deficit, keep the heavy sets. Worked for me.",
+      "score": 185,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [],
+      "id": "85374c10-64b2-fd20-1b26-2d87a2ca319f",
+      "author": {
+        "id": "337023ca-f0d6-6b4b-335e-42aa37ae608b",
+        "handle": "@you",
+        "display_name": "You",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/you.png",
+        "bro_cred": 1280
+      },
+      "image_url": null,
+      "comment_count": 48,
+      "created_at": "2026-10-19T03:09:10+00:00",
+      "my_vote": 0
+    },
     {
       "community": {
         "id": "e6e12bde-c99f-f89a-5f96-3cfdd3839629",
@@ -12,26 +68,26 @@
       },
       "title": "The obstacle is the way",
       "body": "Reframed a brutal week as training. Different game entirely.",
-      "score": 302,
+      "score": 63,
       "reactions": [],
       "my_reaction": null,
       "awards": [
         {
           "kind": "champ",
-          "count": 3
+          "count": 1
         }
       ],
-      "id": "73ca5255-e523-c4d5-d00c-5cb19cbb098f",
+      "id": "9845fe34-77c0-dfe2-40bc-c8f9736cbd2c",
       "author": {
-        "id": "550c58e9-f006-03d7-e005-01cf109b1c20",
-        "handle": "@coachmike",
-        "display_name": "Coach Mike",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachmike.png",
-        "bro_cred": 4200
+        "id": "88da342c-12c1-951a-f0bc-99247785f086",
+        "handle": "@theoknows",
+        "display_name": "Theo",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/theoknows.png",
+        "bro_cred": 1120
       },
       "image_url": null,
-      "comment_count": 79,
-      "created_at": "2026-10-19T01:57:48+00:00",
+      "comment_count": 9,
+      "created_at": "2026-10-19T01:12:10+00:00",
       "my_vote": 0
     },
     {
@@ -43,13 +99,18 @@
         "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/philosophy.png",
         "is_joined": true
       },
-      "title": "Memento mori \u2014 keeps me grounded",
-      "body": "Read a page of Marcus Aurelius every morning. Recommend it.",
-      "score": 263,
+      "title": "The obstacle is the way",
+      "body": "Reframed a brutal week as training. Different game entirely.",
+      "score": 157,
       "reactions": [],
       "my_reaction": null,
-      "awards": [],
-      "id": "dba65354-352f-fcf3-3b39-65ac6a3b7b83",
+      "awards": [
+        {
+          "kind": "champ",
+          "count": 1
+        }
+      ],
+      "id": "8170d610-fd00-ac49-f27c-ab071a340697",
       "author": {
         "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
         "handle": "@ironbro",
@@ -59,41 +120,41 @@
       },
       "image_url": null,
       "comment_count": 97,
-      "created_at": "2026-10-19T01:48:48+00:00",
+      "created_at": "2026-10-19T04:22:10+00:00",
       "my_vote": 0
     },
     {
       "community": null,
       "title": null,
-      "body": "Just hit a year sober. Grateful for this crew.",
-      "score": 50,
+      "body": "Pickup basketball this Saturday at Riverside. Who's in?",
+      "score": 38,
       "reactions": [
         {
-          "kind": "respect",
-          "count": 16
-        },
-        {
           "kind": "strong",
-          "count": 10
+          "count": 8
         },
         {
-          "kind": "like",
+          "kind": "respect",
           "count": 12
+        },
+        {
+          "kind": "lol",
+          "count": 28
         }
       ],
       "my_reaction": null,
       "awards": [],
-      "id": "b03d83cd-eadc-2dc8-1137-da26d00eef5d",
+      "id": "fd99af30-3b7f-b64b-f112-d575b13a681c",
       "author": {
-        "id": "550c58e9-f006-03d7-e005-01cf109b1c20",
-        "handle": "@coachmike",
-        "display_name": "Coach Mike",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachmike.png",
-        "bro_cred": 4200
+        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
+        "handle": "@coachdave",
+        "display_name": "Dave",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
+        "bro_cred": 9300
       },
       "image_url": null,
-      "comment_count": 62,
-      "created_at": "2026-10-19T00:33:48+00:00",
+      "comment_count": 47,
+      "created_at": "2026-10-19T02:19:10+00:00",
       "my_vote": 0
     },
     {
@@ -105,86 +166,23 @@
         "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/cars.png",
         "is_joined": true
       },
-      "title": "Manual or auto for a first project car?",
-      "body": "Want something I can wrench on cheaply. Thoughts?",
-      "score": 239,
-      "reactions": [],
-      "my_reaction": null,
-      "awards": [
-        {
-          "kind": "champ",
-          "count": 3
-        }
-      ],
-      "id": "9cfd8e1c-5d28-857f-4a49-24f956ce74cb",
-      "author": {
-        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
-        "handle": "@coachdave",
-        "display_name": "Dave",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
-        "bro_cred": 9300
-      },
-      "image_url": null,
-      "comment_count": 86,
-      "created_at": "2026-10-19T00:32:48+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": {
-        "id": "369ccbe1-980c-cd6b-4b8b-e6cb2c492438",
-        "name": "Grill Masters",
-        "slug": "bbq",
-        "member_count": 96400,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/bbq.png",
-        "is_joined": true
-      },
-      "title": "Reverse sear is the only way",
-      "body": "Smoke to 120, rest, then blast it. Edge to edge pink every time.",
-      "score": 298,
+      "title": "Finally finished the brake job",
+      "body": "New rotors, pads, fresh fluid. Pedal feel is night and day.",
+      "score": 160,
       "reactions": [],
       "my_reaction": null,
       "awards": [],
-      "id": "a11548ca-3c18-9687-e510-61d9f4a3666c",
+      "id": "3a7e105d-0356-6aa3-25a8-bc2d6248907d",
       "author": {
-        "id": "337023ca-f0d6-6b4b-335e-42aa37ae608b",
-        "handle": "@you",
-        "display_name": "You",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/you.png",
-        "bro_cred": 1280
+        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
+        "handle": "@newbro",
+        "display_name": "Sam",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
+        "bro_cred": 40
       },
       "image_url": null,
-      "comment_count": 45,
-      "created_at": "2026-10-18T22:14:48+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": null,
-      "title": null,
-      "body": "Anyone up for a sunrise hike this weekend?",
-      "score": 36,
-      "reactions": [
-        {
-          "kind": "strong",
-          "count": 8
-        },
-        {
-          "kind": "like",
-          "count": 7
-        }
-      ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "d3a40c81-3ecd-0732-d299-7df1725fdaaa",
-      "author": {
-        "id": "bb5a2bd9-5ff6-b2d4-8c47-662f9908097f",
-        "handle": "@rajlifts",
-        "display_name": "Raj",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/rajlifts.png",
-        "bro_cred": 3050
-      },
-      "image_url": null,
-      "comment_count": 72,
-      "created_at": "2026-10-18T21:58:48+00:00",
+      "comment_count": 42,
+      "created_at": "2026-10-19T00:44:10+00:00",
       "my_vote": 0
     }
   ],
