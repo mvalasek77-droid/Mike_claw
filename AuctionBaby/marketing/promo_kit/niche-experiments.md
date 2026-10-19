@@ -167,3 +167,38 @@ dating-app-red-flags, why-dating-apps-are-broken.
 **Watchdog recreation: NOT triggered.** Condition (HN score ≥ 3 OR any new
 comment) unmet — story is dead with score 1 and zero comments. Existing
 completed cron `c644f32eb7d0` left as-is.
+
+## 2026-10-19 — Niche sweep (reddit 403 again; PullPush fallback: 0 posts >100)
+
+Access attempts: www.reddit.com/search.json → HTTP 403 netsec; old.reddit.com/
+search.json → 302 /login (LOR block); no Safari bypass. Same walls as 10-16/17/18
+runs. Fallback: api.pullpush.io, after=1791824513 (7-day window), size=100, plus
+tighter quoted/variant queries.
+
+Results by query (PullPush scores; fifth consecutive sweep with nothing >100):
+- "dinner date": 100 posts, max score 23 (r/BoyDinnerDiaries breakup post,
+  off-topic); quoted "dinner date": 28 posts, all score 1, no dating-econ fit.
+- "who pays" (+date / first date variants): 3+1 posts, all score 1, none
+  relevant to date-budget mechanics.
+- "dating apps are broken": 9 posts, max 1; "dating app exhausting": 12, max 1,
+  roleplay/vent noise.
+- "deleted the apps" / "deleted all dating apps": 31+1 posts, max 3
+  (off-topic preset-converter post); nothing dating-app-churn relevant.
+- "first date bill": 59 posts, max score 2, no >100 candidates.
+
+**Conclusion: zero posts >100 upvotes in the last 7 days across all queries.
+Nothing logged as an opportunity. No fabricated entries.**
+
+**HN pulse:** hacker-news.firebaseio.com/v0/item/49517518 →
+`{"by":"mvalasek","dead":true,"id":49517518,"score":1,"time":1788231679,"type":"story"}`
+— no kids/comments. hn.algolia.com/api/v1/items/49517518 → 404 NotFound;
+Algolia search "Auction Baby" (tags=story) → 0 hits. Status: dead/flagged,
+score 1, 0 comments (created ~2026-08-31). NOT gaining traction.
+
+**Blog index health:** 6/6 HTTP 200 — index, who-pays-on-the-first-date,
+how-much-should-a-first-date-cost, dating-apps-without-photos,
+dating-app-red-flags, why-dating-apps-are-broken.
+
+**Watchdog recreation: NOT triggered.** Condition (HN score ≥ 3 OR any new
+comment) unmet — story dead with score 1, zero comments.
+
