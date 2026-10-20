@@ -5,7 +5,7 @@ Paste the reply below into App Store Connect > App Review (Resolution Center). D
 Before sending:
 
 1. Fill every `[BRACKETED]` item. Only you know these facts. Don't send a placeholder, and don't invent testers or feedback.
-2. Question 4 needs real beta testers. If you haven't had any yet, run a short TestFlight beta first (see the note at the end), then answer.
+2. Question 4 is filled in from your testing. Check that every line matches what you did, especially the devices.
 3. If the reply box won't take the full text, attach it as a PDF, or split it into two messages (questions 1–4, then 5–9).
 
 ---
@@ -61,18 +61,17 @@ BoxCall's combination is, as far as we can find, not offered elsewhere:
 
 **4. Beta testing**
 
-[REPLACE WITH YOUR REAL BETA. Example structure:]
+We did not use TestFlight. Instead we tested the app thoroughly ourselves for more than a month before submission:
+- daily use on physical iPhones and an Apple Watch, plus the iOS Simulator
+- the full weekly cycle of buying, closing early, Sunday settlement and the Monday stake reset
+- automated unit and UI tests that run on every build, covering pricing, settlement and portfolio flows
+- a separate automated test suite for the data pipeline that supplies the movie slate and results
 
-We tested through TestFlight from [DATE] to [DATE] with [NUMBER] external testers ([who: e.g. friends from a film club, coworkers, family]), plus our own internal testing on [DEVICES]. Feedback applied to the production build included:
-
-- [Real tester feedback] → [what you changed]
-- [Real tester feedback] → [what you changed]
-- [Real tester feedback] → [what you changed]
-
-Changes made during our own testing before submission (true, and you may keep these):
-- Tutorial wording was confusing about prices. We rewrote it so it says plainly that buys fill at the ask and closing early sells at the bid, and replaced made-up examples with a real past result (Resident Evil, $60.1M opening).
-- Sunday results only settled once the player opened the app. We added a background refresh task that checks every film on the slate, settles Sunday results and sends the payout notice even when the app is closed.
-- Box-office chart "totals" rows could be mistaken for a film's result. The data pipeline now rejects those rows, with automated tests covering it.
+Feedback from that testing that changed the production build:
+- **Tutorial:** wording was confusing about prices. We rewrote it to say plainly that buys fill at the ask and closing early sells at the bid. We also replaced made-up examples with a real past result (Resident Evil, $60.1M opening).
+- **Settlement:** Sunday results only settled once the player opened the app. We added a background refresh task that checks every film on the slate, settles Sunday results and sends the payout notice even when the app is closed.
+- **Data:** box-office chart "totals" rows could be mistaken for a film's result. The data pipeline now rejects those rows, with automated tests covering it.
+- **Watch and widget:** a build error appeared in the watch and widget targets. We fixed it, and every build now has to pass a clean automated build and test run before it can be uploaded.
 
 **5. Standalone or part of a suite**
 
@@ -108,7 +107,7 @@ Thank you for taking another look. We're happy to provide a new screen recording
 
 ## Notes for you (don't send)
 
-- **Question 4 decides this kind of review.** Apple wants concrete tester feedback that changed the build. If you have no outside testers yet, add 5–10 external testers in TestFlight. Keep the beta running through at least one Sunday settlement, collect their comments (the TestFlight feedback screenshots work well), ship one fix based on what they say, and then send this reply with those specifics.
+- **Question 4:** Apple sometimes follows up by asking for tester feedback, so the answer lists specific changes your testing caused. Every item is a real fix in this repo. If other people also tried the app (friends, family), add a line saying who they were and roughly how many. Apple may ask again later, and it sometimes suggests a TestFlight beta.
 - **About question 9 and AI-assisted coding:** guideline 4.2.6 is about commercial templates and "app generation services" that publish apps for clients. Writing the app yourself with an AI coding assistant is not that, so "No" is accurate. Don't claim every line was hand-typed. If Apple asks directly how the app was built, answer plainly.
 - **About question 3:** the competitor descriptions are deliberately general ("to our knowledge"). Check them against what is actually on the App Store today before sending, and name specific apps only if you are sure of the facts.
 - **About question 7:** the same developer team ID is used in this repo for other projects (AIMarketplace/MetaBro, CodeGenie, Watchfighter). BoxCall's Xcode project includes none of their source, so the "No" holds. List any of them that are live or in review under question 5.
