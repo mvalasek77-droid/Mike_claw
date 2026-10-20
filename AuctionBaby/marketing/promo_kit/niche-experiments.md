@@ -202,3 +202,32 @@ dating-app-red-flags, why-dating-apps-are-broken.
 **Watchdog recreation: NOT triggered.** Condition (HN score ≥ 3 OR any new
 comment) unmet — story dead with score 1, zero comments.
 
+
+## 2026-10-20 — Niche sweep (reddit www AND old 403, Safari blocked; PullPush stale; Arctic Shift stale/ratelimited; HN 49517518 dead)
+
+**HN pulse (49517518, "Auction Baby: auction-house dating - she picks the bid she likes"):**
+algolia items API returns 404 (item fully purged/flagged). Algolia search: 0 hits
+for "Auction Baby", 0 for "auction-house dating". Story dead - unreachable,
+score/comments unrecoverable via API. NOT gaining traction.
+
+**Reddit niche sweep:** www.reddit.com/search.json and old.reddit.com/search.json
+return a network-security block page; Safari osascript do JavaScript fetch also
+blocked ("You've been blocked by network security"). PullPush: API reachable but
+index has no recent data (0 rows for last-7-day windows, verified twice). Arctic
+Shift mirror: live (new posts streaming ~17:06-17:10 UTC 2026-10-20) but
+title/text search endpoints 422, then persistent rate limiting ("Timeout. Maybe
+slow down a bit" for 30+ min despite well-spaced calls, incl. 9-min backoff).
+Result: **0 qualifying posts (>100 upvotes, last 7 days) found - the 4 target
+phrases could not be scanned.** No Auction-Baby-relevant posts logged this round.
+
+**Blog index health (https://mvalasek77-droid.github.io/Mike_claw/auctionbaby/app/blog/):**
+- blog/index.html -> **404** (REGRESSION: served 200 in both previous runs)
+- who-pays-on-the-first-date.html -> 200
+- how-much-should-a-first-date-cost.html -> 200
+- dating-apps-without-photos.html -> 200
+- dating-app-red-flags.html -> 200
+- why-dating-apps-are-broken.html -> 200
+Action needed: blog/index.html broken upstream; post links not reachable from index.
+
+**Watchdog recreation: NOT triggered.** Condition (HN score >= 3 OR any new comment)
+unmet - the story is not even resolvable this round.
