@@ -61,7 +61,7 @@ BoxCall's combination is, as far as we can find, not offered elsewhere:
 
 **4. Beta testing**
 
-We did not use TestFlight. Instead we tested the app thoroughly ourselves for more than a month before submission:
+We did not use TestFlight. Instead the developer, Mike Valasek, tested the app thoroughly for more than a month before submission:
 - daily use on physical iPhones and an Apple Watch, plus the iOS Simulator
 - the full weekly cycle of buying, closing early, Sunday settlement and the Monday stake reset
 - automated unit and UI tests that run on every build, covering pricing, settlement and portfolio flows
@@ -96,11 +96,12 @@ All game logic is original to BoxCall: contract pricing, the strike ladder, the 
 
 **9. Created for a client, partner or third party?**
 
-No. BoxCall's concept, game design, content and branding are our own, and we are the provider of the app's content. It was not built from a commercial template or an app-generation service, and it is not submitted on anyone else's behalf.
+No. BoxCall was conceived, designed and built by its developer, Mike Valasek, who also provides all of its content and branding. It was not built from a commercial template or an app-generation service, and it is not submitted on anyone else's behalf.
 
 Thank you for taking another look. We're happy to provide a new screen recording or a TestFlight build if that helps.
 
-[YOUR NAME]
+Mike Valasek
+Developer, BoxCall
 [YOUR EMAIL]
 
 ---
