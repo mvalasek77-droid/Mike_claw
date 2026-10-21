@@ -231,3 +231,31 @@ Action needed: blog/index.html broken upstream; post links not reachable from in
 
 **Watchdog recreation: NOT triggered.** Condition (HN score >= 3 OR any new comment)
 unmet - the story is not even resolvable this round.
+
+## 2026-10-21 — Niche sweep (reddit www/api 403, old loginwall, Safari blocked; PullPush stale: 0 in-window posts; HN 49517518 dead, score 1, 0 comments; blog 6/6 200)
+
+**HN pulse (item 49517518, "Auction Baby: auction-house dating - she picks the bid she likes"):**
+Algolia items API: 404 (item purged from Algolia index). Firebase API: item exists,
+`dead: true` (flagged/removed on HN), **score 1, 0 comments**. Algolia search: 0 hits
+for "Auction Baby", 0 for "auction-house dating". NOT gaining traction (score < 3).
+
+**Reddit niche sweep:** www.reddit.com/search.json and api.reddit.com -> 403 network-security
+block; old.reddit.com/search.json -> redirects to login wall (lor2); Safari osascript fetch
+also served the block page ("You've been blocked by network security"). PullPush fallback:
+API reachable (query echoes verified: "dinner date", "who pays", "dating apps are broken";
+literal "deleted the apps" rewritten to "deleted apps"). Result across all 4 phrase queries
+(7-day since window): **0 posts in window, max in-window score 0; no posts >100 upvotes.**
+Only >100-upvote matches are stale out-of-window items (r/aromantic 125, 2025-06-26;
+r/Arrangedmarriage 115, 2025-07-17 - not relevant/not fresh). Freshness cross-check: query
+q=dating sorted by created desc returns **0 results** - PullPush index has no posts younger
+than ~7.7 days (newest in-window match ~198 h old). Sweep therefore inconclusive: the 4
+phrases could not be scanned for genuinely fresh posts. **0 qualifying posts logged.**
+
+**Blog index health (https://mvalasek77-droid.github.io/Mike_claw/auctionbaby/app/blog/):**
+index.html -> 200 (2026-10-20 regression RESOLVED), who-pays-on-the-first-date.html -> 200,
+how-much-should-a-first-date-cost.html -> 200, dating-apps-without-photos.html -> 200,
+dating-app-red-flags.html -> 200, why-dating-apps-are-broken.html -> 200. **All 6 healthy.**
+
+**Watchdog recreation: NOT triggered.** Condition (HN score >= 3 OR any new comment) unmet -
+story dead with score 1, zero comments; no HN watchdog cron recreated.
+(Logged 2026-10-21 17:06 UTC.)
