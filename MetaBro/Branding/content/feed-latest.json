@@ -1,28 +1,62 @@
 {
-  "generated_for": "2026-10-22T00",
+  "generated_for": "2026-10-22T02",
   "posts": [
     {
       "community": null,
       "title": null,
       "body": "Pickup basketball this Saturday at Riverside. Who's in?",
-      "score": 36,
+      "score": 77,
       "reactions": [
         {
           "kind": "strong",
-          "count": 22
+          "count": 30
         },
         {
           "kind": "respect",
-          "count": 14
+          "count": 12
         },
         {
           "kind": "lol",
-          "count": 6
+          "count": 39
         }
       ],
       "my_reaction": null,
       "awards": [],
-      "id": "d6bd412d-c32b-2e94-b742-79e2305abb3e",
+      "id": "492cfa8f-073d-e359-1a22-bf0cdfafb231",
+      "author": {
+        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
+        "handle": "@coachdave",
+        "display_name": "Dave",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
+        "bro_cred": 9300
+      },
+      "image_url": null,
+      "comment_count": 82,
+      "created_at": "2026-10-22T01:44:47+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Just hit a year sober. Grateful for this crew.",
+      "score": 33,
+      "reactions": [
+        {
+          "kind": "respect",
+          "count": 36
+        },
+        {
+          "kind": "strong",
+          "count": 19
+        },
+        {
+          "kind": "like",
+          "count": 29
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "8af386b0-7d6e-bbb5-e300-d6605e2ddbbd",
       "author": {
         "id": "bb5a2bd9-5ff6-b2d4-8c47-662f9908097f",
         "handle": "@rajlifts",
@@ -31,102 +65,42 @@
         "bro_cred": 3050
       },
       "image_url": null,
-      "comment_count": 26,
-      "created_at": "2026-10-21T22:10:11+00:00",
+      "comment_count": 42,
+      "created_at": "2026-10-22T00:01:47+00:00",
       "my_vote": 0
     },
     {
-      "community": {
-        "id": "ad1f28f2-deee-3630-ebff-760d7a720f9e",
-        "name": "Dad Mode",
-        "slug": "fatherhood",
-        "member_count": 58700,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fatherhood.png",
-        "is_joined": true
-      },
-      "title": "Tips for a 5am toddler?",
-      "body": "He's up before the sun. How do you bros keep your sanity?",
-      "score": 115,
-      "reactions": [],
-      "my_reaction": null,
-      "awards": [],
-      "id": "c4676fa8-410d-7a79-1d33-3d2fd1fc8b2a",
-      "author": {
-        "id": "43f16f34-9942-cb48-49d9-122dc9237e11",
-        "handle": "@leobuilds",
-        "display_name": "Leo",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/leobuilds.png",
-        "bro_cred": 760
-      },
-      "image_url": null,
-      "comment_count": 89,
-      "created_at": "2026-10-21T21:25:11+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": {
-        "id": "e6e12bde-c99f-f89a-5f96-3cfdd3839629",
-        "name": "Stoic Bros",
-        "slug": "philosophy",
-        "member_count": 22300,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/philosophy.png",
-        "is_joined": true
-      },
-      "title": "The obstacle is the way",
-      "body": "Reframed a brutal week as training. Different game entirely.",
-      "score": 163,
-      "reactions": [],
-      "my_reaction": null,
-      "awards": [
+      "community": null,
+      "title": null,
+      "body": "Pickup basketball this Saturday at Riverside. Who's in?",
+      "score": 80,
+      "reactions": [
         {
-          "kind": "champ",
-          "count": 1
-        }
-      ],
-      "id": "dc8ae97c-b1c9-093b-e777-1c2b9c977d03",
-      "author": {
-        "id": "43f16f34-9942-cb48-49d9-122dc9237e11",
-        "handle": "@leobuilds",
-        "display_name": "Leo",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/leobuilds.png",
-        "bro_cred": 760
-      },
-      "image_url": null,
-      "comment_count": 86,
-      "created_at": "2026-10-21T19:17:11+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": {
-        "id": "369ccbe1-980c-cd6b-4b8b-e6cb2c492438",
-        "name": "Grill Masters",
-        "slug": "bbq",
-        "member_count": 96400,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/bbq.png",
-        "is_joined": true
-      },
-      "title": "Reverse sear is the only way",
-      "body": "Smoke to 120, rest, then blast it. Edge to edge pink every time.",
-      "score": 125,
-      "reactions": [],
-      "my_reaction": null,
-      "awards": [
+          "kind": "strong",
+          "count": 40
+        },
         {
-          "kind": "champ",
+          "kind": "respect",
+          "count": 42
+        },
+        {
+          "kind": "lol",
           "count": 3
         }
       ],
-      "id": "9648e4e7-ba29-7b50-a577-533d559fa93b",
+      "my_reaction": null,
+      "awards": [],
+      "id": "2d337151-bafb-7d2f-845b-ce6354d6e939",
       "author": {
-        "id": "550c58e9-f006-03d7-e005-01cf109b1c20",
-        "handle": "@coachmike",
-        "display_name": "Coach Mike",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachmike.png",
-        "bro_cred": 4200
+        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
+        "handle": "@coachdave",
+        "display_name": "Dave",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
+        "bro_cred": 9300
       },
       "image_url": null,
-      "comment_count": 58,
-      "created_at": "2026-10-21T18:24:11+00:00",
+      "comment_count": 20,
+      "created_at": "2026-10-21T23:28:47+00:00",
       "my_vote": 0
     },
     {
@@ -140,41 +114,46 @@
       },
       "title": "Finally finished the brake job",
       "body": "New rotors, pads, fresh fluid. Pedal feel is night and day.",
-      "score": 101,
+      "score": 80,
       "reactions": [],
       "my_reaction": null,
-      "awards": [],
-      "id": "908ae76f-0656-684e-fdb4-9564974805b9",
+      "awards": [
+        {
+          "kind": "champ",
+          "count": 2
+        }
+      ],
+      "id": "38316f21-f56c-4a40-397f-551e137e8bda",
       "author": {
-        "id": "550c58e9-f006-03d7-e005-01cf109b1c20",
-        "handle": "@coachmike",
-        "display_name": "Coach Mike",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachmike.png",
-        "bro_cred": 4200
+        "id": "bb5a2bd9-5ff6-b2d4-8c47-662f9908097f",
+        "handle": "@rajlifts",
+        "display_name": "Raj",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/rajlifts.png",
+        "bro_cred": 3050
       },
       "image_url": null,
-      "comment_count": 58,
-      "created_at": "2026-10-21T18:42:11+00:00",
+      "comment_count": 51,
+      "created_at": "2026-10-22T00:56:47+00:00",
       "my_vote": 0
     },
     {
       "community": null,
       "title": null,
-      "body": "Grilling at my place Sunday \u2014 bring a chair and a story.",
-      "score": 55,
+      "body": "Anyone up for a sunrise hike this weekend?",
+      "score": 10,
       "reactions": [
         {
-          "kind": "respect",
-          "count": 8
+          "kind": "strong",
+          "count": 3
         },
         {
-          "kind": "strong",
-          "count": 21
+          "kind": "like",
+          "count": 24
         }
       ],
       "my_reaction": null,
       "awards": [],
-      "id": "4cda92d4-122d-d7ff-709e-5c8a15bd5bcd",
+      "id": "e6a3a78c-a14d-f93d-8440-59a67f5edb64",
       "author": {
         "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
         "handle": "@coachdave",
@@ -184,7 +163,35 @@
       },
       "image_url": null,
       "comment_count": 23,
-      "created_at": "2026-10-21T17:17:11+00:00",
+      "created_at": "2026-10-21T21:54:47+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "e6e12bde-c99f-f89a-5f96-3cfdd3839629",
+        "name": "Stoic Bros",
+        "slug": "philosophy",
+        "member_count": 22300,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/philosophy.png",
+        "is_joined": true
+      },
+      "title": "Memento mori \u2014 keeps me grounded",
+      "body": "Read a page of Marcus Aurelius every morning. Recommend it.",
+      "score": 274,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [],
+      "id": "4593fc9b-e99a-d14e-e541-b625023bece1",
+      "author": {
+        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
+        "handle": "@newbro",
+        "display_name": "Sam",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
+        "bro_cred": 40
+      },
+      "image_url": null,
+      "comment_count": 29,
+      "created_at": "2026-10-21T21:24:47+00:00",
       "my_vote": 0
     }
   ],
