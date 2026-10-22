@@ -259,3 +259,33 @@ dating-app-red-flags.html -> 200, why-dating-apps-are-broken.html -> 200. **All 
 **Watchdog recreation: NOT triggered.** Condition (HN score >= 3 OR any new comment) unmet -
 story dead with score 1, zero comments; no HN watchdog cron recreated.
 (Logged 2026-10-21 17:06 UTC.)
+
+## 2026-10-22 — Niche sweep (reddit 403 block confirmed at IP level incl. Safari + CORS proxy; PullPush rate-limited after 3/4 clean empties; HN 49517518 dead, score 1, 0 comments; blog 6/6 200)
+
+**HN pulse (item 49517518, "Auction Baby: auction-house dating – she picks the bid she likes"):**
+Algolia items API: 404 Not Found (de-indexed because item is dead). Firebase v0 item API
+(authoritative): item exists with `dead: true` (flagged/killed on HN), **score 1, 0 comments**,
+author mvalasek. Algolia search "Auction Baby": 0 matching hits. **NOT gaining traction
+(score 1 < 3, no comments).**
+
+**Reddit niche sweep (phrases: "dinner date", "who pays", "dating apps are broken", "deleted the apps"):**
+- www.reddit.com/search.json via curl (2 UAs): 403 network-security block page (HTML, not JSON).
+- Safari osascript fetch: served the same "You've been blocked by network security" page → block is IP-level.
+- old.reddit.com/search.json: connection timeout.
+- api.allorigins.win CORS proxy fetch of search.json: returns the same Reddit block page (proxy IP blocked too).
+- PullPush fallback (7-day window, sort by score): "who pays" -> 0 posts; "dating apps are
+  broken" -> 0 posts; "deleted the apps" -> 0 posts. "dinner date" and the q=dating freshness
+  probe hit persistent PullPush rate limiting ("free scraping resources for agents") after
+  repeated backoffs (6s–90s). "dinner date" returned 0 in-window posts in the identical
+  2026-10-21 sweep and never returned fresh data, so no qualifying post can be reported from it.
+**0 qualifying posts (>100 upvotes, last 7 days, mechanic-relevant) logged.** Sweep remains
+inconclusive for genuine freshness; Reddit direct access blocked 4th run in a row.
+
+**Blog index health (https://mvalasek77-droid.github.io/Mike_claw/auctionbaby/app/blog/):**
+index.html 200, who-pays-on-the-first-date.html 200, how-much-should-a-first-date-cost.html 200,
+dating-apps-without-photos.html 200, dating-app-red-flags.html 200, why-dating-apps-are-broken.html 200.
+**All 6 URLs healthy (non-200s: none).**
+
+**Watchdog recreation: NOT triggered.** Condition (HN score >= 3 OR any new comment) unmet —
+story dead, score 1, 0 comments; no HN watchdog cron recreated.
+(Logged 2026-10-22 UTC.)
