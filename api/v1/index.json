@@ -1,0 +1,13 @@
+{
+  "generatedAt": "2026-10-24T15:39:11Z",
+  "movieCount": 94,
+  "sources": {
+    "bluesky": "no data (403 x80); set BLUESKY_HANDLE and BLUESKY_APP_PASSWORD secrets",
+    "boxoffice": "ok (75 openings on file, 0 new this run)",
+    "schedule": "ok (95 wide releases from boxofficemojo 4 pages, the-numbers 1 page); 1 already opened (limited), not listed",
+    "tmdb": "not configured",
+    "wikipedia": "ok (80/80 titles)",
+    "youtube": "not configured"
+  },
+  "version": 1
+}
