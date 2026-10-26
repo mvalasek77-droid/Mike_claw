@@ -289,3 +289,36 @@ dating-apps-without-photos.html 200, dating-app-red-flags.html 200, why-dating-a
 **Watchdog recreation: NOT triggered.** Condition (HN score >= 3 OR any new comment) unmet —
 story dead, score 1, 0 comments; no HN watchdog cron recreated.
 (Logged 2026-10-22 UTC.)
+
+## 2026-10-26 — Niche sweep (HN 49517518 dead, score 1, 0 comments; reddit direct+Safari blocked; PullPush 3/4 clean zeros; blog all 200 after transient index.html blip)
+
+**HN pulse (item 49517518, "Auction Baby: auction-house dating – she picks the bid she likes"):**
+Algolia items API (v1/items/49517518): 404 Not Found. Firebase v0 item API (source of truth
+for dead items): {by: mvalasek, dead: true, score: 1, 0 comments} — story flagged/killed on HN,
+score 1. Algolia full-text search "Auction Baby": 0 matching hits for this item. **NOT gaining
+traction (score 1 < 3, zero comments).**
+
+**Reddit niche sweep ("dinner date" pain, "who pays" debates, "dating apps are broken", "deleted the apps"; sort=top, t=week):**
+- www.reddit.com/search.json via curl (desktop UA): served an HTML network-security block
+  page (~190KB, non-JSON) to all 4 queries, identical bytes regardless of query.
+- Safari osascript do JavaScript fallback: not available in this session (Safari's
+  "Allow JavaScript from Apple Events" is disabled; script returned no data).
+- PullPush fallback (7-day window, sort=desc): "who pays" -> 0 posts; "dating apps are
+  broken" -> 0 posts; "deleted the apps" -> 0 posts. "dinner date" -> persistent PullPush
+  rate-limit ("free scraping resources for agents") on this run; same query returned
+  0 in-window posts in the 2026-10-21 and 2026-10-22 sweeps (never any fresh data), so
+  nothing reportable from it.
+**0 qualifying posts (>100 upvotes, last 7 days, Auction Baby mechanic directly relevant)
+logged.** Direct Reddit access now blocked 5th run in a row; PullPush remains the only
+semi-working channel and shows zero fresh activity for all phrases.
+
+**Blog index health (https://mvalasek77-droid.github.io/Mike_claw/auctionbaby/app/blog/):**
+index.html -> one transient 404 on first probe, 3196-byte 200 on immediate retry and again
+on a second double-check (200/200); who-pays-on-the-first-date.html 200;
+how-much-should-a-first-date-cost.html 200; dating-apps-without-photos.html 200;
+dating-app-red-flags.html 200; why-dating-apps-are-broken.html 200. **All 6 healthy
+(non-200: none — index.html blip self-resolved within seconds; worth watching next run).**
+
+**Watchdog recreation: NOT triggered.** Condition (HN score >= 3 OR any new comment) unmet —
+story dead with score 1, zero comments; no HN watchdog cron recreated.
+(Logged 2026-10-26 01:08 UTC.)
