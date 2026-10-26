@@ -143,6 +143,8 @@ textarea.txt{resize:vertical;min-height:64px}
 .celebrate.copycat .sold{background:linear-gradient(135deg,#cbb0e6,#8a5cc0);-webkit-background-clip:text;background-clip:text}
 
 .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.topbar.sticky{position:sticky;top:0;z-index:30;background:var(--bg);margin:-20px -18px 14px;padding:12px 18px;
+  padding-top:calc(12px + env(safe-area-inset-top))}
 .disclosure{font-size:11px;color:var(--ink-faint);text-align:center;line-height:1.5;margin-top:12px}
 a{color:var(--gold)}
 
@@ -252,7 +254,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{
 .bub.photo .photo-msg{max-width:220px}
 
 /* admin panel */
-.adm-nav{display:flex;gap:6px;padding:10px 0 8px;border-bottom:1px solid var(--line);margin-bottom:12px;overflow-x:auto}
+.adm-nav{display:flex;gap:6px;padding:10px 0 8px;border-bottom:1px solid var(--line);margin-bottom:12px;overflow-x:auto;
+  position:sticky;top:0;z-index:30;background:var(--bg)}
 .adm-nav button{font:700 13px/1 var(--sans);padding:8px 12px;border-radius:999px;
   background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--ink-faint);white-space:nowrap;min-height:36px}
 .adm-nav button.on{background:rgba(230,184,0,.14);border-color:var(--gold);color:var(--gold)}

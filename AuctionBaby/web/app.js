@@ -933,7 +933,7 @@
     const prompts = w.prompts || [];
 
     app.innerHTML = `<div class="screen" style="padding-bottom:80px">
-      <div class="topbar"><button class="chip" data-back>‹ Floor</button><span class="pill">⚖ ${S.wallet.toLocaleString()}</span><button class="chip" data-report style="margin-left:auto">⚑</button></div>
+      <div class="topbar sticky"><button class="chip" data-back>‹ Floor</button><span class="pill">⚖ ${S.wallet.toLocaleString()}</span><button class="chip" data-report style="margin-left:auto">⚑</button></div>
 
       <div class="lot${w.masterpiece ? " masterpiece" : ""}" style="margin-bottom:16px">
         <div class="art" id="photoPager" style="position:relative;overflow:hidden">${photoPagerHTML(w)}
@@ -1502,7 +1502,7 @@
       return `<div class="bub ${msg.me ? "me" : "them"}${photoTag ? " photo" : ""}" data-mid="${i}">${photoTag}${msg.text ? esc(msg.text) : ""}${rx}</div>${receipt}`;
     }).join("") + (m.typing ? `<div class="bub them typing">•••</div>` : "");
     app.innerHTML = `<div class="screen" style="padding-bottom:0">
-      <div class="topbar"><button class="chip" data-back>‹</button>
+      <div class="topbar sticky"><button class="chip" data-back>‹</button>
         <div class="row">${gradSm(m.hue, m.name, m.photo)}<b style="font-family:var(--serif)">${esc(m.name)}${m.verified ? verifiedBadge("sm") : ""}</b></div>
         <div class="row" style="gap:6px">
           ${S.role === "man" ? (m.reserved ? `<span class="chip on">✓ Reserved</span>` : `<button class="chip" id="reserve">Reserve</button>`) : ""}
@@ -2026,13 +2026,13 @@
   }
 
   const adminNav = (active) => `<div class="adm-nav">
+    <button data-go="you">‹ Exit</button>
     <button class="${active === "dash" ? "on" : ""}" data-go="admin/dash">Stats</button>
     <button class="${active === "users" ? "on" : ""}" data-go="admin/users">Users</button>
     <button class="${active === "floor" ? "on" : ""}" data-go="admin/floor">Floor</button>
     <button class="${active === "reports" ? "on" : ""}" data-go="admin/reports">Reports</button>
     <button class="${active === "bugs" ? "on" : ""}" data-go="admin/bugs">Bugs</button>
     <button class="${active === "audit" ? "on" : ""}" data-go="admin/audit">Audit</button>
-    <button data-go="you" style="margin-left:auto;opacity:.6">Exit</button>
   </div>`;
 
   // The floor exactly as the server serves it, both roles at once, plus the
