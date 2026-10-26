@@ -68,6 +68,9 @@
     const withoutPhoto = live.filter(l => !l.photo);
     return [...withPhoto, ...seed, ...withoutPhoto];
   }
+  // True only on the floor list itself — not a lot opened from it, which keeps
+  // tab === "floor" — so a background refresh never yanks someone off a profile.
+  const onFloorList = () => tab === "floor" && /^(floor|browse)?$/.test(location.hash.replace(/^#\/?/, ""));
   async function syncFloor() {
     if (!CONFIGURED() || !SIGNED_IN()) return;
     try {
@@ -86,8 +89,9 @@
         const seed = seedFloor()
           .filter(s => !liveIds.has(s.id) && !liveNames.has(s.name.toLowerCase()))
           .map(s => ({ ...s, demo: true }));
+        const before = JSON.stringify(S.floor || []);
         S.floor = mergeFloor(live, seed); save();
-        if (tab === "floor" && S.role !== "woman") floor();
+        if (JSON.stringify(S.floor) !== before && onFloorList() && S.role !== "woman") floor();
       }
     } catch (e) { /* keep demo floor */ }
     if (S.role === "woman") syncWomenFloor();
@@ -104,8 +108,9 @@
         const seed = seedFloor()
           .filter(s => !liveIds.has(s.id) && !liveNames.has(s.name.toLowerCase()))
           .map(s => ({ ...s, demo: true }));
+        const before = JSON.stringify(S.womenFloor || []);
         S.womenFloor = mergeFloor(live, seed); save();
-        if (tab === "floor" && location.hash.replace(/^#\/?/, "") === "browse") floor();
+        if (JSON.stringify(S.womenFloor) !== before && location.hash.replace(/^#\/?/, "") === "browse") floor();
       }
     } catch (e) { /* keep demo */ }
   }
@@ -123,6 +128,7 @@
     try {
       const r = await API.incomingBids();
       const arr = r.bids || (Array.isArray(r) ? r : []);
+      const before = JSON.stringify(S.incoming || []);
       // The matching Worker nests the other party under `bidder` (see
       // publicPeer). Reading `b.man` found nothing, so every bid in the inbox
       // rendered as an unnamed, unverified "Bidder".
@@ -136,7 +142,7 @@
           gilded: !!b.gilded,
         };
       });
-      save(); if (tab === "floor" && S.role === "woman") incoming();
+      save(); if (JSON.stringify(S.incoming) !== before && onFloorList() && S.role === "woman") incoming();
     } catch (e) { /* keep local */ }
   }
   async function syncMatches() {
@@ -149,6 +155,7 @@
       // /matches carries no messages either — those come from /matches/:id,
       // which syncMatchDetail() fetches when a chat is opened.
       const prev = S.matches || [];
+      const before = JSON.stringify(prev);
       // Keep local demo matches (demo-seed women) — the server list only
       // covers real accounts, so a wholesale replace would make demo
       // conversations vanish on every sync.
@@ -173,7 +180,7 @@
         };
       });
       S.matches = [...S.matches, ...demoKept];
-      save(); if (tab === "matches") matches();
+      save(); if (JSON.stringify(S.matches) !== before && location.hash.replace(/^#\/?/, "") === "matches") matches();
     } catch (e) { /* keep local */ }
   }
 
@@ -484,6 +491,42 @@
     return a;
   }
 
+  // A returning user who signs in on a new device already has a profile on the
+  // server. Restore it and skip onboarding — re-submitting the form would
+  // overwrite her saved bio, prompts and interests with blanks.
+  async function resumeIfProfile() {
+    try {
+      const r = await API.myProfile();
+      const p = r && (r.profile || r);
+      if (!p || !p.role) return false;
+      const me = await API.me().catch(() => null);
+      const u = (me && (me.user || me)) || {};
+      if (!u.dateOfBirth) return false;
+      const pr = p.prompts || [];
+      const ans = q => ((pr.find(x => (x.question || x.q) === q) || {}).answer) || "";
+      S.role = p.role;
+      S.me = {
+        ...S.me,
+        name: p.name || S.me.name, email: u.email || S.me.email || "",
+        dob: u.dateOfBirth, age: ageFromDOB(u.dateOfBirth),
+        city: p.location || "", bio: p.bio || "", portrait: S.me.portrait || "",
+        winMe: ans("The way to win me over is"), simplePleasure: ans("My simple pleasure"),
+        interests: p.interests || [],
+        photo: (p.photos && p.photos[0] && p.photos[0].url) || S.me.photo || null,
+        verified: !!p.verifiedAt || !!S.me.verified,
+      };
+      if (S.role === "woman") {
+        S.floor = (S.floor || []).filter(l => l.id !== "me_lot");
+        S.floor.unshift(buildMyLot());
+      }
+      S.registered = true; save();
+      toast("Welcome back" + (S.me.name ? ", " + S.me.name : "") + ".");
+      if (location.hash === "#/floor") render(); else go("/floor");
+      syncFloor(); syncMatches(); syncIncoming();
+      return true;
+    } catch (e) { return false; }  // 404 = no profile yet → finish onboarding
+  }
+
   function onboarding() {
     const me = S.me;
     const roleCard = (k, title, sub) =>
@@ -499,7 +542,7 @@
         <div class="faint" style="margin-top:10px">Find a high-value match — and set the night up right.</div>
       </div>
       ${APPLE_ON() ? `<button class="btn ghost" id="ob-apple" style="margin-bottom:16px;width:100%"> Sign in with Apple</button>
-        <div class="faint" style="text-align:center;margin-bottom:16px">Optional — keeps your account across devices.</div>` : ""}
+        <div class="faint" style="text-align:center;margin-bottom:16px">${CONFIGURED() ? (SIGNED_IN() ? "Signed in — finish your profile below." : "You need an account to join the floor.") : "Optional — keeps your account across devices."}</div>` : ""}
       ${(CONFIGURED() && !SIGNED_IN() && GOOGLE_ON()) ? `<div id="ob-google-btn" style="margin-bottom:16px;display:flex;justify-content:center"></div>` : ""}
       ${(CONFIGURED() && !SIGNED_IN()) ? `<div class="card" style="padding:16px;margin-bottom:16px">
         <div class="kicker" style="margin-bottom:10px">${(APPLE_ON() || GOOGLE_ON()) ? "Or use an email and password" : "Sign in"}</div>
@@ -602,6 +645,7 @@
           if (u.dateOfBirth) S.me.dob = u.dateOfBirth;
           save();
         }
+        if (await resumeIfProfile()) return;
         toast("Signed in with Apple." + (u && u.name ? " Welcome, " + u.name + "!" : ""));
         onboarding(); // re-render to show filled fields
       } catch (e) { toast("Apple sign-in: " + e.message); }
@@ -618,6 +662,7 @@
             if (u.dateOfBirth) S.me.dob = u.dateOfBirth;
             save();
           }
+          if (await resumeIfProfile()) return;
           toast("Signed in with Google." + (u && u.name ? " Welcome, " + u.name + "!" : ""));
           onboarding();
         } catch (e) { toast("Google sign-in: " + e.message); }
@@ -648,6 +693,7 @@
         if (u && u.name) S.me.name = u.name;
         if (u && u.dateOfBirth) S.me.dob = u.dateOfBirth;
         save();
+        if (!(d && d.isNew) && await resumeIfProfile()) return;
         toast(d && d.isNew ? "Account created." : "Signed in.");
         onboarding();          // re-render so the filled fields show
       } catch (e) {
@@ -686,6 +732,14 @@
       const name = $("#ob-name").value.trim();
       const dob = ($("#ob-dob") || {}).value || "";
       const age = ageFromDOB(dob);
+      // Without a session nothing below reaches the server: the person looked
+      // registered on their phone but had no account, never appeared on the
+      // floor, and their bids went to the local simulation.
+      if (CONFIGURED() && !SIGNED_IN()) {
+        const card = $("#ob-email") || $("#ob-apple");
+        if (card) card.scrollIntoView({ behavior: "smooth", block: "center" });
+        return toast("Create an account or sign in first. To just browse, tap \"Look around first\".");
+      }
       if (!S.role) return toast("Pick a side first.");
       // A photo is strongly wanted but never mandatory: the picker can fail for
       // reasons the user can't fix from here (a denied Android permission), and
@@ -1469,6 +1523,7 @@
       if (me) S.myUserId = me;
       const target = S.matches.find(x => x.id === id);
       if (!target) return;
+      const before = JSON.stringify(target.messages || []);
       const peer = detail.peer || detail.other;
       if (peer && peer.name) target.name = peer.name;
       if (peerPhoto(peer)) target.photo = peerPhoto(peer);
@@ -1481,12 +1536,34 @@
       // Read receipts read off the other side having seen my last message.
       target.seen = target.messages.some(x => x.me && x.seenAt);
       save();
-      if (location.hash.includes("chat/" + id)) chat(id);
+      if (JSON.stringify(target.messages) !== before && location.hash.includes("chat/" + id)) {
+        // Redraw without losing a half-typed message.
+        const ci = $("#ci"), draft = ci ? ci.value : "", focused = document.activeElement === ci;
+        chat(id);
+        const ci2 = $("#ci");
+        if (ci2 && draft) ci2.value = draft;
+        if (ci2 && focused) ci2.focus();
+      }
     } catch (e) { /* keep whatever we already have */ }
   }
 
   function chat(id) {
-    const m = S.matches.find(x => x.id === id); if (!m) return go("/matches");
+    const m = S.matches.find(x => x.id === id);
+    if (!m) {
+      // A match made since the last sync isn't in local state yet — fetch it
+      // before giving up, or a "say hello" link bounces straight back.
+      if (CONFIGURED() && SIGNED_IN() && !chat._fetching) {
+        chat._fetching = true;
+        app.innerHTML = `<div class="screen"><div class="faint" style="text-align:center;margin-top:40px">Loading chat…</div></div>`;
+        syncMatches().finally(() => {
+          chat._fetching = false;
+          if (!location.hash.includes("chat/" + id)) return;
+          if (S.matches.find(x => x.id === id)) chat(id); else go("/matches");
+        });
+        return;
+      }
+      return go("/matches");
+    }
     if (m.unread) { m.unread = false; save(); }
     if (CONFIGURED() && SIGNED_IN() && !m.demo) {
       API.markSeen(id).catch(() => {});
@@ -2393,6 +2470,30 @@
   if (location.hash.includes("paid=1")) toast("Payment complete — Gavels added.");
   // demo woman returning with no bids left → reseed so the screen isn't empty
   if (S.registered && S.role === "woman" && (!CONFIGURED() || !SIGNED_IN()) && !(S.incoming && S.incoming.length)) { S.incoming = seedIncoming(); save(); if (tab === "floor") incoming(); }
+  // Keep bids, matches and an open chat current. Startup alone wasn't enough:
+  // Android keeps the app alive in the background, so new bids and matches
+  // never appeared until it was fully closed and reopened.
+  let lastLiveSync = Date.now(), liveTick = 0;
+  const liveSync = (minGap, withFloor) => {
+    if (!S.registered || !CONFIGURED() || !SIGNED_IN()) return;
+    if (Date.now() - lastLiveSync < minGap) return;
+    lastLiveSync = Date.now();
+    syncMatches(); syncIncoming();
+    if (withFloor) syncFloor();
+  };
+  const openChatId = () => { const c = location.hash.match(/chat\/([^/?#]+)/); return c && c[1]; };
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") return;
+    liveSync(0, true);
+    const c = openChatId(); if (c && SIGNED_IN()) syncMatchDetail(c);
+  });
+  window.addEventListener("hashchange", () => liveSync(5000, /^#?\/?(floor|browse)?$/.test(location.hash)));
+  setInterval(() => {
+    if (document.visibilityState !== "visible") return;
+    const c = openChatId();
+    if (c && S.registered && CONFIGURED() && SIGNED_IN()) syncMatchDetail(c);
+    if (++liveTick % 3 === 0) liveSync(0, false);
+  }, 5000);
   if (S.registered && CONFIGURED() && SIGNED_IN()) {
     syncFloor(); syncMatches(); syncIncoming();
     API.myProfile().then(r => {
