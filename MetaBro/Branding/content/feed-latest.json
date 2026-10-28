@@ -1,76 +1,18 @@
 {
-  "generated_for": "2026-10-28T00",
+  "generated_for": "2026-10-28T03",
   "posts": [
     {
-      "community": null,
-      "title": null,
-      "body": "Grilling at my place Sunday \u2014 bring a chair and a story.",
-      "score": 76,
-      "reactions": [
-        {
-          "kind": "respect",
-          "count": 3
-        },
-        {
-          "kind": "strong",
-          "count": 41
-        }
-      ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "e98b070d-e046-be95-b01f-f663a4bd4cff",
-      "author": {
-        "id": "bb5a2bd9-5ff6-b2d4-8c47-662f9908097f",
-        "handle": "@rajlifts",
-        "display_name": "Raj",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/rajlifts.png",
-        "bro_cred": 3050
-      },
-      "image_url": null,
-      "comment_count": 90,
-      "created_at": "2026-10-27T21:41:29+00:00",
-      "my_vote": 0
-    },
-    {
       "community": {
-        "id": "369ccbe1-980c-cd6b-4b8b-e6cb2c492438",
-        "name": "Grill Masters",
-        "slug": "bbq",
-        "member_count": 96400,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/bbq.png",
+        "id": "22aca3d4-e132-fb9a-d97f-d6efb9771f45",
+        "name": "Iron Bro-hood",
+        "slug": "fitness",
+        "member_count": 182000,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fitness.png",
         "is_joined": true
       },
-      "title": "Low and slow brisket \u2014 14 hours",
-      "body": "Wrapped at 165, pulled at 203. Bark was unreal. AMA.",
-      "score": 154,
-      "reactions": [],
-      "my_reaction": null,
-      "awards": [],
-      "id": "a08ffc27-d32a-0d51-76a4-e308b3882558",
-      "author": {
-        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
-        "handle": "@newbro",
-        "display_name": "Sam",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
-        "bro_cred": 40
-      },
-      "image_url": null,
-      "comment_count": 20,
-      "created_at": "2026-10-27T23:07:29+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": {
-        "id": "ad1f28f2-deee-3630-ebff-760d7a720f9e",
-        "name": "Dad Mode",
-        "slug": "fatherhood",
-        "member_count": 58700,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fatherhood.png",
-        "is_joined": true
-      },
-      "title": "Tips for a 5am toddler?",
-      "body": "He's up before the sun. How do you bros keep your sanity?",
-      "score": 106,
+      "title": "Cutting without losing strength",
+      "body": "Higher protein, slower deficit, keep the heavy sets. Worked for me.",
+      "score": 271,
       "reactions": [],
       "my_reaction": null,
       "awards": [
@@ -79,17 +21,17 @@
           "count": 3
         }
       ],
-      "id": "97be39e4-6418-de61-dc3f-a3f9b24c78cb",
+      "id": "dcc53466-6a24-a203-63c3-55d70f3d2a16",
       "author": {
-        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
-        "handle": "@ironbro",
-        "display_name": "Marcus",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
-        "bro_cred": 4820
+        "id": "88da342c-12c1-951a-f0bc-99247785f086",
+        "handle": "@theoknows",
+        "display_name": "Theo",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/theoknows.png",
+        "bro_cred": 1120
       },
       "image_url": null,
-      "comment_count": 82,
-      "created_at": "2026-10-27T23:02:29+00:00",
+      "comment_count": 92,
+      "created_at": "2026-10-28T01:55:05+00:00",
       "my_vote": 0
     },
     {
@@ -101,28 +43,124 @@
         "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/cars.png",
         "is_joined": true
       },
-      "title": "Manual or auto for a first project car?",
-      "body": "Want something I can wrench on cheaply. Thoughts?",
-      "score": 235,
+      "title": "Detailing Sunday",
+      "body": "Clay bar, two-stage polish, ceramic. Paint looks wet. Worth it.",
+      "score": 93,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [],
+      "id": "f711c07e-3a00-ea6c-7bc5-fa3bbf396692",
+      "author": {
+        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
+        "handle": "@newbro",
+        "display_name": "Sam",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
+        "bro_cred": 40
+      },
+      "image_url": null,
+      "comment_count": 13,
+      "created_at": "2026-10-28T00:14:05+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Just hit a year sober. Grateful for this crew.",
+      "score": 13,
+      "reactions": [
+        {
+          "kind": "respect",
+          "count": 5
+        },
+        {
+          "kind": "strong",
+          "count": 11
+        },
+        {
+          "kind": "like",
+          "count": 4
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "179efc39-f82f-e76b-08cb-0525d3ecbbc2",
+      "author": {
+        "id": "337023ca-f0d6-6b4b-335e-42aa37ae608b",
+        "handle": "@you",
+        "display_name": "You",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/you.png",
+        "bro_cred": 1280
+      },
+      "image_url": null,
+      "comment_count": 5,
+      "created_at": "2026-10-27T23:09:05+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Pickup basketball this Saturday at Riverside. Who's in?",
+      "score": 84,
+      "reactions": [
+        {
+          "kind": "strong",
+          "count": 19
+        },
+        {
+          "kind": "respect",
+          "count": 33
+        },
+        {
+          "kind": "lol",
+          "count": 20
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "34271b4d-e80c-9ccf-4fe8-e7968646f6ee",
+      "author": {
+        "id": "550c58e9-f006-03d7-e005-01cf109b1c20",
+        "handle": "@coachmike",
+        "display_name": "Coach Mike",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachmike.png",
+        "bro_cred": 4200
+      },
+      "image_url": null,
+      "comment_count": 48,
+      "created_at": "2026-10-27T23:13:05+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "22aca3d4-e132-fb9a-d97f-d6efb9771f45",
+        "name": "Iron Bro-hood",
+        "slug": "fitness",
+        "member_count": 182000,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fitness.png",
+        "is_joined": true
+      },
+      "title": "Cutting without losing strength",
+      "body": "Higher protein, slower deficit, keep the heavy sets. Worked for me.",
+      "score": 84,
       "reactions": [],
       "my_reaction": null,
       "awards": [
         {
           "kind": "champ",
-          "count": 2
+          "count": 1
         }
       ],
-      "id": "26e4524f-b11d-6ce8-b103-c6190ce3233d",
+      "id": "627e0b5e-f497-5c0f-cd82-46b8b64e5f5a",
       "author": {
-        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
-        "handle": "@ironbro",
-        "display_name": "Marcus",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
-        "bro_cred": 4820
+        "id": "88da342c-12c1-951a-f0bc-99247785f086",
+        "handle": "@theoknows",
+        "display_name": "Theo",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/theoknows.png",
+        "bro_cred": 1120
       },
       "image_url": null,
-      "comment_count": 103,
-      "created_at": "2026-10-27T19:20:29+00:00",
+      "comment_count": 76,
+      "created_at": "2026-10-27T22:16:05+00:00",
       "my_vote": 0
     },
     {
@@ -134,58 +172,28 @@
         "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/bbq.png",
         "is_joined": true
       },
-      "title": "Reverse sear is the only way",
-      "body": "Smoke to 120, rest, then blast it. Edge to edge pink every time.",
-      "score": 98,
+      "title": "Best cheap smoker under $300?",
+      "body": "Looking to upgrade from the kettle. What are you bros running?",
+      "score": 190,
       "reactions": [],
       "my_reaction": null,
       "awards": [
         {
           "kind": "champ",
-          "count": 1
+          "count": 2
         }
       ],
-      "id": "d20d441b-e793-40fe-f96c-9b4aff77a9d4",
+      "id": "7dfe74c2-77d7-f467-d78a-c14bf6f585c2",
       "author": {
-        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
-        "handle": "@coachdave",
-        "display_name": "Dave",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
-        "bro_cred": 9300
+        "id": "550c58e9-f006-03d7-e005-01cf109b1c20",
+        "handle": "@coachmike",
+        "display_name": "Coach Mike",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachmike.png",
+        "bro_cred": 4200
       },
       "image_url": null,
-      "comment_count": 101,
-      "created_at": "2026-10-27T21:48:29+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": null,
-      "title": null,
-      "body": "Anyone up for a sunrise hike this weekend?",
-      "score": 14,
-      "reactions": [
-        {
-          "kind": "strong",
-          "count": 38
-        },
-        {
-          "kind": "like",
-          "count": 41
-        }
-      ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "572cdbff-46d2-8456-ebe7-825fa829c7b7",
-      "author": {
-        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
-        "handle": "@coachdave",
-        "display_name": "Dave",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
-        "bro_cred": 9300
-      },
-      "image_url": null,
-      "comment_count": 40,
-      "created_at": "2026-10-27T18:49:29+00:00",
+      "comment_count": 119,
+      "created_at": "2026-10-27T21:07:05+00:00",
       "my_vote": 0
     }
   ],
