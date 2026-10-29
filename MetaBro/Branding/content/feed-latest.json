@@ -1,56 +1,27 @@
 {
-  "generated_for": "2026-10-29T09",
+  "generated_for": "2026-10-29T12",
   "posts": [
     {
       "community": {
-        "id": "e6e12bde-c99f-f89a-5f96-3cfdd3839629",
-        "name": "Stoic Bros",
-        "slug": "philosophy",
-        "member_count": 22300,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/philosophy.png",
+        "id": "369ccbe1-980c-cd6b-4b8b-e6cb2c492438",
+        "name": "Grill Masters",
+        "slug": "bbq",
+        "member_count": 96400,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/bbq.png",
         "is_joined": true
       },
-      "title": "Memento mori \u2014 keeps me grounded",
-      "body": "Read a page of Marcus Aurelius every morning. Recommend it.",
-      "score": 215,
+      "title": "Low and slow brisket \u2014 14 hours",
+      "body": "Wrapped at 165, pulled at 203. Bark was unreal. AMA.",
+      "score": 158,
       "reactions": [],
       "my_reaction": null,
-      "awards": [],
-      "id": "89c6ec48-5f2a-9aab-f4a2-09eb961a1288",
-      "author": {
-        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
-        "handle": "@ironbro",
-        "display_name": "Marcus",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
-        "bro_cred": 4820
-      },
-      "image_url": null,
-      "comment_count": 78,
-      "created_at": "2026-10-29T07:57:34+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": null,
-      "title": null,
-      "body": "Just hit a year sober. Grateful for this crew.",
-      "score": 79,
-      "reactions": [
+      "awards": [
         {
-          "kind": "respect",
+          "kind": "champ",
           "count": 3
-        },
-        {
-          "kind": "strong",
-          "count": 11
-        },
-        {
-          "kind": "like",
-          "count": 16
         }
       ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "1ca95f4a-1cd3-d414-6918-f661fd2ae228",
+      "id": "ad295f52-6afe-aa02-7f85-4050357f4af7",
       "author": {
         "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
         "handle": "@coachdave",
@@ -59,22 +30,22 @@
         "bro_cred": 9300
       },
       "image_url": null,
-      "comment_count": 109,
-      "created_at": "2026-10-29T06:55:34+00:00",
+      "comment_count": 86,
+      "created_at": "2026-10-29T12:07:14+00:00",
       "my_vote": 0
     },
     {
       "community": {
-        "id": "e6e12bde-c99f-f89a-5f96-3cfdd3839629",
-        "name": "Stoic Bros",
-        "slug": "philosophy",
-        "member_count": 22300,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/philosophy.png",
+        "id": "22aca3d4-e132-fb9a-d97f-d6efb9771f45",
+        "name": "Iron Bro-hood",
+        "slug": "fitness",
+        "member_count": 182000,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fitness.png",
         "is_joined": true
       },
-      "title": "Memento mori \u2014 keeps me grounded",
-      "body": "Read a page of Marcus Aurelius every morning. Recommend it.",
-      "score": 228,
+      "title": "PSA: warm up your rotator cuffs, bros",
+      "body": "Saved my bench after years of nagging pain. Here's the routine.",
+      "score": 301,
       "reactions": [],
       "my_reaction": null,
       "awards": [
@@ -83,31 +54,31 @@
           "count": 1
         }
       ],
-      "id": "aee15f2d-ba09-ab95-41f7-383d01267422",
+      "id": "1373cab1-fff6-bc6f-8938-a287b59fdbdb",
       "author": {
-        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
-        "handle": "@coachdave",
-        "display_name": "Dave",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
-        "bro_cred": 9300
+        "id": "88da342c-12c1-951a-f0bc-99247785f086",
+        "handle": "@theoknows",
+        "display_name": "Theo",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/theoknows.png",
+        "bro_cred": 1120
       },
       "image_url": null,
-      "comment_count": 3,
-      "created_at": "2026-10-29T04:04:34+00:00",
+      "comment_count": 99,
+      "created_at": "2026-10-29T08:27:14+00:00",
       "my_vote": 0
     },
     {
       "community": {
-        "id": "e6e12bde-c99f-f89a-5f96-3cfdd3839629",
-        "name": "Stoic Bros",
-        "slug": "philosophy",
-        "member_count": 22300,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/philosophy.png",
+        "id": "1e27fcd8-c8ff-7cac-af7b-60a88268cbe1",
+        "name": "Garage Gearheads",
+        "slug": "cars",
+        "member_count": 141200,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/cars.png",
         "is_joined": true
       },
-      "title": "Memento mori \u2014 keeps me grounded",
-      "body": "Read a page of Marcus Aurelius every morning. Recommend it.",
-      "score": 104,
+      "title": "Finally finished the brake job",
+      "body": "New rotors, pads, fresh fluid. Pedal feel is night and day.",
+      "score": 230,
       "reactions": [],
       "my_reaction": null,
       "awards": [
@@ -116,79 +87,105 @@
           "count": 2
         }
       ],
-      "id": "e709c74e-4b15-d3db-9429-d1dfd4353a7b",
+      "id": "b52a5493-f152-4e22-c465-9fe18f5e5f6c",
       "author": {
-        "id": "bb5a2bd9-5ff6-b2d4-8c47-662f9908097f",
-        "handle": "@rajlifts",
-        "display_name": "Raj",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/rajlifts.png",
-        "bro_cred": 3050
+        "id": "550c58e9-f006-03d7-e005-01cf109b1c20",
+        "handle": "@coachmike",
+        "display_name": "Coach Mike",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachmike.png",
+        "bro_cred": 4200
       },
       "image_url": null,
-      "comment_count": 72,
-      "created_at": "2026-10-29T03:52:34+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": {
-        "id": "e6e12bde-c99f-f89a-5f96-3cfdd3839629",
-        "name": "Stoic Bros",
-        "slug": "philosophy",
-        "member_count": 22300,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/philosophy.png",
-        "is_joined": true
-      },
-      "title": "Memento mori \u2014 keeps me grounded",
-      "body": "Read a page of Marcus Aurelius every morning. Recommend it.",
-      "score": 222,
-      "reactions": [],
-      "my_reaction": null,
-      "awards": [],
-      "id": "06630d29-c343-754a-b2de-7287d8142d4d",
-      "author": {
-        "id": "bb5a2bd9-5ff6-b2d4-8c47-662f9908097f",
-        "handle": "@rajlifts",
-        "display_name": "Raj",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/rajlifts.png",
-        "bro_cred": 3050
-      },
-      "image_url": null,
-      "comment_count": 34,
-      "created_at": "2026-10-29T06:40:34+00:00",
+      "comment_count": 20,
+      "created_at": "2026-10-29T10:24:14+00:00",
       "my_vote": 0
     },
     {
       "community": null,
       "title": null,
-      "body": "Pickup basketball this Saturday at Riverside. Who's in?",
-      "score": 41,
+      "body": "Anyone up for a sunrise hike this weekend?",
+      "score": 60,
       "reactions": [
         {
           "kind": "strong",
-          "count": 40
+          "count": 35
         },
         {
-          "kind": "respect",
-          "count": 16
-        },
-        {
-          "kind": "lol",
-          "count": 28
+          "kind": "like",
+          "count": 4
         }
       ],
       "my_reaction": null,
       "awards": [],
-      "id": "23d87c3b-7135-7541-5883-e089b1d86a86",
+      "id": "8c934e3e-61ae-ef75-d6c7-303e254e950c",
       "author": {
-        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
-        "handle": "@newbro",
-        "display_name": "Sam",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
-        "bro_cred": 40
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
       },
       "image_url": null,
-      "comment_count": 13,
-      "created_at": "2026-10-29T05:50:34+00:00",
+      "comment_count": 69,
+      "created_at": "2026-10-29T06:24:14+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Anyone up for a sunrise hike this weekend?",
+      "score": 99,
+      "reactions": [
+        {
+          "kind": "strong",
+          "count": 37
+        },
+        {
+          "kind": "like",
+          "count": 18
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "77f16938-be7b-428a-1e72-709f547fc19b",
+      "author": {
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
+      },
+      "image_url": null,
+      "comment_count": 96,
+      "created_at": "2026-10-29T05:46:14+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "ad1f28f2-deee-3630-ebff-760d7a720f9e",
+        "name": "Dad Mode",
+        "slug": "fatherhood",
+        "member_count": 58700,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fatherhood.png",
+        "is_joined": true
+      },
+      "title": "Built a treehouse this weekend",
+      "body": "Kid 'helped'. Took twice as long. Best two days of the year.",
+      "score": 246,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [],
+      "id": "269fd41d-1e26-94f8-1992-f002bb1fd722",
+      "author": {
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
+      },
+      "image_url": null,
+      "comment_count": 64,
+      "created_at": "2026-10-29T04:55:14+00:00",
       "my_vote": 0
     }
   ],
