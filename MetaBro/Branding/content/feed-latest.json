@@ -1,28 +1,58 @@
 {
-  "generated_for": "2026-11-06T06",
+  "generated_for": "2026-11-06T09",
   "posts": [
     {
       "community": null,
       "title": null,
-      "body": "Just hit a year sober. Grateful for this crew.",
-      "score": 64,
+      "body": "Anyone up for a sunrise hike this weekend?",
+      "score": 26,
       "reactions": [
         {
-          "kind": "respect",
-          "count": 38
-        },
-        {
           "kind": "strong",
-          "count": 23
+          "count": 42
         },
         {
           "kind": "like",
-          "count": 19
+          "count": 3
         }
       ],
       "my_reaction": null,
       "awards": [],
-      "id": "0115dcb3-7eed-bdb9-dd9f-0e0ae0bc5dfb",
+      "id": "7008d2e4-81e3-584d-7637-f360d9af56d4",
+      "author": {
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
+      },
+      "image_url": null,
+      "comment_count": 43,
+      "created_at": "2026-11-06T08:52:28+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Pickup basketball this Saturday at Riverside. Who's in?",
+      "score": 61,
+      "reactions": [
+        {
+          "kind": "strong",
+          "count": 18
+        },
+        {
+          "kind": "respect",
+          "count": 26
+        },
+        {
+          "kind": "lol",
+          "count": 25
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "c0cf7926-a574-9edd-1c57-6f476bbb27ec",
       "author": {
         "id": "bb5a2bd9-5ff6-b2d4-8c47-662f9908097f",
         "handle": "@rajlifts",
@@ -31,60 +61,32 @@
         "bro_cred": 3050
       },
       "image_url": null,
-      "comment_count": 103,
-      "created_at": "2026-11-06T03:58:08+00:00",
+      "comment_count": 88,
+      "created_at": "2026-11-06T07:45:28+00:00",
       "my_vote": 0
     },
     {
       "community": null,
       "title": null,
-      "body": "Just hit a year sober. Grateful for this crew.",
-      "score": 28,
+      "body": "Pickup basketball this Saturday at Riverside. Who's in?",
+      "score": 95,
       "reactions": [
-        {
-          "kind": "respect",
-          "count": 38
-        },
         {
           "kind": "strong",
           "count": 25
         },
         {
-          "kind": "like",
-          "count": 41
+          "kind": "respect",
+          "count": 40
+        },
+        {
+          "kind": "lol",
+          "count": 27
         }
       ],
       "my_reaction": null,
       "awards": [],
-      "id": "46f42c95-d569-0422-5a7f-48d4ba95d0c2",
-      "author": {
-        "id": "43f16f34-9942-cb48-49d9-122dc9237e11",
-        "handle": "@leobuilds",
-        "display_name": "Leo",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/leobuilds.png",
-        "bro_cred": 760
-      },
-      "image_url": null,
-      "comment_count": 38,
-      "created_at": "2026-11-06T04:17:08+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": {
-        "id": "ad1f28f2-deee-3630-ebff-760d7a720f9e",
-        "name": "Dad Mode",
-        "slug": "fatherhood",
-        "member_count": 58700,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fatherhood.png",
-        "is_joined": true
-      },
-      "title": "Built a treehouse this weekend",
-      "body": "Kid 'helped'. Took twice as long. Best two days of the year.",
-      "score": 134,
-      "reactions": [],
-      "my_reaction": null,
-      "awards": [],
-      "id": "91f18249-c181-7c08-ffc0-11afa35ad207",
+      "id": "3ae62849-57d1-0465-f45c-6c2c2fdb236f",
       "author": {
         "id": "88da342c-12c1-951a-f0bc-99247785f086",
         "handle": "@theoknows",
@@ -93,41 +95,8 @@
         "bro_cred": 1120
       },
       "image_url": null,
-      "comment_count": 92,
-      "created_at": "2026-11-06T01:38:08+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": {
-        "id": "ad1f28f2-deee-3630-ebff-760d7a720f9e",
-        "name": "Dad Mode",
-        "slug": "fatherhood",
-        "member_count": 58700,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fatherhood.png",
-        "is_joined": true
-      },
-      "title": "Tips for a 5am toddler?",
-      "body": "He's up before the sun. How do you bros keep your sanity?",
-      "score": 226,
-      "reactions": [],
-      "my_reaction": null,
-      "awards": [
-        {
-          "kind": "champ",
-          "count": 2
-        }
-      ],
-      "id": "e4905d71-3c41-6a8d-971e-ab430b838c5d",
-      "author": {
-        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
-        "handle": "@coachdave",
-        "display_name": "Dave",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
-        "bro_cred": 9300
-      },
-      "image_url": null,
-      "comment_count": 43,
-      "created_at": "2026-11-06T01:25:08+00:00",
+      "comment_count": 14,
+      "created_at": "2026-11-06T04:54:28+00:00",
       "my_vote": 0
     },
     {
@@ -138,30 +107,64 @@
       "reactions": [
         {
           "kind": "strong",
-          "count": 38
+          "count": 9
         },
         {
           "kind": "respect",
-          "count": 19
+          "count": 31
         },
         {
           "kind": "lol",
-          "count": 27
+          "count": 12
         }
       ],
       "my_reaction": null,
       "awards": [],
-      "id": "360c8981-29ca-97df-de99-5225081a0ccc",
+      "id": "8fc9fbca-b4fd-3e19-ce43-8b164d2de645",
       "author": {
-        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
-        "handle": "@ironbro",
-        "display_name": "Marcus",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
-        "bro_cred": 4820
+        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
+        "handle": "@coachdave",
+        "display_name": "Dave",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
+        "bro_cred": 9300
       },
       "image_url": null,
-      "comment_count": 90,
-      "created_at": "2026-11-06T01:29:08+00:00",
+      "comment_count": 15,
+      "created_at": "2026-11-06T05:23:28+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Pickup basketball this Saturday at Riverside. Who's in?",
+      "score": 26,
+      "reactions": [
+        {
+          "kind": "strong",
+          "count": 5
+        },
+        {
+          "kind": "respect",
+          "count": 24
+        },
+        {
+          "kind": "lol",
+          "count": 26
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "90e44eed-62e7-f734-a174-7339c165f1f4",
+      "author": {
+        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
+        "handle": "@coachdave",
+        "display_name": "Dave",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
+        "bro_cred": 9300
+      },
+      "image_url": null,
+      "comment_count": 115,
+      "created_at": "2026-11-06T05:05:28+00:00",
       "my_vote": 0
     },
     {
@@ -173,28 +176,23 @@
         "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/cars.png",
         "is_joined": true
       },
-      "title": "Detailing Sunday",
-      "body": "Clay bar, two-stage polish, ceramic. Paint looks wet. Worth it.",
-      "score": 215,
+      "title": "Finally finished the brake job",
+      "body": "New rotors, pads, fresh fluid. Pedal feel is night and day.",
+      "score": 300,
       "reactions": [],
       "my_reaction": null,
-      "awards": [
-        {
-          "kind": "champ",
-          "count": 3
-        }
-      ],
-      "id": "6040b58b-3b24-4b5f-71e6-bf48ddd31d6b",
+      "awards": [],
+      "id": "5e3b03c4-7837-7d11-1676-7a3226ccc4ee",
       "author": {
-        "id": "43f16f34-9942-cb48-49d9-122dc9237e11",
-        "handle": "@leobuilds",
-        "display_name": "Leo",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/leobuilds.png",
-        "bro_cred": 760
+        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
+        "handle": "@newbro",
+        "display_name": "Sam",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
+        "bro_cred": 40
       },
       "image_url": null,
-      "comment_count": 97,
-      "created_at": "2026-11-06T01:50:08+00:00",
+      "comment_count": 89,
+      "created_at": "2026-11-06T04:19:28+00:00",
       "my_vote": 0
     }
   ],
