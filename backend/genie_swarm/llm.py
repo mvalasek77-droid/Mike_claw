@@ -25,8 +25,44 @@ from .models import Message, ToolCall
 class LLMResponse:
     text: str = ""
     tool_calls: list[ToolCall] = field(default_factory=list)
-    stop_reason: str = "end_turn"   # end_turn | tool_use | max_tokens
+    stop_reason: str = "end_turn"   # end_turn | tool_use | max_tokens | refusal
     usage: dict[str, int] = field(default_factory=dict)
+    # The provider's own content blocks for this turn, verbatim. Claude
+    # returns `thinking` blocks that must be replayed unchanged on the
+    # next request of a tool loop, so the runtime stores these on the
+    # assistant `Message` instead of rebuilding the turn from `text`.
+    provider_blocks: list[dict[str, Any]] | None = None
+
+
+# ---------------------------------------------------------------------------
+# Model ids
+# ---------------------------------------------------------------------------
+
+DEFAULT_MODEL = "claude-opus-5-5"
+COACH_MODEL = "claude-sonnet-5-5"
+
+# Ids an older app build may still have saved in its per-agent routing.
+# Resolved here so a stale phone setting cannot break a build.
+_SUPERSEDED_MODELS: dict[str, str] = {
+    "claude-opus-4-7": "claude-opus-5-5",
+    "claude-opus-4-8": "claude-opus-5-5",
+    "claude-opus-5": "claude-opus-5-5",
+    "claude-sonnet-4-6": "claude-sonnet-5-5",
+    "claude-sonnet-5": "claude-sonnet-5-5",
+    "claude-haiku-4-5": "claude-haiku-5-5",
+}
+
+# Models whose policy declines can be rescued server-side.
+_SERVER_FALLBACK_MODELS = frozenset({"claude-opus-5-5", "claude-sonnet-5-5"})
+_FALLBACK_BETA = "server-side-fallback-2026-07-01"
+
+
+def canonical_model(model: str) -> str:
+    return _SUPERSEDED_MODELS.get(model, model)
+
+
+def is_openai_model(model: str) -> bool:
+    return model.startswith(("gpt-", "o1", "o3", "o4"))
 
 
 # ---------------------------------------------------------------------------
@@ -42,8 +78,9 @@ class LLMClient(ABC):
         system: str,
         messages: list[Message],
         tools: list[dict[str, Any]],
-        max_tokens: int = 4096,
+        max_tokens: int = 16000,
         temperature: float = 0.2,
+        effort: str | None = None,
     ) -> LLMResponse:
         ...
 
@@ -62,15 +99,29 @@ class AnthropicClient(LLMClient):
         except ImportError as e:  # pragma: no cover
             raise RuntimeError("install `anthropic` to use AnthropicClient") from e
 
-        client = AsyncAnthropic(api_key=self.api_key)
-        ans = await client.messages.create(
-            model=kwargs["model"],
-            system=kwargs["system"],
-            messages=_to_anthropic_messages(kwargs["messages"]),
-            tools=kwargs["tools"],
-            max_tokens=kwargs.get("max_tokens", 4096),
-            temperature=kwargs.get("temperature", 0.2),
-        )
+        # No api_key argument when none was injected: the SDK then
+        # resolves credentials from the environment on its own.
+        client = AsyncAnthropic(api_key=self.api_key) if self.api_key else AsyncAnthropic()
+        model = canonical_model(kwargs["model"])
+        request: dict[str, Any] = {
+            "model": model,
+            "system": kwargs["system"],
+            "messages": _to_anthropic_messages(kwargs["messages"]),
+            "max_tokens": kwargs.get("max_tokens", 16000),
+        }
+        if kwargs.get("tools"):
+            request["tools"] = kwargs["tools"]
+        # Current Claude models reject sampling parameters and run
+        # adaptive thinking by default; effort is the depth control.
+        if kwargs.get("effort"):
+            request["output_config"] = {"effort": kwargs["effort"]}
+
+        if model in _SERVER_FALLBACK_MODELS:
+            ans = await client.beta.messages.create(
+                betas=[_FALLBACK_BETA], fallbacks="default", **request
+            )
+        else:
+            ans = await client.messages.create(**request)
 
         text_parts: list[str] = []
         calls: list[ToolCall] = []
@@ -89,6 +140,7 @@ class AnthropicClient(LLMClient):
                 "input_tokens": getattr(ans.usage, "input_tokens", 0),
                 "output_tokens": getattr(ans.usage, "output_tokens", 0),
             },
+            provider_blocks=[b.model_dump(exclude_none=True) for b in ans.content],
         )
 
 
@@ -109,6 +161,11 @@ def _to_anthropic_messages(msgs: list[Message]) -> list[dict[str, Any]]:
                 }],
             })
             continue
+        if m.role == "assistant" and m.provider_blocks:
+            out.append({"role": "assistant", "content": m.provider_blocks})
+            continue
+        if m.role == "assistant" and not m.content and not m.tool_calls:
+            continue   # an empty turn is rejected by the API
         if m.role == "assistant" and m.tool_calls:
             blocks: list[dict[str, Any]] = []
             if m.content:
@@ -153,7 +210,7 @@ class OpenAIClient(LLMClient):
             model=kwargs["model"],
             messages=msgs,
             tools=tools or None,
-            max_completion_tokens=kwargs.get("max_tokens", 4096),
+            max_completion_tokens=kwargs.get("max_tokens", 16000),
             temperature=kwargs.get("temperature", 0.2),
         )
         choice = ans.choices[0]
@@ -181,3 +238,29 @@ def _parse_args(s: str) -> dict[str, Any]:
         return json.loads(s)
     except json.JSONDecodeError:
         return {}
+
+
+# ---------------------------------------------------------------------------
+# Routing — one client for the orchestrator, the right vendor per model
+# ---------------------------------------------------------------------------
+
+class RoutingLLMClient(LLMClient):
+    """Sends each request to the vendor that owns the model id.
+
+    Per-agent routing lets a user put one agent on GPT and the rest on
+    Claude; without this every id went to the Anthropic client and the
+    GPT ones failed as unknown models."""
+
+    def __init__(
+        self,
+        anthropic: LLMClient | None = None,
+        openai: LLMClient | None = None,
+    ) -> None:
+        self.anthropic = anthropic or AnthropicClient()
+        self.openai = openai or OpenAIClient()
+
+    async def complete(self, **kwargs) -> LLMResponse:
+        if is_openai_model(kwargs["model"]):
+            kwargs.pop("effort", None)
+            return await self.openai.complete(**kwargs)
+        return await self.anthropic.complete(**kwargs)

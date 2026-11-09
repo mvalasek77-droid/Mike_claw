@@ -73,7 +73,7 @@ final class Credentials: ObservableObject {
         if let raw = UserDefaults.standard.string(forKey: "auth.mode"),
            let mode = AuthMode(rawValue: raw) { authMode = mode }
         if let id = UserDefaults.standard.string(forKey: "model.preferred") {
-            preferredModelID = id
+            preferredModelID = ModelCatalogue.currentID(for: id)
         }
         if let url = UserDefaults.standard.string(forKey: "backend.url"),
            !url.isEmpty {
@@ -81,7 +81,7 @@ final class Credentials: ObservableObject {
         }
         if let data = UserDefaults.standard.data(forKey: "agent.models"),
            let decoded = try? JSONDecoder().decode([String: String].self, from: data) {
-            agentModels = decoded
+            agentModels = decoded.mapValues { ModelCatalogue.currentID(for: $0) }
         }
         if UserDefaults.standard.object(forKey: "cost.cap.usd") != nil {
             let raw = UserDefaults.standard.double(forKey: "cost.cap.usd")

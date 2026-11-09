@@ -49,7 +49,7 @@ enum AIProvider: String, CaseIterable, Identifiable, Codable {
 }
 
 struct AIModel: Identifiable, Hashable, Codable {
-    var id: String           // canonical model id (e.g. "claude-opus-4-7")
+    var id: String           // canonical model id (e.g. "claude-opus-5-5")
     var provider: AIProvider
     var displayName: String
     var tagline: String
@@ -86,29 +86,29 @@ enum ModelCatalogue {
     static let all: [AIModel] = [
         // — Anthropic —
         .init(
-            id: "claude-opus-4-7", provider: .anthropic,
-            displayName: "Claude Opus 4.7",
+            id: "claude-opus-5-5", provider: .anthropic,
+            displayName: "Claude Opus 5.5",
             tagline: "Best Swift code, deepest reasoning",
-            inputUSDPerMTok: 15.0, outputUSDPerMTok: 75.0,
-            contextWindow: 200_000,
+            inputUSDPerMTok: 4.0, outputUSDPerMTok: 20.0,
+            contextWindow: 1_000_000,
             bestFor: "Architecture, hard refactors, gnarly bugs",
             tier: .flagship
         ),
         .init(
-            id: "claude-sonnet-4-6", provider: .anthropic,
-            displayName: "Claude Sonnet 4.6",
+            id: "claude-sonnet-5-5", provider: .anthropic,
+            displayName: "Claude Sonnet 5.5",
             tagline: "The everyday workhorse",
-            inputUSDPerMTok: 3.0, outputUSDPerMTok: 15.0,
-            contextWindow: 200_000,
-            bestFor: "Most builds — great quality at 5× the speed of Opus",
+            inputUSDPerMTok: 2.0, outputUSDPerMTok: 10.0,
+            contextWindow: 1_000_000,
+            bestFor: "Most builds — strong quality at half the price of Opus",
             tier: .balanced
         ),
         .init(
-            id: "claude-haiku-4-5", provider: .anthropic,
-            displayName: "Claude Haiku 4.5",
+            id: "claude-haiku-5-5", provider: .anthropic,
+            displayName: "Claude Haiku 5.5",
             tagline: "Cheap, fast, surprisingly capable",
-            inputUSDPerMTok: 1.0, outputUSDPerMTok: 5.0,
-            contextWindow: 200_000,
+            inputUSDPerMTok: 0.10, outputUSDPerMTok: 0.50,
+            contextWindow: 1_000_000,
             bestFor: "Tweaks, lints, copy edits, screenshots",
             tier: .fast
         ),
@@ -133,7 +133,25 @@ enum ModelCatalogue {
         )
     ]
 
-    static func model(id: String) -> AIModel? { all.first { $0.id == id } }
+    /// Ids this app used to offer, mapped to what replaced them. A
+    /// saved preference outlives the model it names; without this the
+    /// picker shows nothing selected and cost estimates silently fall
+    /// back to the first row.
+    static let superseded: [String: String] = [
+        "claude-opus-4-7": "claude-opus-5-5",
+        "claude-opus-4-8": "claude-opus-5-5",
+        "claude-opus-5": "claude-opus-5-5",
+        "claude-sonnet-4-6": "claude-sonnet-5-5",
+        "claude-sonnet-5": "claude-sonnet-5-5",
+        "claude-haiku-4-5": "claude-haiku-5-5"
+    ]
 
-    static let recommendedDefault = "claude-sonnet-4-6"
+    static func currentID(for id: String) -> String { superseded[id] ?? id }
+
+    static func model(id: String) -> AIModel? {
+        let resolved = currentID(for: id)
+        return all.first { $0.id == resolved }
+    }
+
+    static let recommendedDefault = "claude-sonnet-5-5"
 }

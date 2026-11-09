@@ -14,7 +14,7 @@ async def test_rank_picks_named_winner(recorded_llm):
     )]
     verdict = await rank(
         [
-            Candidate(label="claude", model="claude-opus-4-7", output="// version A", usage={}),
+            Candidate(label="claude", model="claude-opus-5-5", output="// version A", usage={}),
             Candidate(label="gpt",    model="gpt-5",            output="// version B", usage={}),
         ],
         judge=recorded_llm,
@@ -32,7 +32,7 @@ async def test_rank_handles_code_fence_wrapper(recorded_llm):
     )]
     verdict = await rank(
         [
-            Candidate(label="claude", model="claude-opus-4-7", output="A", usage={}),
+            Candidate(label="claude", model="claude-opus-5-5", output="A", usage={}),
             Candidate(label="gpt",    model="gpt-5",            output="B", usage={}),
         ],
         judge=recorded_llm,
@@ -45,7 +45,7 @@ async def test_rank_falls_back_when_unparseable(recorded_llm):
     recorded_llm.script = [LLMResponse(text="completely unstructured judge reply")]
     verdict = await rank(
         [
-            Candidate(label="claude", model="claude-opus-4-7", output="short", usage={}),
+            Candidate(label="claude", model="claude-opus-5-5", output="short", usage={}),
             Candidate(label="gpt",    model="gpt-5",            output="much, much longer reply", usage={}),
         ],
         judge=recorded_llm,
@@ -61,7 +61,7 @@ async def test_rank_rejects_unknown_winner_label(recorded_llm):
     )]
     verdict = await rank(
         [
-            Candidate(label="claude", model="claude-opus-4-7", output="aa", usage={}),
+            Candidate(label="claude", model="claude-opus-5-5", output="aa", usage={}),
             Candidate(label="gpt",    model="gpt-5",            output="bbbbbb", usage={}),
         ],
         judge=recorded_llm,
@@ -72,7 +72,7 @@ async def test_rank_rejects_unknown_winner_label(recorded_llm):
 @pytest.mark.asyncio
 async def test_rank_with_single_candidate_short_circuits(recorded_llm):
     verdict = await rank(
-        [Candidate(label="solo", model="claude-opus-4-7", output="x", usage={})],
+        [Candidate(label="solo", model="claude-opus-5-5", output="x", usage={})],
         judge=recorded_llm,
     )
     assert verdict.winner_label == "solo"

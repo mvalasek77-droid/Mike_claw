@@ -14,7 +14,7 @@ import asyncio
 import time
 from dataclasses import dataclass, field
 
-from .llm import LLMClient, LLMResponse
+from .llm import DEFAULT_MODEL, LLMClient, LLMResponse
 from .models import Message, ToolCall, ToolResult
 from .sandbox import Sandbox
 from .streaming import EventStream
@@ -24,11 +24,14 @@ from .tools.base import ToolContext
 
 @dataclass
 class RuntimeConfig:
-    model: str = "claude-opus-4-7"
+    model: str = DEFAULT_MODEL
     max_steps: int = 32
     max_parallel_tool_calls: int = 4
     temperature: float = 0.2
-    max_tokens: int = 4096
+    # Thinking tokens count against this ceiling, so it has to leave
+    # room for reasoning as well as the reply.
+    max_tokens: int = 16000
+    effort: str = "high"
 
 
 @dataclass
@@ -83,8 +86,18 @@ class ConversationRuntime:
                 content=response.text,
                 tool_calls=response.tool_calls,
                 agent=self.agent,
+                provider_blocks=response.provider_blocks,
             )
             msgs.append(assistant_msg)
+
+            if response.stop_reason == "refusal":
+                # A policy decline is not a finished agent. Say so,
+                # rather than letting an empty reply pass as success.
+                await self.events.emit(
+                    "error", agent=self.agent,
+                    message="the model declined this request; try rewording the app description",
+                )
+                assistant_msg.content = response.text or "(model declined the request)"
 
             if response.text:
                 await self.events.emit(
@@ -144,6 +157,7 @@ class ConversationRuntime:
             tools=[t.as_anthropic() for t in self.tools.all()],
             max_tokens=self.config.max_tokens,
             temperature=self.config.temperature,
+            effort=self.config.effort,
         )
 
     async def _execute_tools(self, calls: list[ToolCall]) -> list[ToolResult]:

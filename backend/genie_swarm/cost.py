@@ -15,20 +15,22 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .llm import canonical_model
+
 
 # Per-million-token prices. Falls back to a conservative flagship rate
 # when the model is unknown (better to over-estimate than to silently
 # let costs balloon past the cap).
 DEFAULT_PRICES: dict[str, tuple[float, float]] = {
     # Anthropic
-    "claude-opus-4-7":     (15.0, 75.0),
-    "claude-sonnet-4-6":   (3.0,  15.0),
-    "claude-haiku-4-5":    (1.0,  5.0),
+    "claude-opus-5-5":     (4.0,  20.0),
+    "claude-sonnet-5-5":   (2.0,  10.0),
+    "claude-haiku-5-5":    (0.10, 0.50),
     # OpenAI
     "gpt-5":               (12.5, 50.0),
     "gpt-5-mini":          (0.25, 2.0),
 }
-_FALLBACK_PRICE = (15.0, 75.0)
+_FALLBACK_PRICE = (12.5, 50.0)
 
 
 class BudgetExceeded(Exception):
@@ -53,7 +55,7 @@ class CostMeter:
         running total now exceeds the cap — callers should handle that
         and emit a `cost.cap_hit` event before re-raising or stopping."""
         prices = self.prices or DEFAULT_PRICES
-        ip, op = prices.get(model, _FALLBACK_PRICE)
+        ip, op = prices.get(canonical_model(model), _FALLBACK_PRICE)
         delta = (input_tokens / 1_000_000.0) * ip + (output_tokens / 1_000_000.0) * op
 
         self.input_tokens += max(0, input_tokens)

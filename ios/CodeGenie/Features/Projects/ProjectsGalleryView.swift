@@ -103,7 +103,7 @@ struct ProjectsGalleryView: View {
             Button("Cancel", role: .cancel) { jobToDelete = nil }
         } message: {
             if let job = jobToDelete {
-                Text(""\(job.description.title)" will be removed from your gallery. The build on the server is not affected.")
+                Text("\u{201C}\(job.description.title)\u{201D} will be removed from your gallery. The build on the server is not affected.")
             }
         }
     }

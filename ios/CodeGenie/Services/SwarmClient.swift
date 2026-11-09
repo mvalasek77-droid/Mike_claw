@@ -75,6 +75,11 @@ final class SwarmClient: ObservableObject {
             "parallel": true,
             "skip_tests": false
         ]
+        // The model chosen in Settings applies to every agent that has
+        // no override of its own. It used to drive only the cost
+        // estimate, so a build ran on the server default whatever the
+        // user had picked.
+        body["default_model"] = credentials.preferredModelID
         let overrides = credentials.agentModels
         if !overrides.isEmpty { body["model_overrides"] = overrides }
         if let cap = credentials.costCapUSD, cap > 0 { body["cost_cap_usd"] = cap }
@@ -155,7 +160,7 @@ final class SwarmClient: ObservableObject {
 
     /// Compare two jobs' workspaces; returns the file-tree overview.
     func compareJobs(
-        jobA: String, jobB: String, includeUnchanged: Bool = false,
+        jobA: String, jobB: String, includeUnchanged: Bool = false
     ) async throws -> ProjectDiff {
         let path = "/api/coding/swarm/compare/\(jobA)/\(jobB)?include_unchanged=\(includeUnchanged ? "true" : "false")"
         let r: [String: Any] = try await getJSON(path)
@@ -181,7 +186,7 @@ final class SwarmClient: ObservableObject {
 
     /// Fetch both sides of a single file for inline rendering.
     func compareFile(
-        jobA: String, jobB: String, path: String,
+        jobA: String, jobB: String, path: String
     ) async throws -> (String?, String?) {
         let encoded = path.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? path
         let url = "/api/coding/swarm/compare/\(jobA)/\(jobB)/file?path=\(encoded)"
@@ -225,7 +230,7 @@ final class SwarmClient: ObservableObject {
     func archiveOldWorkspaces(olderThanDays days: Int) async throws -> [ArchiveSummary] {
         let r = try await postJSON(
             "/api/coding/swarm/admin/archive",
-            body: ["older_than_days": days],
+            body: ["older_than_days": days]
         )
         let entries = (r["archived"] as? [[String: Any]]) ?? []
         return entries.compactMap { dict in

@@ -112,6 +112,9 @@ class BuildRequest(BaseModel):
     parallel: bool = True
     skip_tests: bool = False
     model_overrides: dict[str, str] = Field(default_factory=dict)
+    # The model the user picked in Settings. Applies to every agent
+    # without an override; None keeps each blueprint's own default.
+    default_model: str | None = Field(default=None, max_length=100)
     ship: ShipRequest | None = None
     # Halt the build if rolling USD spend crosses this cap. None
     # disables enforcement. Backend computes spend using
@@ -180,6 +183,8 @@ class Message(BaseModel):
     tool_result: ToolResult | None = None
     agent: str | None = None
     ts: float = Field(default_factory=time.time)
+    # Verbatim provider content for an assistant turn (see LLMResponse).
+    provider_blocks: list[dict[str, Any]] | None = None
 
 
 # ---------------------------------------------------------------------------

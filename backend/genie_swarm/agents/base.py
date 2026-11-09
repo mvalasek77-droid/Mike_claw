@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
+from ..llm import DEFAULT_MODEL
 from ..tools import ToolRegistry, default_registry
 
 
@@ -32,7 +33,7 @@ class AgentBlueprint:
     title: str           # human-friendly, e.g. "🏗️ Architect"
     prompt_file: str     # filename under prompts/, e.g. "architect.md"
     fallback_prompt: str # used if the file is missing
-    model: str = "claude-opus-4-7"
+    model: str = DEFAULT_MODEL
     temperature: float = 0.2
     tool_names: tuple[str, ...] = ()           # subset of registry; empty = all
     layer: str = "build"                       # "build" | "test"

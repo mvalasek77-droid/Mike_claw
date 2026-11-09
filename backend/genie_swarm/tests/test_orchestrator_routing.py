@@ -21,7 +21,7 @@ async def test_per_agent_override_reaches_llm_client(tmp_path: Path, recorded_ll
     """The model id passed to LLMClient.complete() must reflect the
     `model_overrides` map for each agent. Default model fills in where
     the map doesn't say otherwise."""
-    overrides = {"coder": "claude-haiku-4-5", "reviewer": "gpt-5"}
+    overrides = {"coder": "claude-haiku-5-5", "reviewer": "gpt-5"}
 
     # Pad the script: each agent gets one text reply (no tool calls).
     recorded_llm.script = [
@@ -43,10 +43,10 @@ async def test_per_agent_override_reaches_llm_client(tmp_path: Path, recorded_ll
     for agent, call in zip(ALL_AGENTS, recorded_llm.calls):
         models_by_agent[agent.role.value] = call["model"]
 
-    assert models_by_agent["coder"]    == "claude-haiku-4-5"
+    assert models_by_agent["coder"]    == "claude-haiku-5-5"
     assert models_by_agent["reviewer"] == "gpt-5"
     # Architect wasn't overridden — should be its blueprint default.
-    assert models_by_agent["architect"] != "claude-haiku-4-5"
+    assert models_by_agent["architect"] != "claude-haiku-5-5"
 
 
 @pytest.mark.asyncio
@@ -222,3 +222,25 @@ def test_unit_test_failure_heuristic():
     assert not failed(FakeRun(""))
     # An empty-string output shouldn't be treated as failure.
     assert not failed(FakeRun("Suite ran with 0 failures, 12 tests."))
+
+
+@pytest.mark.asyncio
+async def test_default_model_applies_where_no_override_exists(tmp_path: Path, recorded_llm):
+    """The model picked in Settings reaches every agent that has no
+    override of its own, and an override still wins."""
+    recorded_llm.script = [
+        LLMResponse(text="ok", tool_calls=[], stop_reason="end_turn")
+        for _ in ALL_AGENTS
+    ]
+    config = SwarmConfig(
+        workspace_root=tmp_path / "ws",
+        parallel_build=False, parallel_test=False, max_retries=0,
+        default_model="claude-sonnet-5-5",
+        model_overrides={"reviewer": "claude-opus-5-5"},
+    )
+    orch = SwarmOrchestrator(llm=recorded_llm, bus=EventBus(), config=config)
+    await orch.execute(BuildJob(spec=AppSpec(title="X", prompt="..")))
+    by_agent = {a.role.value: c["model"] for a, c in zip(ALL_AGENTS, recorded_llm.calls)}
+    assert by_agent["reviewer"] == "claude-opus-5-5"
+    assert by_agent["architect"] == "claude-sonnet-5-5"
+    assert by_agent["coder"] == "claude-sonnet-5-5"

@@ -25,7 +25,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from .llm import LLMClient
+from .llm import COACH_MODEL, LLMClient
 from .models import Message
 
 
@@ -330,8 +330,8 @@ async def answer(
     question: str,
     context: CoachContext,
     history: list[Message] | None = None,
-    model: str = "claude-sonnet-5",
-    max_tokens: int = 900,
+    model: str = COACH_MODEL,
+    max_tokens: int = 4000,
 ) -> dict[str, Any]:
     """Answer one coaching question.
 
@@ -355,5 +355,6 @@ async def answer(
         max_tokens=max_tokens,
         # Low but not zero: this is explanation, not code generation.
         temperature=0.3,
+        effort="low",
     )
     return {"answer": response.text, "usage": response.usage}

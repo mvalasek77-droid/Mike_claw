@@ -18,7 +18,7 @@ import json
 import re
 from dataclasses import dataclass
 
-from .llm import LLMClient
+from .llm import DEFAULT_MODEL, LLMClient
 from .models import Message
 
 
@@ -64,7 +64,7 @@ async def rank(
     candidates: list[Candidate],
     *,
     judge: LLMClient,
-    judge_model: str = "claude-opus-4-7",
+    judge_model: str = DEFAULT_MODEL,
 ) -> Verdict:
     """Ask `judge` to choose between candidates. Returns a `Verdict`.
 
@@ -98,8 +98,11 @@ async def rank(
         system=_JUDGE_SYSTEM_PROMPT,
         messages=[Message(role="user", content=user_prompt)],
         tools=[],
-        max_tokens=400,
+        # Thinking shares this ceiling, so a verdict-sized cap would
+        # truncate the reply before the JSON is written.
+        max_tokens=4000,
         temperature=0.0,
+        effort="low",
     )
 
     parsed = _parse_verdict(response.text)
@@ -143,7 +146,7 @@ async def race(
     runners: list[tuple[str, str, "asyncio.Future[str]"]],
     *,
     judge: LLMClient,
-    judge_model: str = "claude-opus-4-7",
+    judge_model: str = DEFAULT_MODEL,
 ) -> Verdict:
     """Wait for every runner to finish, then rank them. Each tuple is
     `(label, model_id, future_yielding_assistant_text)`."""

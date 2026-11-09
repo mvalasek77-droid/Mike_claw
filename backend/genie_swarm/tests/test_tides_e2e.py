@@ -525,7 +525,7 @@ async def test_cost_tracking(tmp_path: Path, recorded_llm):
 def test_cost_meter_standalone():
     """Direct test of CostMeter logic."""
     meter = CostMeter(cap_usd=None)
-    meter.record(model="claude-opus-4-7", input_tokens=1000, output_tokens=500)
+    meter.record(model="claude-opus-5-5", input_tokens=1000, output_tokens=500)
     assert meter.input_tokens == 1000
     assert meter.output_tokens == 500
     assert meter.spend_usd > 0

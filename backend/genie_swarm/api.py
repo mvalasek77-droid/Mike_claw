@@ -22,7 +22,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 from .middleware import register_middleware
 
-from .llm import AnthropicClient, LLMClient
+from .llm import LLMClient, RoutingLLMClient
 from .asc_coach import CoachContext, answer as asc_answer, suggested_questions
 from .github_sync import GitHubSyncError, sync_workspace_to_github
 from .models import (
@@ -51,7 +51,7 @@ from .streaming import EventBus
 class SwarmState:
     def __init__(self) -> None:
         self.bus = EventBus()
-        self.llm: LLMClient = AnthropicClient()
+        self.llm: LLMClient = RoutingLLMClient()
         self.config = SwarmConfig()
         self.jobs: dict[str, BuildJob] = {}
         self.tasks: dict[str, asyncio.Task[Any]] = {}
@@ -97,7 +97,7 @@ async def start_build(req: BuildRequest, bg: BackgroundTasks):
     cfg = state.config
     ship_cfg = _to_ship_config(req.ship) if req.ship else None
 
-    if (req.workspace_root or req.model_overrides or req.skip_tests
+    if (req.workspace_root or req.model_overrides or req.default_model or req.skip_tests
             or not req.parallel or ship_cfg or req.cost_cap_usd is not None
             or req.custom_agents or req.max_snapshot_bytes is not None):
         cfg = SwarmConfig(
@@ -106,6 +106,7 @@ async def start_build(req: BuildRequest, bg: BackgroundTasks):
             skip_tests=req.skip_tests,
             runtime=cfg.runtime,
             model_overrides=req.model_overrides,
+            default_model=req.default_model,
             ship=ship_cfg,
             cost_cap_usd=req.cost_cap_usd,
             custom_agents=req.custom_agents,

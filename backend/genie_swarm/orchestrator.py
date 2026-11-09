@@ -74,6 +74,9 @@ class SwarmConfig:
     # role isn't present. Lets the iOS app route Opus to Reviewer and
     # Haiku to UI-Tester, for example, without code changes here.
     model_overrides: dict[str, str] = field(default_factory=dict)
+    # Applies to every agent that has no override. None keeps each
+    # blueprint's own default.
+    default_model: str | None = None
     # Max times we re-run Coder + Integrator + Unit Tester after the
     # Unit Tester reports failures. 0 disables retries (the test layer
     # still runs, but failing tests don't loop).
@@ -319,7 +322,9 @@ class SwarmOrchestrator:
             )
         full_system = (briefing + "\n\n" + blueprint.system_prompt) if briefing else blueprint.system_prompt
         # Per-agent model override beats blueprint default.
-        model = self.config.model_overrides.get(blueprint.role.value, blueprint.model)
+        model = self.config.model_overrides.get(
+            blueprint.role.value, self.config.default_model or blueprint.model
+        )
         runtime = ConversationRuntime(
             agent_name=blueprint.title,
             system_prompt=full_system,
