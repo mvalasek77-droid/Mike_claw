@@ -805,7 +805,11 @@
         S.floor = (S.floor || []).filter(l => l.id !== "me_lot");
         S.floor.unshift(buildMyLot());
       }
-      S.registered = true; save(); go("/floor"); syncFloor(); syncMatches(); syncIncoming();
+      S.registered = true; save();
+      // go() is a no-op when the address is already #/floor (common for someone
+      // returning to finish signing up), so redraw explicitly in that case.
+      if (location.hash === "#/floor") render(); else go("/floor");
+      syncFloor(); syncMatches(); syncIncoming();
     };
   }
 
@@ -2459,6 +2463,15 @@
   }
   if (!location.hash) go(S.registered ? "/floor" : "/");
   // Error boundary — never show a blank screen
+  // Marked registered on this phone but with no account behind it: either a
+  // signup from before sign-in was required (nothing ever reached the server)
+  // or an expired session. Send them back to sign in / create an account —
+  // their details stay filled in — instead of leaving them in a phone-only
+  // state that no one else can see.
+  let needsAccount = false;
+  if (S.registered && CONFIGURED() && !SIGNED_IN() && !location.hash.includes("admin")) {
+    S.registered = false; save(); needsAccount = true;
+  }
   try { render(); } catch(e) {
     console.error("render error:", e);
     app.innerHTML = `<div class="screen" style="padding:40px 20px;text-align:center">
@@ -2467,6 +2480,7 @@
       <button class="btn" onclick="localStorage.removeItem('${KEY}');location.reload()">Reset and reload</button>
     </div>`;
   }
+  if (needsAccount) toast("Sign in or create an account to finish joining — your details are saved below.");
   if (location.hash.includes("paid=1")) toast("Payment complete — Gavels added.");
   // demo woman returning with no bids left → reseed so the screen isn't empty
   if (S.registered && S.role === "woman" && (!CONFIGURED() || !SIGNED_IN()) && !(S.incoming && S.incoming.length)) { S.incoming = seedIncoming(); save(); if (tab === "floor") incoming(); }
