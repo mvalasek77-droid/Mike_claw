@@ -284,8 +284,15 @@
     ["Dominic Cross", 29, 300, "Coffee that turns into a long walk. Low pressure, high effort."],
   ].map(([name, age, amount, note]) => ({ id: uid(), name, age, amount, note, hue: hueFrom(name) })));
   const seedDemo = () => seedFloor().map(s => ({ ...s, demo: true }));
+  // Real accounts always have a server UUID; demo profiles get short local ids.
+  // Phones that ran older versions cached demo profiles without the demo tag,
+  // so their bids went to the server and failed with "Lot not found".
+  const isServerId = id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id || ""));
+  const isDemoLot = l => !!l && (l.demo || (!isServerId(l.id) && l.id !== "me_lot"));
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) { console.warn("save failed (quota?):", e.message); } };
   if (!S.floor || !S.floor.length) { S.floor = seedDemo(); save(); }
+  for (const list of [S.floor, S.womenFloor]) for (const l of (list || [])) if (isDemoLot(l)) l.demo = true;
+  save();
   // Restore or retire a Spotlight Boost left over from a previous session.
   // This sits below `save` deliberately — it needs to persist the cleanup, and
   // `save` is a const that isn't initialised any earlier.
@@ -1377,7 +1384,7 @@
     // Demo-seed lots have no server account behind them — the seed ships in
     // the client itself. Route their bids through the local simulation for
     // EVERYONE (signed in or not): same floor, same experience, no 404s.
-    if (CONFIGURED() && SIGNED_IN() && !w.demo) {
+    if (CONFIGURED() && SIGNED_IN() && !isDemoLot(w)) {
       API.placeBid(w.id, amount, note || "", { gilded: !!gild, insured: !!insure })
         .then(() => { toast(gild ? "Gilded bid placed — she'll see it first." : "Bid placed — you'll be notified if she accepts."); syncMatches(); })
         .catch(e => {
@@ -1408,7 +1415,7 @@
     // every other demo interaction (whispers, matches) already does.
     S.pendingBids = (S.pendingBids || 0) + 1;
     const m = { id: uid(), lotId: w.id, name: w.name, hue: w.hue, amount, gilded: !!gild,
-                note: note || "", demo: !!w.demo,
+                note: note || "", demo: isDemoLot(w),
                 messages: [{ me: false, text: w.icebreakers[0] || "You win — where are you taking me?" }] };
     S.matches.unshift(m); save(); celebrate(w, amount, m);
   }
