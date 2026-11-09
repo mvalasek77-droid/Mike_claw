@@ -76,8 +76,11 @@
     try {
       const floorRole = S.role === "woman" ? "man" : "woman";
       const r = await API.floor(floorRole, S.me.city);
-      const arr = r.profiles || r.floor || r.users || (Array.isArray(r) ? r : []);
-      if (Array.isArray(arr) && arr.length) {
+      const arr = r.profiles || r.floor || r.users || (Array.isArray(r) ? r : null);
+      // An empty floor is a real answer too: without handling it, profiles
+      // cached from before (deleted accounts included) stayed on screen and
+      // bidding on them failed with "Lot not found".
+      if (Array.isArray(arr)) {
         const live = arr.map(mapLot);
         const liveIds = new Set(live.map(l => l.id));
         const liveNames = new Set(live.map(l => (l.name || "").toLowerCase()));
@@ -90,7 +93,8 @@
           .filter(s => !liveIds.has(s.id) && !liveNames.has(s.name.toLowerCase()))
           .map(s => ({ ...s, demo: true }));
         const before = JSON.stringify(S.floor || []);
-        S.floor = mergeFloor(live, seed); save();
+        const mine = (S.floor || []).filter(l => l.id === "me_lot");
+        S.floor = [...mine, ...mergeFloor(live, seed)]; save();
         if (JSON.stringify(S.floor) !== before && onFloorList() && S.role !== "woman") floor();
       }
     } catch (e) { /* keep demo floor */ }
@@ -100,8 +104,8 @@
     if (!CONFIGURED() || !SIGNED_IN()) return;
     try {
       const r = await API.floor("woman", S.me.city);
-      const arr = r.profiles || r.floor || r.users || (Array.isArray(r) ? r : []);
-      if (Array.isArray(arr) && arr.length) {
+      const arr = r.profiles || r.floor || r.users || (Array.isArray(r) ? r : null);
+      if (Array.isArray(arr)) {
         const live = arr.map(mapLot);
         const liveIds = new Set(live.map(l => l.id));
         const liveNames = new Set(live.map(l => (l.name || "").toLowerCase()));
@@ -1376,7 +1380,19 @@
     if (CONFIGURED() && SIGNED_IN() && !w.demo) {
       API.placeBid(w.id, amount, note || "", { gilded: !!gild, insured: !!insure })
         .then(() => { toast(gild ? "Gilded bid placed — she'll see it first." : "Bid placed — you'll be notified if she accepts."); syncMatches(); })
-        .catch(e => { if (gavelCost) { S.wallet += gavelCost; save(); } toast("Bid failed: " + e.message); });
+        .catch(e => {
+          if (gavelCost) { S.wallet += gavelCost; save(); }
+          // The profile was deleted (or never existed server-side): drop it
+          // from the cached floor instead of leaving a lot that can't be bid on.
+          if (/lot not found/i.test(e.message || "")) {
+            S.floor = (S.floor || []).filter(l => l.id !== w.id);
+            S.womenFloor = (S.womenFloor || []).filter(l => l.id !== w.id);
+            save(); toast("This person is no longer on the floor.");
+            go("/floor"); syncFloor();
+            return;
+          }
+          toast("Bid failed: " + e.message);
+        });
       return;
     }
     if (w.copycat) {
