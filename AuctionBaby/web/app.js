@@ -199,7 +199,7 @@
 
   // ---- demo floor (54 women with photos) ----
   const W = (name,age,city,bid,bio,prompts,hue,verified,masterpiece,copycat,photo,interests,lifestyle,showcase) => ({
-    id:uid(),name,age,city,startingBid:bid,bio,prompts,icebreakers:prompts.map(p=>p.a),hue,verified,masterpiece,copycat,
+    id:"demo_"+name.toLowerCase().replace(/[^a-z0-9]+/g,"_"),name,age,city,startingBid:bid,bio,prompts,icebreakers:prompts.map(p=>p.a),hue,verified,masterpiece,copycat,
     photo:"photos/"+photo+".jpg",photos:["photos/"+photo+".jpg"],interests:interests||[],lifestyle:lifestyle||{},showcase:showcase||480,marketValue:Math.round(bid*1.2+((showcase||480)-300)*2)
   });
   const P = (q,a) => ({q,a});
@@ -1408,6 +1408,16 @@
       save();
       return copycatReveal(w);
     }
+    // Live app: demo profiles take the bid like a real lot, then pass on it.
+    // No instant fake matches, and nothing ever reaches the server.
+    if (CONFIGURED()) {
+      S.demoBids = S.demoBids || [];
+      S.demoBids.push({ id: uid(), lotId: w.id, name: w.name, amount, gild: !!gild, insure: !!insure,
+                        gavelCost, decideAt: Date.now() + 20000 + Math.floor(Math.random() * 40000) });
+      save();
+      toast(gild ? "Gilded bid placed — she'll see it first." : "Bid placed — you'll be notified if she accepts.");
+      return;
+    }
     // 2026-08-28: removed the old hard "only Mike Valasek can bid in demo"
     // gate — everything below only runs in demo mode (the real path returned
     // above), so an outage would have shown EVERY user a refusal naming the
@@ -1418,6 +1428,21 @@
                 note: note || "", demo: isDemoLot(w),
                 messages: [{ me: false, text: w.icebreakers[0] || "You win — where are you taking me?" }] };
     S.matches.unshift(m); save(); celebrate(w, amount, m);
+  }
+
+  // Settle demo bids whose decision time has passed: she passes, and bid
+  // insurance refunds its premium plus any gild fee, as the bid sheet promises.
+  function settleDemoBids() {
+    const due = (S.demoBids || []).filter(b => b.decideAt <= Date.now());
+    if (!due.length) return;
+    S.demoBids = S.demoBids.filter(b => b.decideAt > Date.now());
+    let refund = 0;
+    for (const b of due) if (b.insure) refund += b.gavelCost || 0;
+    if (refund) S.wallet = (S.wallet || 0) + refund;
+    save();
+    const names = [...new Set(due.map(b => b.name))];
+    const who = names.length === 1 ? names[0] : `${names.length} lots`;
+    toast(`${who} passed on your bid this time.` + (refund ? ` Insurance returned ${refund.toLocaleString()} Gavels.` : ""));
   }
 
   function copycatReveal(w) {
@@ -2530,7 +2555,9 @@
     const c = openChatId();
     if (c && S.registered && CONFIGURED() && SIGNED_IN()) syncMatchDetail(c);
     if (++liveTick % 3 === 0) liveSync(0, false);
+    settleDemoBids();
   }, 5000);
+  setTimeout(settleDemoBids, 2500);  // decisions that came due while the app was closed
   if (S.registered && CONFIGURED() && SIGNED_IN()) {
     syncFloor(); syncMatches(); syncIncoming();
     API.myProfile().then(r => {
