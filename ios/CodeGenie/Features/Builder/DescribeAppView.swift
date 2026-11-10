@@ -19,14 +19,16 @@ struct DescribeAppView: View {
     private var preflight: Preflight {
         switch creds.authMode {
         case .byok:
-            let hasAnyKey = !creds.anthropicKey.isEmpty || !creds.openaiKey.isEmpty
-            return hasAnyKey
-                ? .ready("You're paying the AI provider directly per token. See estimate below.")
-                : .blocked("Add an Anthropic or OpenAI key in Settings → Costs & keys first.")
-        case .subscription:
-            return .ready("Routed through your existing Claude / ChatGPT subscription via the paired Mac.")
+            // The chosen model decides which key is needed. Having the
+            // other vendor's key doesn't help, and saying "ready" then
+            // failing at the server would cost the user a confusing error.
+            let model = ModelCatalogue.model(id: creds.preferredModelID) ?? ModelCatalogue.all[0]
+            let hasKey = model.provider == .anthropic ? !creds.anthropicKey.isEmpty : !creds.openaiKey.isEmpty
+            return hasKey
+                ? .ready("You pay \(model.provider.displayName) directly for what this build uses. See the estimate below.")
+                : .blocked("Add your \(model.provider.displayName) API key in Settings → Costs & keys to build with \(model.displayName).")
         case .codegenie:
-            return .ready("Charged against your CodeGenie hosted plan. Free tier covers 3 builds/month.")
+            return .ready("Counts against your CodeGenie plan.")
         }
     }
 

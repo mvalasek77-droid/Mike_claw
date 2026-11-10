@@ -127,8 +127,14 @@ final class ASCCoachChat: ObservableObject {
             8:  ["What screenshots do I need?", "What size should screenshots be?"],
             9:  ["How do keywords work?", "What should I write in the description?"],
             10: ["Do I collect data if everything stays on the phone?", "Do I need a privacy policy?"],
-            11: ["Should my app be free?", "Can I change the price later?"],
-            12: ["What happens after I submit?", "What if Apple rejects my app?"],
+            11: ["How do I answer the age rating questions?", "What counts as unrestricted web access?"],
+            12: ["Should my app be free?", "Can I change the price later?"],
+            13: ["What should I write in the review notes?", "Do I need to give Apple a test account?"],
+            14: ["My build isn't in the list", "What is export compliance?", "Manual or automatic release?"],
+            15: ["What happens after I submit?", "What does Add for Review do?"],
+            16: ["How long does review take?", "Can I speed up the review?", "Can I change something while I wait?"],
+            17: ["What does this rejection mean?", "Do I need to upload a new build?", "How do I reply to App Review?", "Can I appeal?"],
+            18: ["Why can't I find my app in search?", "How do I ship an update?"],
         ]
         return (perStep[step] ?? []) + [general]
     }

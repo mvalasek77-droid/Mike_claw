@@ -1,5 +1,4 @@
 import Foundation
-import SwiftUI
 
 struct AppDescription: Codable, Hashable, Identifiable {
     let id: UUID
@@ -148,4 +147,14 @@ struct AppStoreMetadata: Codable, Hashable {
     var marketingURL: String
     var ageRating: String
     var price: String
+    // Added after the first release. Optional so that submissions saved
+    // before these existed still decode instead of being discarded.
+    /// Required by Apple for every app, even one that collects nothing.
+    var privacyPolicyURL: String?
+    /// The "© 2026 Your Name" line. Required on the version page.
+    var copyright: String?
+    /// What the reviewer reads in App Review Information.
+    var reviewNotes: String?
+    /// Whether the app has a sign-in the reviewer needs credentials for.
+    var requiresLogin: Bool?
 }

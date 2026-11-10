@@ -44,7 +44,7 @@ extension XcodeStep {
               timestamp: "9:00 – 10:34"),
         .init(number: 7, title: "Run the simulator",
               summary: "Try the app on virtual iPhone",
-              detail: "Pick an iPhone scheme in Xcode and press ⌘R. CodeGenie hosts a remote simulator session you can stream to your phone — no Mac required for testing.",
+              detail: "Pick an iPhone scheme in Xcode and press ⌘R. The Simulator app opens on your Mac running your app. CodeGenie can open the project in Xcode for you from a finished build.",
               icon: "display",
               timestamp: "8:12 – 9:00"),
         .init(number: 8, title: "Deploy to your iPhone",

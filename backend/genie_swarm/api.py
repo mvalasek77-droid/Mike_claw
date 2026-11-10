@@ -14,15 +14,17 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 import json
+import logging
+import os
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, FastAPI, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, FastAPI, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from .middleware import register_middleware
 
-from .llm import LLMClient, RoutingLLMClient
+from .llm import AnthropicClient, LLMClient, OpenAIClient, RoutingLLMClient
 from .asc_coach import CoachContext, answer as asc_answer, suggested_questions
 from .github_sync import GitHubSyncError, sync_workspace_to_github
 from .models import (
@@ -85,12 +87,35 @@ def _pause_gate_for_state(job_id: str) -> asyncio.Event:
     return event
 
 
+def _llm_for(request: Request) -> LLMClient:
+    """The model client for one request.
+
+    A user who brings their own key sends it in a header with each
+    request that spends tokens. It is handed to a client that lives
+    only as long as the job, and is never written to the session,
+    memory, logs, or events. Without a header the server's own
+    configured client is used.
+    """
+    anthropic_key = request.headers.get("x-anthropic-key", "").strip()
+    openai_key = request.headers.get("x-openai-key", "").strip()
+    if not anthropic_key and not openai_key:
+        # Spending the operator's own provider key on behalf of anyone
+        # who can reach the API has to be a decision, not a default.
+        if isinstance(state.llm, RoutingLLMClient) and os.environ.get("CODEGENIE_ALLOW_SERVER_KEY") != "1":
+            raise HTTPException(401, "Add your Anthropic or OpenAI API key in Settings to use this.")
+        return state.llm
+    return RoutingLLMClient(
+        anthropic=AnthropicClient(api_key=anthropic_key) if anthropic_key else None,
+        openai=OpenAIClient(api_key=openai_key) if openai_key else None,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
 
 @router.post("/build")
-async def start_build(req: BuildRequest, bg: BackgroundTasks):
+async def start_build(req: BuildRequest, bg: BackgroundTasks, request: Request):
     job = BuildJob(spec=req.spec)
     state.jobs[job.id] = job
 
@@ -117,7 +142,7 @@ async def start_build(req: BuildRequest, bg: BackgroundTasks):
         # Default config also gets the pause gate wired in.
         cfg = dataclasses.replace(cfg, pause_gate=_pause_gate_for_state)
 
-    orch = SwarmOrchestrator(llm=state.llm, bus=state.bus, config=cfg)
+    orch = SwarmOrchestrator(llm=_llm_for(request), bus=state.bus, config=cfg)
     state.tasks[job.id] = asyncio.create_task(_drive(orch, job))
     return {"job_id": job.id, "state": job.state.value}
 
@@ -349,7 +374,7 @@ async def continue_job(job_id: str):
 
 
 @router.post("/{job_id}/resume")
-async def resume_job(job_id: str):
+async def resume_job(job_id: str, request: Request):
     """Pick up an interrupted build from the latest checkpoint.
 
     Use cases:
@@ -366,7 +391,7 @@ async def resume_job(job_id: str):
     if job.state in {JobState.queued, JobState.planning, JobState.building, JobState.testing}:
         raise HTTPException(409, f"job is already running (state={job.state.value})")
 
-    orch = SwarmOrchestrator(llm=state.llm, bus=state.bus, config=state.config)
+    orch = SwarmOrchestrator(llm=_llm_for(request), bus=state.bus, config=state.config)
     state.tasks[job_id] = asyncio.create_task(orch.resume(job))
     return {"ok": True, "job_id": job_id}
 
@@ -800,7 +825,7 @@ async def archive_old_jobs(body: dict | None = None):
 
 
 @router.post("/asc/coach")
-async def asc_coach(req: ASCCoachRequest):
+async def asc_coach(req: ASCCoachRequest, request: Request):
     """Answer one App Store Connect question, grounded in where the
     user actually is in their submission.
 
@@ -825,15 +850,18 @@ async def asc_coach(req: ASCCoachRequest):
     ]
     try:
         result = await asc_answer(
-            llm=state.llm,
+            llm=_llm_for(request),
             question=req.question,
             context=context,
             history=history,
         )
     except Exception as exc:  # noqa: BLE001
         # The coach is an assist, never a gate. A provider outage must
-        # not look like the submission itself broke.
-        raise HTTPException(503, f"coach unavailable: {exc}") from exc
+        # not look like the submission itself broke. The exception text
+        # stays in the server log: provider errors can echo request
+        # details that have no business in a client-visible message.
+        logging.getLogger("genie_swarm.coach").warning("coach failed: %s", type(exc).__name__)
+        raise HTTPException(503, "coach unavailable") from exc
     return {
         "answer": result["answer"],
         "usage": result.get("usage", {}),

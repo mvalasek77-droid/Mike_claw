@@ -26,9 +26,8 @@ struct SettingsView: View {
             ScrollView {
                 VStack(spacing: 18) {
                     header
-                    authModePicker
+                    if Credentials.AuthMode.offered.count > 1 { authModePicker }
                     if creds.authMode == .byok { keyEntryBlock }
-                    if creds.authMode == .subscription { subscriptionBlock }
                     if creds.authMode == .codegenie { hostedBlock }
                     modelComparison
                     estimatorBlock
@@ -333,7 +332,7 @@ struct SettingsView: View {
     private var authModePicker: some View {
         GlassCard(title: "How CodeGenie pays for builds", icon: "creditcard.fill", tint: LiquidGlass.accent) {
             VStack(alignment: .leading, spacing: 10) {
-                ForEach(Credentials.AuthMode.allCases) { mode in
+                ForEach(Credentials.AuthMode.offered) { mode in
                     AuthModeRow(
                         mode: mode,
                         selected: creds.authMode == mode,
@@ -427,62 +426,24 @@ struct SettingsView: View {
         }
     }
 
-    private var subscriptionBlock: some View {
-        GlassCard(title: "Pair a subscription", icon: "person.crop.circle.badge.checkmark", tint: LiquidGlass.warning) {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("If you already pay for Claude Pro/Max or ChatGPT Plus/Pro, route CodeGenie through that session — no per-token charges.")
-                    .font(.system(size: 13, weight: .regular, design: .rounded))
-                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
-
-                ForEach(AIProvider.allCases) { p in
-                    HStack(spacing: 10) {
-                        Image(systemName: p == .anthropic ? "a.circle.fill" : "o.circle.fill")
-                            .foregroundStyle(p == .anthropic ? LiquidGlass.accentSecondary : LiquidGlass.success)
-                        Text(p.subscriptionName)
-                            .font(.system(size: 14, weight: .semibold, design: .rounded))
-                            .foregroundStyle(LiquidGlass.primaryText)
-                        Spacer()
-                        Link(destination: p.subscriptionURL) {
-                            Text("Sign in")
-                                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                                .padding(.horizontal, 12).padding(.vertical, 8)
-                                .background(LiquidGlass.auroraGradient, in: Capsule())
-                                .foregroundStyle(LiquidGlass.primaryText)
-                        }
-                    }
-                    .padding(.vertical, 4)
-                }
-
-                Text("CodeGenie's Mac companion handles the OAuth handshake. We never see your password.")
-                    .font(.system(size: 11, weight: .regular, design: .rounded))
-                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
-            }
-        }
-    }
-
     private var hostedBlock: some View {
-        GlassCard(title: "CodeGenie hosted credits", icon: "sparkles", tint: LiquidGlass.accent) {
+        GlassCard(title: "CodeGenie plan", icon: "sparkles", tint: LiquidGlass.accent) {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Zero setup — we pay the AI bill, you pay us. No surprise API charges.")
+                Text("CodeGenie pays the AI bill. Plans renew monthly through your Apple ID and can be cancelled any time in Settings → Apple ID → Subscriptions.")
                     .font(.system(size: 13, weight: .regular, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
+                    .fixedSize(horizontal: false, vertical: true)
 
                 HStack(spacing: 10) {
-                    PlanPill(label: "Free", subtitle: "3 builds / month", price: "$0", highlighted: true)
-                    PlanPill(label: "Pro",  subtitle: "Unlimited Sonnet, 20 Opus", price: "$9.99/mo", highlighted: false)
-                    PlanPill(label: "Studio", subtitle: "Team seats, priority queue", price: "$29/mo", highlighted: false)
+                    ForEach(SubscriptionService.Tier.allCases, id: \.self) { tier in
+                        PlanPill(
+                            label: tier.displayName,
+                            subtitle: tier == .studio ? "Unlimited builds" : "\(tier.monthlyBuilds) builds / month",
+                            price: tier == .free ? tier.price : "\(tier.price)/mo",
+                            highlighted: tier == .free
+                        )
+                    }
                 }
-
-                Divider().background(.white.opacity(0.08))
-
-                VStack(alignment: .leading, spacing: 8) {
-                    pricingRow(label: "After 3 free builds", value: "Pay-as-you-go ≈ $0.50/build, or upgrade to Pro")
-                    pricingRow(label: "Pro plan ($9.99/mo)", value: "Flat fee — no per-build charge until you exceed the cap")
-                    pricingRow(label: "Sonnet vs Opus", value: "Two AI models. Sonnet is fast and cheap, Opus is slower but smarter")
-                    pricingRow(label: "Studio extras", value: "Multiple seats + faster build queue. Not needed for solo developers")
-                    pricingRow(label: "Cancel anytime", value: "Builds you already paid for keep working until the period ends")
-                }
-                .padding(.top, 4)
             }
         }
     }

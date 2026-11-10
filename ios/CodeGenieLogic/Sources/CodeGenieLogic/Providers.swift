@@ -1,0 +1,1 @@
+../../../CodeGenie/Models/Providers.swift

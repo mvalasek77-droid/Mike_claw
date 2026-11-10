@@ -29,6 +29,8 @@ struct BuildScreen: View {
     @State private var shipBanner: String?
     @State private var showWhereIsMyApp: Bool = false
     @State private var hadConnection: Bool = false
+    /// Why the build could not start, in words for the person waiting.
+    @State private var startFailure: String?
 
     enum JargonTerm: String, Identifiable {
         case pipeline, bitdrop, perfection
@@ -63,14 +65,12 @@ struct BuildScreen: View {
     @StateObject private var diffStream = DiffStream()
     @StateObject private var uploadProgress = UploadProgressTracker()
 
+    /// Only ever used under UI tests. See `AppEnvironment`.
     private let builder: BuilderService = LocalSimulatedBuilder()
-    /// Whether to show the "live" UI surface (cost badge, retry badge,
-    /// transcript card, upload progress strip) — i.e. whether this
-    /// build streams `SwarmEvent`s from a real backend.
-    private var useRemote: Bool {
-        let url = Credentials.shared.backendURL
-        return !url.isEmpty && !url.hasPrefix("https://api.codegenie.app")
-    }
+    /// Every build a person starts is a real one. The stand-in runs
+    /// only when the test suite launches the app, so the screens can
+    /// be exercised without a server or tokens.
+    private var useRemote: Bool { !AppEnvironment.isUITesting }
 
     init(job: BuildJob, attachToBackendID: String? = nil) {
         self.initialJob = job
@@ -108,6 +108,9 @@ struct BuildScreen: View {
         .task { await runBuild() }
         .onChange(of: swarm.connectionState) { _, newState in
             if newState == .connected { hadConnection = true }
+        }
+        .onChange(of: stage) { _, newStage in
+            session.updateStage(newStage, for: initialJob.id)
         }
         .sheet(isPresented: $showDiffReview) {
             DiffPreviewView(diffs: diffStream.pending) { decisions in
@@ -443,7 +446,7 @@ struct BuildScreen: View {
                         Text("Build failed")
                             .font(.system(size: 24, weight: .bold, design: .rounded))
                             .foregroundStyle(LiquidGlass.primaryText)
-                        Text("Something tripped during the build. The transcript below has the last few lines — usually that's enough to spot what went wrong.")
+                        Text(startFailure ?? "Something tripped during the build. The transcript below has the last few lines — usually that's enough to spot what went wrong.")
                             .font(.system(size: 13, weight: .regular, design: .rounded))
                             .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
                             .multilineTextAlignment(.center)
@@ -583,7 +586,7 @@ struct BuildScreen: View {
                         Text("Your app is built")
                             .font(.system(size: 24, weight: .bold, design: .rounded))
                             .foregroundStyle(LiquidGlass.primaryText)
-                        Text("It's saved here in CodeGenie — find it any time on the Apps tab. Next: try it in the preview, then walk through putting it on your phone.")
+                        Text("It's saved here in CodeGenie — find it any time on the Apps tab. Next: put it on your iPhone. The guide takes you through it one step at a time.")
                             .font(.system(size: 14, weight: .regular, design: .rounded))
                             .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
                             .multilineTextAlignment(.center)
@@ -636,11 +639,7 @@ struct BuildScreen: View {
     /// at most ten children and that stack had grown to fourteen.
     @ViewBuilder
     private var successActions: some View {
-        PrimaryButton(title: "Open simulator preview", systemImage: "play.rectangle.fill", style: .filled) {
-            let job = BuildJob(description: initialJob.description, stage: .readyForTest)
-            session.openPreview(for: job)
-        }
-        PrimaryButton(title: "Walk me through submitting", systemImage: "list.number", style: .filled) {
+        PrimaryButton(title: "Put it on my iPhone", systemImage: "iphone.gen3", style: .filled) {
             // Keep the original id — ASCSubmissionStore keys its saved
             // progress on it, and Home looks the job back up in
             // recentJobs by the same id.
@@ -649,6 +648,11 @@ struct BuildScreen: View {
                               description: initialJob.description,
                               stage: .readyForTest)
             )
+        }
+        PrimaryButton(title: "See what was built", systemImage: "doc.text.magnifyingglass", style: .glass) {
+            // The original job, not a copy: the file list is looked up
+            // by its id.
+            session.openPreview(for: initialJob)
         }
         .accessibilityHint("Opens the ten-step App Store Connect guide. Your progress is saved.")
         PrimaryButton(title: "Upload build to TestFlight", systemImage: "paperplane.fill", style: .glass) {
@@ -771,6 +775,8 @@ struct BuildScreen: View {
     private func runBuild() async {
         builderTask?.cancel()
         startedAt = .now
+        startFailure = nil
+        if stage == .failed { stage = .planning }
         Telemetry.shared.recordBuildStarted()
         if useRemote {
             await runRemoteBuild()
@@ -838,22 +844,24 @@ struct BuildScreen: View {
                 }
             }
         } catch {
-            // Fall back to the local simulator so the user always sees progress.
-            appendLog(for: .planning)
-            await runLocalFallback(reason: "\(error)")
+            // Say so. This used to fall through to a timer that walked
+            // the progress bar to "Your app is built" with nothing
+            // behind it.
+            let reason = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            push(.warn, formattedTime(), "couldn't start the build: \(reason)")
+            startFailure = Self.startFailureMessage(reason)
+            Telemetry.shared.recordBuildFinished(
+                succeeded: false,
+                retries: 0,
+                secondsElapsed: Date().timeIntervalSince(startedAt)
+            )
+            Motion.run(.spring(response: 0.5, dampingFraction: 0.85)) { stage = .failed }
+            Haptics.error()
         }
     }
 
-    private func runLocalFallback(reason: String) async {
-        push(.warn, formattedTime(), "remote build unavailable (\(reason)), simulating")
-        builderTask = Task {
-            await builder.start(initialJob) { newStage in
-                Motion.run(.spring(response: 0.5, dampingFraction: 0.85)) {
-                    stage = newStage
-                }
-                appendLog(for: newStage)
-            }
-        }
+    private static func startFailureMessage(_ reason: String) -> String {
+        "The build didn't start, so nothing was made and nothing was charged. \(reason) Check your connection and the server address in Settings, then try again."
     }
 
     private func formattedTime() -> String {

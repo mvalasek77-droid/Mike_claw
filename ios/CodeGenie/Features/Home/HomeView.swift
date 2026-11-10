@@ -17,20 +17,20 @@ struct HomeView: View {
     @State private var showAutomationAudit = false
     @State private var showFirstBuildPrompt = false
     @StateObject private var ascStore = ASCSubmissionStore.shared
+    @StateObject private var companion = CompanionBridge.shared
 
     var body: some View {
         ScrollView {
             VStack(spacing: 22) {
                 hero
-                if let record = session.pendingResume { resumeCallout(record) }
-                if let submission = ascStore.inFlight.first { submissionCallout(submission) }
-                primaryAction
+                journeyCard
+                if nextStep.action != .describeApp { primaryAction }
                 shipReadinessCard
-                quickGrid
                 if !session.recentJobs.isEmpty { recentJobs }
+                quickGrid
                 xcodeShortcut
-                checklistCard
-                Color.clear.frame(height: 30)
+                // Clears the floating tab bar.
+                Color.clear.frame(height: 96)
             }
             .padding(.horizontal, 20)
             .padding(.top, 14)
@@ -93,7 +93,7 @@ struct HomeView: View {
         .fullScreenCover(item: $session.pendingPreview, onDismiss: {
             session.returnToBuildAfterPreview()
         }) { job in
-            RemoteBuildView(job: job)
+            BuiltAppView(job: job)
                 .environmentObject(session)
         }
         .fullScreenCover(item: $session.pendingASC) { job in
@@ -274,91 +274,135 @@ struct HomeView: View {
 
     // MARK: Sections
 
-    private func resumeCallout(_ record: AppSession.ResumeRecord) -> some View {
-        GlassSurface(tier: .raised, corner: 18) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 8) {
-                    Image(systemName: "arrow.clockwise.circle.fill")
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundStyle(LiquidGlass.accent)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Build in progress")
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundStyle(LiquidGlass.primaryText)
-                        Text("\(record.description.title) — tap Resume to pick up where you left off.")
-                            .font(.system(size: 12, weight: .regular, design: .rounded))
-                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
-                    }
-                }
-                HStack(spacing: 10) {
-                    Button {
-                        session.resumePendingBuild()
-                    } label: {
-                        Text("Resume")
-                            .font(.system(size: 13, weight: .semibold, design: .rounded))
-                            .padding(.horizontal, 16).padding(.vertical, 8)
-                            .background(LiquidGlass.accent, in: Capsule())
-                            .foregroundStyle(.white)
-                    }
-                    .accessibilityLabel("Resume \(record.description.title)")
-                    Button {
-                        session.clearResumeRecord()
-                    } label: {
-                        Text("Dismiss")
-                            .font(.system(size: 13, weight: .medium, design: .rounded))
-                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
-                    }
-                    .accessibilityLabel("Dismiss resume callout")
-                }
-            }
-            .padding(14)
-        }
+    // MARK: Your next step
+
+    private var journeyFacts: Journey.Facts {
+        let latest = session.recentJobs.first
+        return Journey.Facts(
+            buildInProgressTitle: session.pendingResume?.description.title,
+            latestJobID: latest?.id,
+            latestJobTitle: latest?.description.title,
+            latestJobStage: latest?.stage,
+            macPaired: companion.isConnected || !creds.backendToken.isEmpty,
+            appleAccountReady: creds.hasAppleDevCreds,
+            submission: ascStore.primary
+        )
     }
 
-    /// Half-finished App Store submissions are the easiest thing in the
-    /// whole product to lose track of — step 9 alone parks the user for
-    /// half an hour. Surfacing it on Home means "continue where I left
-    /// off" is one tap, not a hunt through the Apps tab.
-    private func submissionCallout(_ record: ASCSubmissionStore.Record) -> some View {
-        GlassSurface(tier: .raised, corner: 18) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 8) {
-                    Image(systemName: "paperplane.circle.fill")
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundStyle(LiquidGlass.accentSecondary)
-                        .accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Submission in progress")
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundStyle(LiquidGlass.primaryText)
-                        Text("\(record.appTitle) — step \(record.resumeStep) of \(ASCStep.all.count)")
-                            .font(.system(size: 12, weight: .regular, design: .rounded))
-                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
-                    }
-                    Spacer(minLength: 0)
+    private var nextStep: Journey.NextStep { Journey.nextStep(journeyFacts) }
+
+    /// The one thing to do now. Everything else on Home is reference;
+    /// this is the path.
+    private var journeyCard: some View {
+        let next = nextStep
+        return GlassSurface(tier: .deep) {
+            VStack(alignment: .leading, spacing: 14) {
+                journeyRail(next)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(next.eyebrow)
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundStyle(next.isWaiting ? LiquidGlass.primaryText.opacity(0.6) : LiquidGlass.accent)
+                        .textCase(.uppercase)
+                        .tracking(1)
+                        .lineLimit(1)
+                    Text(next.title)
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(next.detail)
+                        .font(.system(size: 14, weight: .regular, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.78))
+                        .lineSpacing(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                GeometryReader { proxy in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(.white.opacity(0.1))
-                        Capsule().fill(LiquidGlass.auroraGradient)
-                            .frame(width: proxy.size.width * record.progressFraction)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Your next step. \(next.title). \(next.detail)")
+
+                PrimaryButton(
+                    title: next.buttonTitle,
+                    systemImage: next.isWaiting ? "clock" : "arrow.right",
+                    style: next.isWaiting ? .glass : .filled
+                ) { perform(next.action) }
+                .accessibilityIdentifier("journey.primaryAction")
+
+                if next.action == .resumeBuild {
+                    Button("Not now") {
+                        Haptics.selection()
+                        session.clearResumeRecord()
                     }
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .accessibilityHint("Hides this reminder. The build stays in your Apps tab.")
                 }
-                .frame(height: 5)
-                Button {
-                    if let job = session.recentJobs.first(where: { $0.id == record.jobID }) {
-                        session.openAppStoreConnect(for: job)
-                    }
-                } label: {
-                    Text("Continue submission")
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .padding(.horizontal, 16).padding(.vertical, 8)
-                        .background(LiquidGlass.accentSecondary, in: Capsule())
-                        .foregroundStyle(.white)
-                }
-                .accessibilityLabel("Continue submitting \(record.appTitle), step \(record.resumeStep) of \(ASCStep.all.count)")
             }
-            .padding(14)
+            .padding(20)
+        }
+        .accessibilityIdentifier("journey.card")
+    }
+
+    /// Five dots from idea to live, so the user always knows how far
+    /// along the whole trip they are — not just the current screen.
+    private func journeyRail(_ next: Journey.NextStep) -> some View {
+        HStack(alignment: .top, spacing: 0) {
+            ForEach(Journey.Milestone.allCases) { milestone in
+                let reached = Journey.reached(milestone, for: next)
+                let isCurrent = milestone == next.milestone && !reached
+                VStack(spacing: 6) {
+                    ZStack {
+                        Circle()
+                            .fill(reached ? AnyShapeStyle(LiquidGlass.success)
+                                  : isCurrent ? AnyShapeStyle(LiquidGlass.auroraGradient)
+                                  : AnyShapeStyle(Color.white.opacity(0.12)))
+                            .frame(width: 22, height: 22)
+                        if reached {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 10, weight: .heavy))
+                                .foregroundStyle(.white)
+                        }
+                    }
+                    Text(milestone.label)
+                        .font(.system(size: 10, weight: isCurrent ? .bold : .medium, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(reached || isCurrent ? 0.9 : 0.45))
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(railDescription(next))
+    }
+
+    private func railDescription(_ next: Journey.NextStep) -> String {
+        let done = Journey.Milestone.allCases.filter { Journey.reached($0, for: next) }.count
+        return "Stage \(min(done + 1, Journey.Milestone.allCases.count)) of \(Journey.Milestone.allCases.count): \(next.milestone.label)"
+    }
+
+    private func perform(_ action: Journey.Action) {
+        switch action {
+        case .describeApp, .startAnother:
+            startBuildOrPromptSetup()
+        case .resumeBuild:
+            session.resumePendingBuild()
+        case .openLatestBuild:
+            if let job = session.recentJobs.first {
+                session.openJob(job, backendID: session.backendJobIDs[job.id])
+            }
+        case .setUpShipping:
+            if !xcodeAcknowledged {
+                showXcodeReadiness = true
+            } else if !(companion.isConnected || !creds.backendToken.isEmpty) {
+                showPairMac = true
+            } else {
+                showAppleDev = true
+            }
+        case .openSubmission(let jobID):
+            if let job = session.recentJobs.first(where: { $0.id == jobID }) {
+                session.openAppStoreConnect(for: job)
+            }
         }
     }
 
@@ -394,7 +438,7 @@ struct HomeView: View {
                     .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText)
                     .lineSpacing(2)
-                Text("CodeGenie wires Claude, GPT, and Xcode together so you can ship to the App Store from anywhere.")
+                Text("Describe it, watch it get built, and follow one step at a time until it's on the App Store.")
                     .font(.system(size: 15, weight: .regular, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
             }
@@ -403,25 +447,38 @@ struct HomeView: View {
         }
     }
 
+    /// Starting another app, when the journey card is busy with one
+    /// already under way.
     private var primaryAction: some View {
-        GlassSurface(tier: .deep) {
-            VStack(alignment: .leading, spacing: 14) {
-                HStack {
-                    Text("Describe an app").font(.system(size: 18, weight: .semibold, design: .rounded))
-                        .foregroundStyle(LiquidGlass.primaryText)
+        Button {
+            Haptics.selection()
+            startBuildOrPromptSetup()
+        } label: {
+            GlassSurface(tier: .flat, corner: 20) {
+                HStack(spacing: 14) {
+                    Image(systemName: "wand.and.stars")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(LiquidGlass.accent)
+                        .frame(width: 44, height: 44)
+                        .background(Circle().fill(LiquidGlass.accent.opacity(0.18)))
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Start a new build")
+                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText)
+                        Text("Describe another app")
+                            .font(.system(size: 13, weight: .regular, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
+                    }
                     Spacer()
-                    Image(systemName: "sparkles").foregroundStyle(LiquidGlass.accent)
+                    Image(systemName: "chevron.right").foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
                 }
-                Text("\"A daily habit tracker with streaks and a calm look.\"")
-                    .font(.system(size: 15, weight: .regular, design: .rounded))
-                    .italic()
-                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
-                PrimaryButton(title: "Start a new build", systemImage: "wand.and.stars", style: .filled) {
-                    startBuildOrPromptSetup()
-                }
+                .padding(16)
             }
-            .padding(20)
         }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Start a new build. Describe another app.")
     }
 
     /// Whether to expand the full quickGrid. First-timers see three
@@ -495,20 +552,6 @@ struct HomeView: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Xcode instructions. Project, Simulator, Device, App Store.")
     }
-
-    private var checklistCard: some View {
-        GlassCard(title: "Quality checklist", icon: "checkmark.seal.fill", tint: LiquidGlass.success) {
-            VStack(alignment: .leading, spacing: 8) {
-                ChecklistRow(text: "All features work seamlessly", done: true)
-                ChecklistRow(text: "Tested on iPhone flows + edge cases", done: true)
-                ChecklistRow(text: "Animations, accessibility, dark mode", done: true)
-                ChecklistRow(text: "iOS 26 Liquid Glass theme", done: true)
-                ChecklistRow(text: "Senior-engineer code review (no vibe)", done: true)
-                ChecklistRow(text: "Perfection Mode: 10,000 virtual probes", done: true)
-                ChecklistRow(text: "Submission-ready for App Store", done: false)
-            }
-        }
-    }
 }
 
 // MARK: - Sub-views
@@ -573,22 +616,5 @@ private struct JobRow: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(job.description.title), \(job.stage.label), \(Int(job.stage.progress * 100)) percent")
-    }
-}
-
-private struct ChecklistRow: View {
-    let text: String, done: Bool
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: done ? "checkmark.circle.fill" : "circle")
-                .foregroundStyle(done ? LiquidGlass.success : LiquidGlass.primaryText.opacity(0.4))
-            Text(text)
-                .font(.system(size: 14, weight: .medium, design: .rounded))
-                .foregroundStyle(LiquidGlass.primaryText.opacity(done ? 0.95 : 0.7))
-                .strikethrough(done, color: LiquidGlass.primaryText.opacity(0.3))
-            Spacer()
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(text), \(done ? "complete" : "pending")")
     }
 }

@@ -58,6 +58,7 @@ enum ASCCoach {
             case name, subtitle, keywords, description
             case promotionalText, supportURL, marketingURL
             case category, ageRating, price
+            case privacyPolicyURL, copyright, reviewNotes
         }
     }
 
@@ -181,6 +182,58 @@ enum ASCCoach {
                     field: .marketingURL, severity: .warning,
                     message: "Marketing URL is still the placeholder.",
                     fix: "Clear it or point it at your real site. It's optional, so empty is better than fake."
+                ))
+            }
+        }
+
+        // --- Privacy policy URL (REQUIRED by Apple for every app) ---
+        let policy = (m.privacyPolicyURL ?? "").trimmed
+        if policy.isEmpty {
+            issues.append(.init(
+                field: .privacyPolicyURL, severity: .blocking,
+                message: "Privacy policy URL is missing — Apple requires one for every app.",
+                fix: "Even an app that collects nothing needs a page saying so. A short page on your own site or a public GitHub file is enough."
+            ))
+        } else if !isPlausibleURL(policy) {
+            issues.append(.init(
+                field: .privacyPolicyURL, severity: .blocking,
+                message: "Privacy policy URL doesn't look like a valid link.",
+                fix: "It must start with https:// and point at a real, reachable page."
+            ))
+        } else if isPlaceholderURL(policy) {
+            issues.append(.init(
+                field: .privacyPolicyURL, severity: .blocking,
+                message: "Privacy policy URL is still a placeholder.",
+                fix: "Point it at a page you control. The reviewer opens it."
+            ))
+        }
+
+        // --- Copyright (required on the version page) ---
+        let copyright = (m.copyright ?? "").trimmed
+        if !copyright.contains(where: \.isLetter) {
+            issues.append(.init(
+                field: .copyright, severity: .blocking,
+                message: copyright.isEmpty ? "Copyright line is empty." : "Copyright line has no owner name.",
+                fix: "The year and whoever owns the app, e.g. \"2026 Jane Appleseed\". Don't type the © symbol — Apple adds it."
+            ))
+        } else if copyright.contains("©") || copyright.lowercased().contains("(c)") {
+            issues.append(.init(
+                field: .copyright, severity: .warning,
+                message: "Copyright line includes a © symbol.",
+                fix: "Apple adds the symbol itself, so yours would show twice. Use just the year and the name."
+            ))
+        }
+
+        // --- Review notes (login without credentials is a rejection) ---
+        if m.requiresLogin == true {
+            let notes = (m.reviewNotes ?? "").trimmed.lowercased()
+            let mentionsAccess = ["password", "login", "log in", "sign in", "account"]
+                .contains { notes.contains($0) }
+            if !mentionsAccess {
+                issues.append(.init(
+                    field: .reviewNotes, severity: .blocking,
+                    message: "Your app has a sign-in, but the reviewer has no way in.",
+                    fix: "Add a working test username and password in App Review Information. Without one the app is rejected unopened."
                 ))
             }
         }
@@ -506,6 +559,22 @@ extension ASCCoach {
 
         case 11:
             return Walkthrough(
+                plainTitle: "Tell Apple who the app is suitable for",
+                whatThisIs: "Every app carries an age rating. You don't choose the number — you answer a questionnaire about what the app contains and Apple works it out. It decides which countries and which children's accounts can see your app.",
+                doThis: [
+                    .init(text: "In App Store Connect, open your app and click App Information in the left sidebar."),
+                    .init(text: "Find Age Rating and click Edit (or Set Up)."),
+                    .init(text: "Answer each question about violence, mature themes, medical content, gambling and contests. Most first apps are None for all of them."),
+                    .init(text: "\"Unrestricted Web Access\": answer Yes only if your app lets people browse to any website they like."),
+                    .init(text: "\"User-generated content\" and messaging: answer Yes if people can post things other people see."),
+                    .init(text: "Click Done and check the rating Apple shows. Then Save."),
+                ],
+                watchOut: "Answering None to everything when the app has chat, user posts or an in-app browser is one of the things Apple checks after release. Understating it can get an approved app pulled.",
+                timeEstimate: "5 minutes"
+            )
+
+        case 12:
+            return Walkthrough(
                 plainTitle: "Set your price",
                 whatThisIs: "What your app costs and which countries can see it. Free everywhere is the normal choice for a first app, and you can change it later without another review.",
                 doThis: [
@@ -518,21 +587,94 @@ extension ASCCoach {
                 timeEstimate: "3 minutes"
             )
 
-        case 12:
+        case 13:
+            return Walkthrough(
+                plainTitle: "Give the reviewer what they need",
+                whatThisIs: "A real person at Apple opens your app knowing nothing about it. App Review Information is the only thing you get to say to them beforehand. A clear note here prevents the most common first-app rejection: the reviewer couldn't work out how to use it.",
+                doThis: [
+                    .init(text: "On your app's version page, scroll down to App Review Information."),
+                    .init(text: "Contact Information: your real name, phone number and email. Apple calls or writes if the reviewer gets stuck."),
+                    .init(text: "Sign-In Required: tick this only if your app has a login, then enter a username and password that work right now."),
+                    .init(text: "Notes: tap Draft my review notes below, edit it so it's true for your app, then paste it in."),
+                    .init(text: "Attach a short screen recording if anything needs special hardware, a location, or a paid account to see."),
+                    .init(text: "Click Save."),
+                ],
+                watchOut: "A test account that has expired, needs a code sent to your phone, or opens to an empty screen counts as no account at all. Sign in with it yourself on a clean device before you submit.",
+                timeEstimate: "10 minutes"
+            )
+
+        case 14:
+            return Walkthrough(
+                plainTitle: "Attach your build and decide when it goes live",
+                whatThisIs: "The store page and the app file are separate things until you join them here. You also answer two legal questions about the build, and choose whether approval publishes the app immediately or waits for you.",
+                doThis: [
+                    .init(text: "On the version page, find the Build section and click Add Build (the + button)."),
+                    .init(text: "Pick the build that finished processing in step 4. Check the version and build number match the one you tested."),
+                    .init(text: "Export Compliance: answer No unless you wrote your own encryption. Using HTTPS does not count."),
+                    .init(text: "Content Rights: say whether the app shows content that belongs to someone else, and that you have the right to use it."),
+                    .init(text: "Version Release: choose Manually release this version if you want to pick the moment, or Automatically to go live as soon as Apple approves."),
+                    .init(text: "Click Save."),
+                ],
+                watchOut: "If no build appears in the list, it is still processing or was rejected by email — go back to step 4 and check. And it is easy to attach yesterday's build: compare the build number.",
+                timeEstimate: "5 minutes"
+            )
+
+        case 15:
             return Walkthrough(
                 plainTitle: "Send it to Apple for review",
-                whatThisIs: "The final button. A real person at Apple opens your app and checks it against the App Store rules. This is the only step CodeGenie cannot do for you — Apple requires the account holder.",
+                whatThisIs: "The final button. A real person at Apple opens your app and checks it against the App Store rules. This is the one step CodeGenie cannot do for you — Apple requires the account holder to press it.",
                 doThis: [
-                    .init(text: "Open your app's main App Store page in App Store Connect."),
-                    .init(text: "Under Build, click + and pick the build that finished processing in step 4."),
-                    .init(text: "Export Compliance: answer No unless you wrote your own encryption."),
-                    .init(text: "Content Rights: answer whether your app shows content you don't own."),
-                    .init(text: "Advertising Identifier: answer No unless you added an ad network."),
-                    .init(text: "Click Add for Review, then Submit for Review."),
-                    .init(text: "Come back here and tap \"I submitted for review\" so CodeGenie can track it."),
+                    .init(text: "Open your submission checklist below and confirm everything on it. These are the things Apple rejects for."),
+                    .init(text: "On the version page in App Store Connect, click Add for Review at the top right."),
+                    .init(text: "If a list of missing items appears, fix each one — Apple names the exact field."),
+                    .init(text: "Click Submit for Review. The status changes to Waiting for Review."),
+                    .init(text: "Come back here and tap I submitted for review. CodeGenie then follows the review with you."),
                 ],
-                watchOut: "If review rejects you, it is normal and it is not personal. Apple tells you the exact guideline number in Resolution Center. Most first-app rejections are a missing demo account or a broken support link, and both are quick fixes with no rebuild needed.",
-                timeEstimate: "10 minutes to submit, then 24 to 48 hours for Apple's answer"
+                watchOut: "Add for Review is not the same as submitting. Until you press Submit for Review on the next screen, nothing has been sent and the status stays at Ready for Review.",
+                timeEstimate: "5 minutes to submit"
+            )
+
+        case 16:
+            return Walkthrough(
+                plainTitle: "Wait for a reviewer",
+                whatThisIs: "Your app is in a queue with everyone else's. Nothing is being judged yet. Apple reviews most submissions within a day, and there is nothing you can do to move up.",
+                doThis: [
+                    .init(text: "Tap Check with Apple below whenever you like. CodeGenie asks App Store Connect for the current status."),
+                    .init(text: "Keep your support page, privacy policy and any server your app uses online."),
+                    .init(text: "Leave the submission alone. Editing the build or cancelling sends you to the back of the queue."),
+                    .init(text: "Apple emails the account holder the moment the status changes."),
+                ],
+                watchOut: "If the status goes back to Prepare for Submission by itself, Apple bounced the submission before review — usually a missing field. Open the version page and read the banner at the top.",
+                timeEstimate: "Usually under 24 hours"
+            )
+
+        case 17:
+            return Walkthrough(
+                plainTitle: "Act on Apple's answer",
+                whatThisIs: "Review ends one of two ways: approved, or sent back with the guideline it fell short of. Being sent back is normal — it happens to most first apps — and you can fix and resubmit as many times as you need.",
+                doThis: [
+                    .init(text: "Tap Check with Apple below, or read the status on your app's page in App Store Connect."),
+                    .init(text: "Approved: you're done here. The next step releases it."),
+                    .init(text: "Sent back: open App Review on your app's page and read the whole message. It names a guideline number."),
+                    .init(text: "Pick that guideline below. CodeGenie explains what it means and exactly what to change."),
+                    .init(text: "Reply in the same thread to say what you changed, then resubmit."),
+                ],
+                watchOut: "Don't argue the rule and don't resubmit unchanged — both slow you down. If you believe the reviewer misread the app, reply politely with specifics; if that fails, there is a formal appeal under Contact Us.",
+                timeEstimate: "A few minutes for a store-page fix, longer if the app needs a new build"
+            )
+
+        case 18:
+            return Walkthrough(
+                plainTitle: "Put it on the store",
+                whatThisIs: "Approved is not quite the same as live. If you chose manual release in step 14, your app waits for you. Either way it takes a few hours to appear everywhere.",
+                doThis: [
+                    .init(text: "If the status is Pending Developer Release, open the version page and click Release This Version."),
+                    .init(text: "Wait for the status to become Ready for Distribution."),
+                    .init(text: "Open your App Store page from the link in App Store Connect and read it as a stranger would."),
+                    .init(text: "Share the link. Search results can lag several hours behind the direct link."),
+                ],
+                watchOut: "Don't panic if a search for your app's name finds nothing on day one. Indexing takes time. The direct link from App Store Connect works straight away.",
+                timeEstimate: "Up to 24 hours to appear everywhere"
             )
 
         default:
@@ -544,5 +686,79 @@ extension ASCCoach {
                 timeEstimate: ""
             )
         }
+    }
+}
+
+// MARK: - Reviewer notes
+
+extension ASCCoach {
+
+    /// A first draft of the Notes field in App Review Information.
+    ///
+    /// Written for a stranger with ten minutes: what the app is for,
+    /// where to tap first, and how to get past any sign-in. The user
+    /// is expected to edit it — the bracketed parts cannot be known
+    /// from here, and saying so is better than inventing them.
+    static func reviewNotesDraft(
+        appName: String,
+        summary: String,
+        features: [String],
+        requiresLogin: Bool
+    ) -> String {
+        let name = appName.trimmed.isEmpty ? "This app" : appName.trimmed
+        let oneLine = summary.trimmed
+            .split(whereSeparator: \.isNewline).first.map(String.init)?.trimmed ?? ""
+
+        var lines: [String] = []
+        lines.append("Thank you for reviewing \(name).")
+        lines.append("")
+        if oneLine.isEmpty {
+            lines.append("What it does: [one sentence describing the app]")
+        } else {
+            lines.append("What it does: \(oneLine)")
+        }
+        lines.append("")
+        lines.append("How to try the main feature:")
+        let listed = features.map { $0.trimmed }.filter { !$0.isEmpty }.prefix(4)
+        if listed.isEmpty {
+            lines.append("1. Open the app. [Describe the first thing to tap.]")
+            lines.append("2. [Describe what happens next.]")
+        } else {
+            lines.append("1. Open the app. The first screen is ready to use with no setup.")
+            for (index, feature) in listed.enumerated() {
+                lines.append("\(index + 2). \(feature)")
+            }
+        }
+        lines.append("")
+        if requiresLogin {
+            lines.append("Sign-in: a working test account is entered in the Sign-In Required fields above.")
+            lines.append("Username: [test username]")
+            lines.append("Password: [test password]")
+            lines.append("This account does not expire and needs no verification code.")
+        } else {
+            lines.append("Sign-in: none. The app does not require an account.")
+        }
+        lines.append("")
+        lines.append("The app does not need special hardware, a particular location, or a purchase to review.")
+        lines.append("")
+        lines.append("Contact: [your name], [your email], [your phone]")
+        return lines.joined(separator: "\n")
+    }
+
+    /// Bracketed blanks the draft leaves for the user to fill in.
+    static func unfilledPlaceholders(in text: String) -> [String] {
+        var out: [String] = []
+        var current: String?
+        for character in text {
+            if character == "[" {
+                current = ""
+            } else if character == "]" {
+                if let found = current, !found.trimmed.isEmpty { out.append(found) }
+                current = nil
+            } else if current != nil {
+                current?.append(character)
+            }
+        }
+        return out
     }
 }

@@ -13,3 +13,4 @@ codegenie-*-check.png
 .venv*/
 venv/
 .claude/
+.build/

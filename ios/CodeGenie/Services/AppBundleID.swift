@@ -27,16 +27,10 @@ enum AppBundleID {
         return "\(cleanPrefix).\(slug(title))"
     }
 
-    @MainActor
-    static func make(title: String, credentials: Credentials? = nil) -> String {
-        make(prefix: (credentials ?? .shared).bundleIDPrefix, title: title)
-    }
-
-    /// True when the user still has the placeholder prefix, so screens
-    /// can nudge them before Apple does.
-    @MainActor
-    static func usesFallbackPrefix(credentials: Credentials? = nil) -> Bool {
-        normalise(prefix: (credentials ?? .shared).bundleIDPrefix) == fallbackPrefix
+    /// True when this prefix resolves to the shared placeholder, so
+    /// screens can nudge the user before Apple does.
+    static func usesFallback(prefix: String) -> Bool {
+        normalise(prefix: prefix) == fallbackPrefix
     }
 
     /// Is what the user actually typed a usable prefix?

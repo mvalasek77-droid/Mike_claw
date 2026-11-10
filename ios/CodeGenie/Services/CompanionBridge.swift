@@ -459,7 +459,7 @@ final class CompanionBridge: ObservableObject {
             }
         }
         // "event" frames are surfaced to subscribers via NotificationCenter
-        // so individual screens (e.g. RemoteBuildView) can stream
+        // so individual screens (e.g. the submission guide) can stream
         // `xcodebuild.line` events without owning the bridge directly.
         if kind == "event" {
             NotificationCenter.default.post(

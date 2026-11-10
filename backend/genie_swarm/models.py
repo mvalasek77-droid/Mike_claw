@@ -18,6 +18,13 @@ from pydantic import BaseModel, Field
 # Identity / addressing
 # ---------------------------------------------------------------------------
 
+# Steps in the phone's App Store Connect guide. The phone sends its
+# current step number with each coach question, so this must match
+# `ASCStep.all` in the iOS app; a test reads the Swift file to keep
+# the two honest.
+ASC_TOTAL_STEPS = 18
+
+
 def _new_id(prefix: str) -> str:
     return f"{prefix}_{uuid.uuid4().hex[:12]}"
 
@@ -82,7 +89,7 @@ class ASCCoachRequest(BaseModel):
 
     app_name: str = Field(default="", max_length=200)
     bundle_id: str = Field(default="", max_length=200)
-    step_number: int | None = Field(default=None, ge=1, le=12)
+    step_number: int | None = Field(default=None, ge=1, le=ASC_TOTAL_STEPS)
     step_title: str = Field(default="", max_length=200)
     completed_steps: list[int] = Field(default_factory=list, max_length=12)
     mac_paired: bool = False

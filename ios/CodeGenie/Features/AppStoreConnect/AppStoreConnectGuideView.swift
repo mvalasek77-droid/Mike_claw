@@ -1,165 +1,6 @@
 import SwiftUI
 import UIKit
 
-// MARK: - Step model
-
-/// The submission journey has two honest phases, because Apple's own
-/// process has two honest phases: TestFlight only needs an app record
-/// and a processed build — no icon, no screenshots, no listing copy,
-/// no pricing. Those are only required for the public App Store. This
-/// used to be a single flat 10-step list that made a first-timer write
-/// App Store copy before they could even run their app on a real
-/// device; now testing comes first.
-enum ASCPhase: String, CaseIterable {
-    case testflight = "Part 1 — Get it on your phone"
-    case appStore = "Part 2 — Put it on the App Store"
-
-    var subtitle: String {
-        switch self {
-        case .testflight: "The least Apple needs before you and your friends can install the real app."
-        case .appStore: "Only when you want strangers to be able to find and download it."
-        }
-    }
-}
-
-struct ASCStep: Identifiable, Hashable {
-    let id = UUID()
-    let number: Int
-    let phase: ASCPhase
-    let title: String
-    let body: String
-    let action: ActionKind
-    let safariRoute: String?
-
-    enum ActionKind: Hashable {
-        /// CodeGenie opens the URL in the paired Mac's Safari.
-        case openSafariOnMac(String)
-        /// CodeGenie actually performs the TestFlight upload itself.
-        case uploadToTestFlight
-        /// Tells the user exactly where to look for the install invite.
-        case openTestFlightApp
-        /// Explains internal vs. external testers and the public link.
-        case inviteTesters
-        /// CodeGenie types the listing fields into the open ASC page.
-        case fillForm
-        /// The user prepares an asset outside CodeGenie.
-        case prepareAsset(String)
-        /// Waiting on Apple.
-        case wait(String)
-        /// Only the account holder can do this.
-        case manual
-    }
-
-    /// Who actually performs the work. Drives the Auto/Hybrid/You badge.
-    var ownership: Ownership {
-        switch action {
-        case .openSafariOnMac, .fillForm, .uploadToTestFlight: return .hybrid
-        case .prepareAsset, .openTestFlightApp, .inviteTesters, .manual: return .you
-        case .wait: return .apple
-        }
-    }
-
-    enum Ownership {
-        case hybrid, you, apple
-
-        var label: String {
-            switch self {
-            case .hybrid: "Hybrid"
-            case .you:    "You"
-            case .apple:  "Apple"
-            }
-        }
-
-        var explanation: String {
-            switch self {
-            case .hybrid: "CodeGenie does the heavy lifting. You review and confirm."
-            case .you:    "You do this — CodeGenie can't tap buttons in your Apple account."
-            case .apple:  "Apple's servers do this. Nothing for you to do but wait."
-            }
-        }
-    }
-}
-
-extension ASCStep {
-    static let all: [ASCStep] = [
-        // ---- Phase 1: Get it testable ----
-        .init(number: 1, phase: .testflight,
-              title: "Sign in to App Store Connect",
-              body: "CodeGenie opens appstoreconnect.apple.com in your Mac's Safari. You sign in there — your password and 2-factor codes never touch CodeGenie.",
-              action: .openSafariOnMac("https://appstoreconnect.apple.com"),
-              safariRoute: "https://appstoreconnect.apple.com"),
-
-        .init(number: 2, phase: .testflight,
-              title: "Create the app record",
-              body: "Click + → New App. Platform iOS, and the bundle ID must match your Xcode target exactly or the upload in the next step fails.",
-              action: .openSafariOnMac("https://appstoreconnect.apple.com/apps"),
-              safariRoute: "https://appstoreconnect.apple.com/apps"),
-
-        .init(number: 3, phase: .testflight,
-              title: "Upload your build",
-              body: "CodeGenie runs Apple's validate-then-upload flow itself. No listing, no screenshots, no pricing needed yet — just the app record from step 2 and a signed build.",
-              action: .uploadToTestFlight,
-              safariRoute: nil),
-
-        .init(number: 4, phase: .testflight,
-              title: "Wait for Apple to process it",
-              body: "Usually 5–30 minutes. You'll see the status update here — no need to keep the app open.",
-              action: .wait("Apple is processing your build"),
-              safariRoute: nil),
-
-        .init(number: 5, phase: .testflight,
-              title: "Open TestFlight on your iPhone",
-              body: "Apple emails the account holder an invite once the build finishes processing. Accept it, then TestFlight installs your real app.",
-              action: .openTestFlightApp,
-              safariRoute: nil),
-
-        .init(number: 6, phase: .testflight,
-              title: "Invite testers",
-              body: "Internal testers (your ASC team, up to 100) get it instantly. External testers (up to 10,000, via a public link or email) need one quick automated Apple review the first time — usually under a day.",
-              action: .inviteTesters,
-              safariRoute: nil),
-
-        // ---- Phase 2: Publish to the App Store ----
-        .init(number: 7, phase: .appStore,
-              title: "Prepare your 1024×1024 icon",
-              body: "Exactly 1024×1024, PNG, no alpha channel, no pre-rounded corners. Apple rejects anything else without review.",
-              action: .prepareAsset("icon-1024.png"),
-              safariRoute: nil),
-
-        .init(number: 8, phase: .appStore,
-              title: "Prepare screenshots",
-              body: "At least one iPhone display size. Screenshots showing placeholder or lorem-ipsum content are a common rejection reason.",
-              action: .prepareAsset("screenshots"),
-              safariRoute: nil),
-
-        .init(number: 9, phase: .appStore,
-              title: "Fill in the listing",
-              body: "Name, subtitle, keywords, description and URLs. CodeGenie checks every field against Apple's length limits before you paste anything.",
-              action: .fillForm,
-              safariRoute: "https://appstoreconnect.apple.com/apps"),
-
-        .init(number: 10, phase: .appStore,
-              title: "Answer the privacy questions",
-              body: "Apple asks what data you collect. Answer honestly — this is audited, and a wrong answer here pulls a live app.",
-              action: .manual,
-              safariRoute: nil),
-
-        .init(number: 11, phase: .appStore,
-              title: "Set pricing and availability",
-              body: "Free in all territories is the safe default. Price can change later without a new review.",
-              action: .manual,
-              safariRoute: nil),
-
-        .init(number: 12, phase: .appStore,
-              title: "Submit for review",
-              body: "Pick the processed build, confirm export compliance and content rights, then press Submit. Apple requires the account holder to do this.",
-              action: .manual,
-              safariRoute: nil)
-    ]
-
-    static func steps(in phase: ASCPhase) -> [ASCStep] { all.filter { $0.phase == phase } }
-}
-
 // MARK: - Guide
 
 struct AppStoreConnectGuideView: View {
@@ -197,6 +38,9 @@ struct AppStoreConnectGuideView: View {
     @StateObject private var coachChat = ASCCoachChat()
     @State private var showCoachChat = false
     @State private var showChecklist = false
+    /// Mirrors the store so the review panel re-renders on every
+    /// status change without reaching into the singleton mid-body.
+    @State private var record: ASCSubmissionRecord?
 
     /// AI-proactive pre-flight gate. Nothing runs the guide's steps
     /// until CodeGenie has actually checked the app — the user never
@@ -258,6 +102,7 @@ struct AppStoreConnectGuideView: View {
             }
         }
         .task { await loadAndRunPreflight() }
+        .task(id: pollKey) { await pollWhileWaiting() }
         .sheet(isPresented: $showMetadataEditor) {
             ASCMetadataEditor(metadata: $metadata, issues: issues)
                 .presentationDragIndicator(.visible)
@@ -270,12 +115,12 @@ struct AppStoreConnectGuideView: View {
             Button("Not yet", role: .cancel) { }
             Button("Yes, I submitted") {
                 store.markSubmitted(for: job.id)
-                completed = Set(ASCStep.all.map(\.number))
-                banner = Banner(text: "Submission recorded. Apple emails you when review finishes — usually 24–48 hours.", tone: .success)
+                syncFromStore(jumpToResume: true)
+                banner = Banner(text: "Submitted. CodeGenie follows the review with you from here.", tone: .success)
                 Haptics.success()
             }
         } message: {
-            Text("Only mark this done once Apple has actually accepted the submission. We'll keep your record so you can come back to it.")
+            Text("Only say yes once the status in App Store Connect reads Waiting for Review. Add for Review on its own doesn't send anything.")
         }
         .alert("Couldn't upload", isPresented: $showTestFlightErrorAlert) {
             Button("OK") { testFlightErrorMessage = nil }
@@ -301,7 +146,7 @@ struct AppStoreConnectGuideView: View {
                 bundleID: defaultBundleID(for: job.description.title),
                 completed: completed,
                 macPaired: macPaired,
-                blockingIssues: blocking.map { "\($0.message) \($0.fix)" },
+                blockingIssues: blocking.map { "\($0.message) \($0.fix)" } + reviewContextForCoach,
                 outstandingItems: (readiness?.items ?? [])
                     .filter { $0.required && $0.status != "automated" }
                     .map { "\($0.title): \($0.detail)" }
@@ -326,13 +171,22 @@ struct AppStoreConnectGuideView: View {
     private func loadAndRunPreflight() async {
         guard !didLoad else { return }
         didLoad = true
-        let record = store.openOrCreate(for: job)
-        metadata = record.metadata
-        completed = record.completedSteps
-        current = record.resumeStep
-        if !record.completedSteps.isEmpty {
+        let saved = store.openOrCreate(for: job)
+        record = saved
+        metadata = saved.metadata
+        completed = saved.completedSteps
+        current = saved.resumeStep
+        if saved.isSubmitted {
+            // The build is already with Apple. Re-running the quality
+            // gate now could only block the user from reading the
+            // outcome of a review that has already started.
+            preflight = .clear
+            await runReadinessCheck()
+            return
+        }
+        if !saved.completedSteps.isEmpty {
             banner = Banner(
-                text: "Picked up where you left off — step \(record.resumeStep) of \(ASCStep.all.count).",
+                text: "Picked up where you left off — step \(saved.resumeStep) of \(ASCStep.all.count).",
                 tone: .info
             )
         }
@@ -387,6 +241,127 @@ struct AppStoreConnectGuideView: View {
     /// identifier the project was actually signed with.
     private func defaultBundleID(for title: String) -> String {
         AppBundleID.make(title: title)
+    }
+
+    /// Re-read the saved record after anything that can move steps on
+    /// its own — a review status, a submission, a resubmission.
+    private func syncFromStore(jumpToResume: Bool) {
+        guard let saved = store.record(for: job.id) else { return }
+        record = saved
+        completed = saved.completedSteps
+        if jumpToResume {
+            Motion.run(.spring(response: 0.4)) { current = saved.resumeStep }
+        }
+    }
+
+    private var reviewContextForCoach: [String] {
+        guard let review = record?.review, record?.isSubmitted == true else { return [] }
+        var line = "App Review status: \(review.state.appleLabel)."
+        if let guideline = review.rejectionGuideline {
+            line += " Rejected under guideline \(guideline)."
+        }
+        return [line]
+    }
+
+    // MARK: Waiting on Apple
+
+    /// Changes whenever what we're waiting for changes, which restarts
+    /// the polling task; leaving the screen cancels it.
+    private var pollKey: String {
+        guard preflight == .clear else { return "idle" }
+        switch currentStep.action {
+        case .wait:
+            return "build-\(current)"
+        case .review:
+            let state = record?.review?.state ?? .waitingForReview
+            return state.isWaitingOnApple ? "review-\(state.rawValue)" : "idle"
+        default:
+            return "idle"
+        }
+    }
+
+    /// Ask Apple periodically while the user is parked on a wait, so
+    /// the screen moves on by itself. Minutes apart, not seconds: the
+    /// answer changes on Apple's timescale and a tight loop only costs
+    /// battery.
+    private func pollWhileWaiting() async {
+        let key = pollKey
+        guard key != "idle", ASCStatusPoller.canAskApple() else { return }
+        let isBuild = key.hasPrefix("build")
+        let interval: UInt64 = isBuild ? 60 : 300
+        while !Task.isCancelled {
+            if isBuild {
+                await checkBuildStatus(announce: false)
+                if statusPoller.status?.isFinished == true { return }
+            } else {
+                await checkReviewStatus(announce: false)
+            }
+            try? await Task.sleep(nanoseconds: interval * 1_000_000_000)
+        }
+    }
+
+    private func checkBuildStatus(announce: Bool) async {
+        guard case .wait = currentStep.action else { return }
+        let step = currentStep
+        await statusPoller.check(bundleID: defaultBundleID(for: job.description.title))
+        // Only VALID means the build is installable; the other
+        // finished states mean stop waiting and go read Apple's email.
+        if statusPoller.status?.state == "VALID" {
+            if !announce {
+                banner = Banner(text: "Apple finished processing your build.", tone: .success)
+            }
+            advance(step)
+        }
+    }
+
+    private func checkReviewStatus(announce: Bool) async {
+        guard let version = await statusPoller.checkReview(
+            bundleID: defaultBundleID(for: job.description.title)
+        ) else {
+            if announce { Haptics.warning() }
+            return
+        }
+        applyReview(version.state, version: version.versionString, announce: announce)
+    }
+
+    /// One path for a status from Apple and one the user reports by
+    /// hand, so both tick the same steps and say the same things.
+    private func applyReview(_ state: ASCReviewState, version: String?, announce: Bool) {
+        let changed = store.applyReview(state, version: version, for: job.id)
+        syncFromStore(jumpToResume: changed)
+        guard changed || announce else { return }
+        if changed {
+            let tone: Banner.Tone = switch state.tone {
+            case .good: .success
+            case .problem, .action: .warning
+            case .waiting: .info
+            }
+            banner = Banner(text: "Apple's status is now \(state.appleLabel).", tone: tone)
+            switch state.tone {
+            case .good: Haptics.success()
+            case .problem: Haptics.warning()
+            default: Haptics.selection()
+            }
+        } else {
+            banner = Banner(text: "No change — still \(state.appleLabel).", tone: .info)
+            Haptics.selection()
+        }
+    }
+
+    private func openAppStoreConnect() {
+        let address = "https://appstoreconnect.apple.com/apps"
+        if macPaired {
+            Task {
+                do {
+                    try await companion.openSafari(address, newWindow: true)
+                    banner = Banner(text: "Opened on your Mac.", tone: .success)
+                } catch {
+                    if let url = URL(string: address) { openURL(url) }
+                }
+            }
+        } else if let url = URL(string: address) {
+            openURL(url)
+        }
     }
 
     // MARK: Chrome
@@ -605,7 +580,7 @@ struct AppStoreConnectGuideView: View {
                     } else {
                         if !completed.isEmpty { completedStrip }
                         focusCard
-                        if currentStep.action == .fillForm { listingCard }
+                        stepWorkArea
                         upNextStrip
                     }
                     if justBecameTestable { testableMilestoneCard }
@@ -624,6 +599,83 @@ struct AppStoreConnectGuideView: View {
 
     private var allStepsDone: Bool {
         completed.count >= ASCStep.all.count
+    }
+
+    /// The step's own working surface, when it has one beyond buttons.
+    @ViewBuilder
+    private var stepWorkArea: some View {
+        switch currentStep.action {
+        case .fillForm:
+            listingCard
+        case .reviewNotes:
+            ASCReviewNotesCard(
+                metadata: $metadata,
+                appName: job.description.title,
+                summary: job.description.prompt,
+                features: job.description.features,
+                onCopied: { banner = Banner(text: $0, tone: .success) }
+            )
+        case .review:
+            if let record, record.isSubmitted {
+                reviewPanel(record)
+            } else {
+                notSubmittedYetCard
+            }
+        default:
+            EmptyView()
+        }
+    }
+
+    /// Shown when someone jumps ahead to a review step from the full
+    /// list. Offering status controls for a review that hasn't started
+    /// would only invite them to record something untrue.
+    private var notSubmittedYetCard: some View {
+        let resume = record?.resumeStep ?? 1
+        return GlassSurface(tier: .raised, corner: 18) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Nothing to track yet")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText)
+                Text("Review starts once you've submitted in step \(ASCStep.submitStepNumber). This part of the guide fills in by itself after that.")
+                    .font(.system(size: 13, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.78))
+                    .fixedSize(horizontal: false, vertical: true)
+                PrimaryButton(title: "Back to step \(resume)", systemImage: "arrow.uturn.backward", style: .glass) {
+                    Motion.run(.spring(response: 0.4)) { current = resume }
+                }
+            }
+            .padding(16)
+        }
+    }
+
+    private func reviewPanel(_ record: ASCSubmissionRecord) -> some View {
+        ASCReviewPanel(
+            record: record,
+            canAskApple: ASCStatusPoller.canAskApple(),
+            isChecking: statusPoller.isCheckingReview,
+            errorText: statusPoller.reviewError,
+            onCheck: { Task { await checkReviewStatus(announce: true) } },
+            onReport: { applyReview($0, version: nil, announce: true) },
+            onPickGuideline: { guideline in
+                store.noteRejectionGuideline(guideline, for: job.id)
+                syncFromStore(jumpToResume: false)
+            },
+            onResubmitted: {
+                store.markResubmitted(for: job.id)
+                syncFromStore(jumpToResume: true)
+                banner = Banner(text: "Back in the queue. Resubmissions are usually looked at faster than the first time.", tone: .success)
+                Haptics.success()
+            },
+            onUploadNewBuild: {
+                store.markStepIncomplete(3, for: job.id)
+                store.markStepIncomplete(4, for: job.id)
+                syncFromStore(jumpToResume: false)
+                Motion.run(.spring(response: 0.4)) { current = 3 }
+                banner = Banner(text: "Upload the fixed build here, then attach it in step 14 and resubmit.", tone: .info)
+            },
+            onOpenAppStoreConnect: { openAppStoreConnect() },
+            onCopied: { banner = Banner(text: $0, tone: .success) }
+        )
     }
 
     private var currentStep: ASCStep {
@@ -730,10 +782,11 @@ struct AppStoreConnectGuideView: View {
                 // Users mis-tap, and they also revisit a finished step
                 // from the overview list. Either way they need a way
                 // back out of "done" without hunting for it.
-                if completed.contains(step.number) {
+                if completed.contains(step.number), step.phase != .review {
                     Button {
                         store.markStepIncomplete(step.number, for: job.id)
                         completed.remove(step.number)
+                        record = store.record(for: job.id)
                         Haptics.selection()
                     } label: {
                         Text("Reopen this step")
@@ -885,11 +938,15 @@ struct AppStoreConnectGuideView: View {
     private var finishedCard: some View {
         GlassSurface(tier: .deep, corner: 22) {
             VStack(spacing: 12) {
-                Text("🎉").font(.system(size: 40))
-                Text("Submitted")
+                Image(systemName: "checkmark.seal.fill")
+                    .font(.system(size: 44, weight: .bold))
+                    .foregroundStyle(LiquidGlass.success)
+                    .accessibilityHidden(true)
+                Text("\(job.description.title) is live")
                     .font(.system(size: 22, weight: .bold, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText)
-                Text("Every step is done. Apple emails you when review finishes, usually within 24 to 48 hours. If they ask for a change, it comes with the exact reason and you can fix it without rebuilding.")
+                    .multilineTextAlignment(.center)
+                Text("It passed review and it's on the App Store. Search can take a few hours to catch up; the link in App Store Connect works straight away. When you ship an update, the same steps apply from the upload onwards.")
                     .font(.system(size: 14, weight: .regular, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
                     .multilineTextAlignment(.center)
@@ -899,7 +956,7 @@ struct AppStoreConnectGuideView: View {
             .frame(maxWidth: .infinity)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Submitted. Apple emails you when review finishes.")
+        .accessibilityLabel("\(job.description.title) is live on the App Store.")
     }
 
     // MARK: Full list, on request only
@@ -972,14 +1029,14 @@ struct AppStoreConnectGuideView: View {
         .accessibilityHint("Jump to this step")
     }
 
-    /// Two-segment progress instead of one flat bar — "testable" and
-    /// "published" are different finish lines, and conflating them
-    /// into "4 of 12" hides that the user is already at a real
-    /// milestone once the first six are done.
+    /// One segment per phase instead of one flat bar — "testable",
+    /// "submitted" and "live" are different finish lines, and a bare
+    /// "4 of 18" hides that the user is already at a real milestone
+    /// once the first six are done.
     private var phaseProgress: some View {
         VStack(spacing: 6) {
             HStack {
-                Text(testflightDone ? "Testable ✓" : "Phase 1 — Get it testable")
+                Text(phaseHeadline)
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
                     .foregroundStyle(testflightDone ? LiquidGlass.success : LiquidGlass.primaryText.opacity(0.7))
                 Spacer()
@@ -989,8 +1046,9 @@ struct AppStoreConnectGuideView: View {
             }
             GeometryReader { proxy in
                 HStack(spacing: 3) {
-                    segment(proxy: proxy, phase: .testflight)
-                    segment(proxy: proxy, phase: .appStore)
+                    ForEach(ASCPhase.allCases, id: \.self) { phase in
+                        segment(proxy: proxy, phase: phase)
+                    }
                 }
             }
             .frame(height: 6)
@@ -998,7 +1056,22 @@ struct AppStoreConnectGuideView: View {
         .padding(.horizontal, 18)
         .padding(.bottom, 6)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(completed.count) of \(ASCStep.all.count) steps complete. \(testflightDone ? "Testable phase finished." : "Working on the testable phase.")")
+        .accessibilityLabel("\(completed.count) of \(ASCStep.all.count) steps complete. \(phaseHeadline).")
+    }
+
+    private var currentPhase: ASCPhase {
+        ASCPhase.allCases.first { phase in
+            !ASCStep.steps(in: phase).allSatisfy { completed.contains($0.number) }
+        } ?? .review
+    }
+
+    private var phaseHeadline: String {
+        if allStepsDone { return "Live on the App Store" }
+        switch currentPhase {
+        case .testflight: return "Part 1 of 3 — \(ASCPhase.testflight.shortLabel)"
+        case .appStore:   return "Testable ✓ · Part 2 of 3 — \(ASCPhase.appStore.shortLabel)"
+        case .review:     return "Submitted ✓ · Part 3 of 3 — \(ASCPhase.review.shortLabel)"
+        }
     }
 
     private var testflightDone: Bool {
@@ -1008,10 +1081,15 @@ struct AppStoreConnectGuideView: View {
     private func segment(proxy: GeometryProxy, phase: ASCPhase) -> some View {
         let steps = ASCStep.steps(in: phase)
         let done = steps.filter { completed.contains($0.number) }.count
-        let width = proxy.size.width * (Double(steps.count) / Double(ASCStep.all.count)) - 1.5
+        let width = proxy.size.width * (Double(steps.count) / Double(ASCStep.all.count)) - 2
+        let fill: Color = switch phase {
+        case .testflight: LiquidGlass.accent
+        case .appStore:   LiquidGlass.accentSecondary
+        case .review:     LiquidGlass.success
+        }
         return ZStack(alignment: .leading) {
             Capsule().fill(.white.opacity(0.1))
-            Capsule().fill(phase == .testflight ? LiquidGlass.auroraGradient : LinearGradient(colors: [LiquidGlass.accentSecondary], startPoint: .leading, endPoint: .trailing))
+            Capsule().fill(fill)
                 .frame(width: max(0, width) * (Double(done) / Double(max(steps.count, 1))))
                 .motion(.spring(response: 0.5), value: done)
         }
@@ -1028,14 +1106,17 @@ struct AppStoreConnectGuideView: View {
                 .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, phase == .appStore ? 8 : 0)
+        .padding(.top, phase == .testflight ? 0 : 8)
         .accessibilityAddTraits(.isHeader)
     }
 
     private var testableMilestoneCard: some View {
         GlassSurface(tier: .deep, corner: 18) {
             HStack(spacing: 12) {
-                Text("🎉").font(.system(size: 28))
+                Image(systemName: "iphone.gen3.badge.play")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundStyle(LiquidGlass.success)
+                    .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Your app is testable")
                         .font(.system(size: 15, weight: .bold, design: .rounded))
@@ -1090,6 +1171,8 @@ struct AppStoreConnectGuideView: View {
                 kv("Keywords", ASCCoach.keywordString(metadata.keywords), limit: ASCCoach.Limit.keywordsTotal)
                 kv("Category", metadata.primaryCategory, limit: nil)
                 kv("Support URL", metadata.supportURL, limit: nil)
+                kv("Privacy policy", metadata.privacyPolicyURL ?? "", limit: nil)
+                kv("Copyright", metadata.copyright ?? "", limit: nil)
                 kv("Price", metadata.price, limit: nil)
 
                 HStack(spacing: 10) {
@@ -1173,7 +1256,9 @@ struct AppStoreConnectGuideView: View {
         Keywords: \(ASCCoach.keywordString(metadata.keywords))
         Promotional text: \(metadata.promotionalText)
         Support URL: \(metadata.supportURL)
+        Privacy policy URL: \(metadata.privacyPolicyURL ?? "")
         Marketing URL: \(metadata.marketingURL)
+        Copyright: \(metadata.copyright ?? "")
         Age rating: \(metadata.ageRating)
         Price: \(metadata.price)
 
@@ -1439,27 +1524,42 @@ struct AppStoreConnectGuideView: View {
                     systemImage: "arrow.clockwise",
                     style: .filled
                 ) {
-                    Task {
-                        await statusPoller.check(
-                            bundleID: defaultBundleID(for: job.description.title)
-                        )
-                        // Only VALID means the build is installable;
-                        // the other finished states mean stop waiting
-                        // and go read Apple's email.
-                        if statusPoller.status?.state == "VALID" { advance(step) }
-                    }
+                    Task { await checkBuildStatus(announce: true) }
                 }
                 .disabled(statusPoller.isChecking)
                 markDoneButton(step, title: "Build finished processing")
 
             case .manual:
-                if step.number == ASCStep.all.count {
-                    PrimaryButton(title: "I submitted for review", systemImage: "paperplane.fill", style: .filled) {
-                        Task { await attemptFinalSubmit() }
-                    }
-                } else {
-                    markDoneButton(step, title: "I did this")
+                PrimaryButton(
+                    title: macPaired ? "Open App Store Connect on my Mac" : "Open App Store Connect",
+                    systemImage: macPaired ? "macbook" : "safari",
+                    style: .filled
+                ) { openAppStoreConnect() }
+                markDoneButton(step, title: "I did this")
+
+            case .reviewNotes:
+                if blocking.contains(where: { $0.field == .reviewNotes }) {
+                    Text("Your app has a sign-in, so the notes must tell the reviewer how to get in.")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(LiquidGlass.warning)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                markDoneButton(step, title: "I added this in App Store Connect")
+
+            case .submit:
+                PrimaryButton(title: "I submitted for review", systemImage: "paperplane.fill", style: .filled) {
+                    Task { await attemptFinalSubmit() }
+                }
+                .accessibilityHint("CodeGenie checks nothing is missing first, then tracks the review")
+
+            case .review:
+                // The status panel below carries the controls. A review
+                // step is never ticked by hand — it follows Apple.
+                Text("This step completes itself when Apple's status moves on.")
+                    .font(.system(size: 11, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
@@ -1517,6 +1617,7 @@ struct AppStoreConnectGuideView: View {
     private func advance(_ step: ASCStep) {
         store.markStepComplete(step.number, for: job.id)
         completed.insert(step.number)
+        record = store.record(for: job.id)
         Haptics.success()
         if let next = ASCStep.all.first(where: { $0.number > step.number }) {
             Motion.run(.spring(response: 0.4)) { current = next.number }
@@ -1855,6 +1956,16 @@ struct AppStoreConnectGuideView: View {
             return
         }
 
+        guard blocking.isEmpty else {
+            banner = Banner(
+                text: "Your listing still has \(blocking.count) problem\(blocking.count == 1 ? "" : "s") Apple will reject: \(blocking[0].message)",
+                tone: .warning
+            )
+            showMetadataEditor = true
+            Haptics.warning()
+            return
+        }
+
         if ASCCoach.isReadyForAppStoreSubmission(readiness) {
             showSubmitConfirm = true
         } else {
@@ -1990,6 +2101,10 @@ private struct ASCMetadataEditor: View {
                                   hint: "Required. A page where users can reach you.")
                             field("Marketing URL", text: $metadata.marketingURL, limit: nil,
                                   hint: "Optional. Leave empty rather than fake.")
+                            field("Privacy policy URL", text: optional(\.privacyPolicyURL), limit: nil,
+                                  hint: "Required for every app, even one that collects nothing.")
+                            field("Copyright", text: optional(\.copyright), limit: nil,
+                                  hint: "The year and the owner, e.g. 2026 Jane Appleseed. Apple adds the © itself.")
                             field("Category", text: $metadata.primaryCategory, limit: nil, hint: nil)
                             field("Price", text: $metadata.price, limit: nil, hint: nil)
                         }
@@ -2013,6 +2128,15 @@ private struct ASCMetadataEditor: View {
             }
         }
         .onAppear { keywordsText = ASCCoach.keywordString(metadata.keywords) }
+    }
+
+    /// Fields added after the first release are optional in storage so
+    /// older saved submissions still load; the form treats nil as "".
+    private func optional(_ keyPath: WritableKeyPath<AppStoreMetadata, String?>) -> Binding<String> {
+        Binding(
+            get: { metadata[keyPath: keyPath] ?? "" },
+            set: { metadata[keyPath: keyPath] = $0 }
+        )
     }
 
     private var issuesCard: some View {
@@ -2124,92 +2248,5 @@ private struct ASCMetadataEditor: View {
             .split(separator: ",")
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
-    }
-}
-
-// MARK: - Drafting
-
-extension AppStoreMetadata {
-    static let empty = AppStoreMetadata(
-        name: "", subtitle: "", primaryCategory: "", keywords: [],
-        description: "", promotionalText: "", supportURL: "",
-        marketingURL: "", ageRating: "4+", price: "Free"
-    )
-
-    static func draft(for app: AppDescription) -> AppStoreMetadata {
-        let featureWords = app.features
-            .flatMap { $0.split { !$0.isLetter && !$0.isNumber } }
-            .map { String($0).lowercased() }
-        let promptWords = app.prompt
-            .split { !$0.isLetter && !$0.isNumber }
-            .map { String($0).lowercased() }
-            .filter { $0.count > 3 }
-
-        // Keywords is a single 100-char field, so build up to the cap
-        // instead of taking a fixed count and blowing the limit.
-        var keywords: [String] = []
-        var budget = ASCCoach.Limit.keywordsTotal
-        for word in (featureWords + promptWords + [app.category.rawValue])
-            .map({ $0.replacingOccurrences(of: " ", with: "") })
-            .filter({ !$0.isEmpty })
-            .uniqued() {
-            let cost = word.count + (keywords.isEmpty ? 0 : 1)
-            guard budget - cost >= 0 else { continue }
-            keywords.append(word)
-            budget -= cost
-        }
-
-        return AppStoreMetadata(
-            name: String(app.title.prefix(ASCCoach.Limit.name)),
-            subtitle: String(app.subtitleDraft.prefix(ASCCoach.Limit.subtitle)),
-            primaryCategory: app.category.label,
-            keywords: keywords.isEmpty ? [app.category.rawValue] : keywords,
-            description: String(app.descriptionDraft.prefix(ASCCoach.Limit.description)),
-            promotionalText: "",
-            // Deliberately empty rather than example.com — a placeholder
-            // URL passes a naive check and then fails Apple's review.
-            // The coach flags empty as blocking so the user supplies a
-            // real one.
-            supportURL: "",
-            marketingURL: "",
-            ageRating: "4+",
-            price: "Free"
-        )
-    }
-}
-
-private extension AppDescription {
-    var subtitleDraft: String {
-        if let first = features.first, !first.isEmpty {
-            return String(first.prefix(30))
-        }
-        return switch category {
-        case .utility: "Fast, focused everyday help"
-        case .productivity: "Plan, build, and finish faster"
-        case .lifestyle: "A calmer daily ritual"
-        case .finance: "Money clarity at a glance"
-        case .social: "Share what matters now"
-        case .health: "Healthier habits, gently"
-        case .education: "Learn with less friction"
-        case .games: "Playful moments, polished"
-        case .photo: "Create standout visuals"
-        }
-    }
-
-    var descriptionDraft: String {
-        let base = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
-        var out = "\(title)\n\n\(base)"
-        if !features.isEmpty {
-            out += "\n\nWhat's inside:\n"
-            out += features.map { "• \($0)" }.joined(separator: "\n")
-        }
-        return out
-    }
-}
-
-private extension Array where Element: Hashable {
-    func uniqued() -> [Element] {
-        var seen: Set<Element> = []
-        return filter { seen.insert($0).inserted }
     }
 }

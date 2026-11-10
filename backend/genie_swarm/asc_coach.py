@@ -26,7 +26,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .llm import COACH_MODEL, LLMClient
-from .models import Message
+from .models import ASC_TOTAL_STEPS, Message
 
 
 # ---------------------------------------------------------------------------
@@ -148,12 +148,61 @@ and can be changed later without a new review. Charging money requires
 completed bank and tax details under Business, which can take days to
 clear.
 
+## Age rating
+
+App Information -> Age Rating. A questionnaire, not a number you pick:
+violence, mature themes, medical content, gambling, contests,
+unrestricted web access, user-generated content. Apple derives the
+rating. Understating it (for example answering None with chat or an
+in-app browser present) is checked after release and can pull the app.
+
+## App Review Information
+
+On the version page. Contact name, phone, email. Sign-In Required with
+a working test username and password if the app has any login. Notes
+telling the reviewer what the app does and where to tap first. A test
+account that has expired, needs a verification code, or opens to an
+empty screen counts as no account.
+
 ## Submitting
 
-On the app's App Store page: under Build click + and pick a build that
-finished processing. Answer Export Compliance, Content Rights, and
-Advertising Identifier. Then Add for Review -> Submit for Review. Apple
-requires the account holder to do this; it cannot be automated.
+On the version page: under Build click + and pick a build that finished
+processing. Answer Export Compliance and Content Rights. Choose Version
+Release: manual (you press Release after approval) or automatic. Then
+Add for Review -> Submit for Review. Add for Review alone sends
+nothing; the status must read Waiting for Review. Apple requires the
+account holder to do this; it cannot be automated.
+
+## What the review statuses mean
+
+- Prepare for Submission / Ready for Review: not submitted yet, or
+  bounced before reaching the queue (a red banner says why).
+- Waiting for Review: in the queue. Most apps are picked up within a
+  day. Editing the build or cancelling loses the place in the queue.
+- In Review: a person has it open. Minutes to a few hours. Keep any
+  server or test account running.
+- Rejected: the app fell short of a guideline. Needs a fix; may need a
+  new build.
+- Metadata Rejected: only the store page needs changing. Same build is
+  reused; no rebuild.
+- Invalid Binary: automated checks failed the upload. Reason arrives by
+  email. Needs a new build.
+- Developer Rejected: someone on the account withdrew it. Not a
+  judgement.
+- Pending Developer Release: approved, waiting for the developer to
+  press Release This Version.
+- Processing for Distribution: approved and propagating. Up to 24 hours.
+- Ready for Distribution (formerly Ready for Sale): live. Search can lag
+  the direct link by hours.
+
+## Responding to a rejection
+
+The message is under App Review on the app's page in App Store Connect
+and names a guideline number. Fix exactly what it describes, reply in
+that same thread saying what changed, then resubmit. Do not resubmit
+unchanged and do not argue the rule. If the reviewer misread the app,
+reply politely with specifics; if that fails, there is a formal appeal
+under Contact Us. Resubmitting as many times as needed is normal.
 
 ## Common rejections and what they actually mean
 
@@ -161,9 +210,23 @@ requires the account holder to do this; it cannot be automated.
   Apple's device, a broken feature, or placeholder content. Also
   triggered by a missing demo account when your app has a login.
 - Guideline 4.2 Minimum Functionality — the app is too thin, or is
-  essentially a repackaged website.
-- Guideline 5.1.1 Data Collection — asking for data you do not need, or
-  requiring an account for features that do not need one.
+  essentially a repackaged website. Needs real added functionality, not
+  a better argument.
+- Guideline 4.3 Spam — too similar to existing apps or to a common
+  template. Applied strictly to apps that look generated from a shared
+  starting point. A reply alone rarely works: the app needs a genuine
+  point of difference in content, audience or features. Renaming and
+  recolouring is not enough. Be honest with the user about this.
+- Guideline 4.8 Login Services — third-party sign-in without an
+  equivalent privacy-focused option such as Sign in with Apple.
+- Guideline 1.2 User-Generated Content — needs reporting, blocking and
+  filtering.
+- Guideline 3.1.1 In-App Purchase — digital goods sold outside Apple's
+  purchase system.
+- Guideline 5.1.1 Data Collection — asking for data you do not need,
+  requiring an account for features that do not need one, a permission
+  prompt that does not explain itself, or account creation without
+  in-app account deletion.
 - Guideline 2.3 Accurate Metadata — screenshots or description do not
   match what the app does. Placeholder or lorem-ipsum screenshots are a
   frequent cause.
@@ -251,7 +314,7 @@ class CoachContext:
     mac_paired: bool = False
     blocking_issues: list[str] = field(default_factory=list)
     outstanding_items: list[str] = field(default_factory=list)
-    total_steps: int = 12
+    total_steps: int = ASC_TOTAL_STEPS
 
     def render(self) -> str:
         lines = ["## Where this user is right now"]
@@ -299,8 +362,14 @@ _STEP_PROMPTS: dict[int, list[str]] = {
     8:  ["What screenshots do I need?", "What size should screenshots be?"],
     9:  ["How do keywords work?", "What should I write in the description?"],
     10: ["Do I collect data if everything stays on the phone?", "Do I need a privacy policy?"],
-    11: ["Should my app be free?", "Can I change the price later?"],
-    12: ["What happens after I submit?", "What if Apple rejects my app?"],
+    11: ["How do I answer the age rating questions?", "What counts as unrestricted web access?"],
+    12: ["Should my app be free?", "Can I change the price later?"],
+    13: ["What should I write in the review notes?", "Do I need to give Apple a test account?"],
+    14: ["My build isn't in the list", "What is export compliance?", "Manual or automatic release?"],
+    15: ["What happens after I submit?", "What does Add for Review do?"],
+    16: ["How long does review take?", "Can I speed up the review?", "Can I change something while I wait?"],
+    17: ["What does this rejection mean?", "Do I need to upload a new build?", "How do I reply to App Review?", "Can I appeal?"],
+    18: ["Why can't I find my app in search?", "How do I ship an update?"],
 }
 
 _GENERAL_PROMPTS = [

@@ -43,26 +43,31 @@ final class Credentials: ObservableObject {
 
     enum AuthMode: String, CaseIterable, Identifiable, Codable {
         case byok          // Bring your own API key
-        case subscription  // Use Claude Pro / ChatGPT Plus session
-        case codegenie     // CodeGenie-hosted (we eat the cost on a quota)
+        case codegenie     // CodeGenie-hosted plan
 
         var id: String { rawValue }
         var label: String {
             switch self {
-            case .byok:         "API key"
-            case .subscription: "Subscription"
-            case .codegenie:    "CodeGenie hosted"
+            case .byok:      "Your own API key"
+            case .codegenie: "CodeGenie plan"
             }
         }
         var blurb: String {
             switch self {
             case .byok:
-                "Paste your own Anthropic / OpenAI key. CodeGenie never sees the bill — you pay providers directly. Best price."
-            case .subscription:
-                "Sign into Claude Pro / Max or ChatGPT Plus on your Mac and we'll route through your existing subscription. No per-token cost."
+                "Paste your own Anthropic or OpenAI key. It is sent with each build over an encrypted connection, used for that build, and never stored on CodeGenie's servers. You pay the provider directly."
             case .codegenie:
-                "Use our hosted credits. 3 builds free, then $9.99/mo for unlimited Sonnet builds + 20 Opus builds."
+                "CodeGenie pays the AI bill and you pay CodeGenie through an App Store subscription."
             }
+        }
+
+        /// The hosted plan is offered only once purchases can be
+        /// verified on the server. Until then the app must not
+        /// describe plans a person cannot actually buy.
+        static let hostedPlanAvailable = false
+
+        static var offered: [AuthMode] {
+            hostedPlanAvailable || AppEnvironment.isUITesting ? [.byok, .codegenie] : [.byok]
         }
     }
 
@@ -71,7 +76,8 @@ final class Credentials: ObservableObject {
         openaiKey    = read(.openai) ?? ""
         backendToken = readBackendToken() ?? ""
         if let raw = UserDefaults.standard.string(forKey: "auth.mode"),
-           let mode = AuthMode(rawValue: raw) { authMode = mode }
+           let mode = AuthMode(rawValue: raw),
+           AuthMode.offered.contains(mode) { authMode = mode }
         if let id = UserDefaults.standard.string(forKey: "model.preferred") {
             preferredModelID = ModelCatalogue.currentID(for: id)
         }

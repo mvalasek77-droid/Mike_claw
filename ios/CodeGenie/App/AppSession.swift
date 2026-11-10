@@ -113,11 +113,29 @@ final class AppSession: ObservableObject {
         saveBackendIDs()
     }
 
+    /// Keep the saved job in step with the build as it progresses.
+    ///
+    /// The gallery reads `stage` from here. Nothing used to write it
+    /// back, so every app sat at "Planning your app, 5%" forever, and
+    /// Home could not tell a finished build from one that never ran.
+    func updateStage(_ stage: BuildJob.Stage, for jobID: UUID) {
+        guard let index = recentJobs.firstIndex(where: { $0.id == jobID }),
+              recentJobs[index].stage != stage
+        else { return }
+        recentJobs[index].stage = stage
+        if stage == .readyForTest || stage == .failed {
+            recentJobs[index].finishedAt = .now
+        }
+    }
+
     /// Remove a job from the gallery (user swipe-to-delete from Apps tab).
     func deleteJob(_ job: BuildJob) {
         recentJobs.removeAll { $0.id == job.id }
         backendJobIDs[job.id] = nil
         saveBackendIDs()
+        // A submission for an app that no longer exists here would
+        // linger on Home with nothing to open.
+        ASCSubmissionStore.shared.discard(jobID: job.id)
     }
 
     /// Open an existing job in the BuildScreen. If `backendID` is set
@@ -142,6 +160,15 @@ final class AppSession: ObservableObject {
     }
 
     func returnToBuildAfterPreview() {
+        // The user chose to go on to submission from the built-app
+        // screen. Present that now the first cover has finished
+        // dismissing; two covers changing in one update can drop one.
+        if let job = queuedSubmission {
+            queuedSubmission = nil
+            returnAfterPreview = nil
+            pendingASC = job
+            return
+        }
         guard let stash = returnAfterPreview else { return }
         returnAfterPreview = nil
         currentJobBackendID = stash.backendID
@@ -149,9 +176,16 @@ final class AppSession: ObservableObject {
     }
 
     func openAppStoreConnect(for job: BuildJob) {
+        if pendingPreview != nil {
+            queuedSubmission = job
+            pendingPreview = nil
+            return
+        }
         currentJob = nil
         pendingASC = job
     }
+
+    private var queuedSubmission: BuildJob?
 
     // MARK: - App lifecycle
 
@@ -167,6 +201,9 @@ final class AppSession: ObservableObject {
         case .active:
             activeSwarmClient?.resumeStream()
         case .inactive:
+            // Deliberately untouched. iPad's Stage Manager and the app
+            // switcher pass through here without backgrounding, and
+            // dropping the stream each time would flicker the build.
             break
         @unknown default:
             break

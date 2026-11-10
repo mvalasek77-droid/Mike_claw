@@ -60,13 +60,13 @@ final class ASCStatusPoller: ObservableObject {
 
     @Published private(set) var status: Status?
     @Published private(set) var isChecking = false
-    @Published private(set) var isPolling = false
     @Published private(set) var lastError: String?
 
     private let session: URLSession
+    /// Keyed by bundle ID, not a bare "have we looked yet" flag —
+    /// otherwise checking a second app on the same instance would
+    /// silently report the first app's build.
     private var appIDCache: [String: String] = [:]
-    private var pollTask: Task<Void, Never>?
-    private static let defaultPollInterval: TimeInterval = 60
 
     init(session: URLSession = .shared) {
         self.session = session
@@ -87,29 +87,55 @@ final class ASCStatusPoller: ObservableObject {
         }
     }
 
-    /// Start polling Apple at a regular interval until the build reaches
-    /// a terminal state (VALID, INVALID, FAILED, EXPIRED) or `stopPolling`
-    /// is called. Safe to call multiple times — restarts the timer.
-    func startPolling(bundleID: String, interval: TimeInterval = defaultPollInterval, credentials: Credentials? = nil) {
-        stopPolling()
-        isPolling = true
-        pollTask = Task { [weak self] in
-            while !Task.isCancelled {
-                guard let self else { return }
-                await self.check(bundleID: bundleID, credentials: credentials)
-                if let s = self.status, s.isFinished {
-                    self.isPolling = false
-                    return
-                }
-                try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+    /// Whether this phone holds what it needs to ask Apple anything.
+    /// Without an API key the guide falls back to the user reading the
+    /// status off App Store Connect themselves.
+    static func canAskApple(_ credentials: Credentials? = nil) -> Bool {
+        let creds = credentials ?? .shared
+        return !creds.ascKeyID.isEmpty && !creds.ascIssuerID.isEmpty && !creds.ascP8PEM.isEmpty
+    }
+
+    // MARK: - Review
+
+    @Published private(set) var isCheckingReview = false
+    @Published private(set) var reviewError: String?
+
+    /// Ask Apple where the submitted version stands in review.
+    ///
+    /// Returns nil on any failure, with the reason in `reviewError`.
+    /// A nil is never a state: the caller keeps whatever it knew.
+    func checkReview(bundleID: String, credentials: Credentials? = nil) async -> ASCReviewParser.Version? {
+        let creds = credentials ?? .shared
+        isCheckingReview = true
+        defer { isCheckingReview = false }
+        do {
+            guard Self.canAskApple(creds) else { throw PollError.noCredentials }
+            let token = try mintJWT(
+                keyID: creds.ascKeyID, issuerID: creds.ascIssuerID, pem: creds.ascP8PEM
+            )
+            let appID = try await cachedAppID(for: bundleID, token: token)
+            let body = try await get(
+                "https://api.appstoreconnect.apple.com/v1/apps/\(escape(appID))/appStoreVersions"
+                    + "?filter%5Bplatform%5D=IOS&limit=10",
+                token: token
+            )
+            guard let version = ASCReviewParser.currentVersion(in: body) else {
+                reviewError = "Apple has no App Store version for this app yet. Create one on the app's page in App Store Connect (step 9), then check again."
+                return nil
             }
+            reviewError = nil
+            return version
+        } catch {
+            reviewError = (error as? LocalizedError)?.errorDescription ?? "\(error)"
+            return nil
         }
     }
 
-    func stopPolling() {
-        pollTask?.cancel()
-        pollTask = nil
-        isPolling = false
+    private func cachedAppID(for bundleID: String, token: String) async throws -> String {
+        if let known = appIDCache[bundleID] { return known }
+        let resolved = try await resolveAppID(bundleID: bundleID, token: token)
+        appIDCache[bundleID] = resolved
+        return resolved
     }
 
     // MARK: - Apple
@@ -126,13 +152,7 @@ final class ASCStatusPoller: ObservableObject {
 
         // `/v1/builds` has no bundle-ID filter — Apple keys builds off
         // the numeric app id, so that has to be resolved first.
-        let appID: String
-        if let known = appIDCache[bundleID] {
-            appID = known
-        } else {
-            appID = try await resolveAppID(bundleID: bundleID, token: token)
-            appIDCache[bundleID] = appID
-        }
+        let appID = try await cachedAppID(for: bundleID, token: token)
 
         let builds = try await get(
             "https://api.appstoreconnect.apple.com/v1/builds"

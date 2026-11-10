@@ -2,9 +2,14 @@ import SwiftUI
 
 @main
 struct CodeGenieApp: App {
-    @StateObject private var session = AppSession()
-    @AppStorage("hasFinishedOnboarding") private var hasFinishedOnboarding = false
+    @StateObject private var session: AppSession
     @Environment(\.scenePhase) private var scenePhase
+
+    init() {
+        // Before the session exists: it reads saved state as it starts.
+        AppEnvironment.prepareForLaunch()
+        _session = StateObject(wrappedValue: AppSession())
+    }
 
     var body: some Scene {
         WindowGroup {

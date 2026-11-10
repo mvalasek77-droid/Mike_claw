@@ -91,3 +91,17 @@ def assistant_tool():
 
 
 # pytest's asyncio mode is enabled in pyproject.toml; nothing else needed here.
+
+
+@pytest.fixture(autouse=True)
+def _isolated_rate_limiter():
+    """The limiter is process-wide. Several tests tighten it to provoke
+    a 429; without this the tightened limit leaked into whichever test
+    ran next and failed it for an unrelated reason."""
+    from genie_swarm.middleware import rate_limiter
+
+    saved = (rate_limiter.max_requests, rate_limiter.window)
+    rate_limiter.reset()
+    yield
+    rate_limiter.max_requests, rate_limiter.window = saved
+    rate_limiter.reset()

@@ -11,57 +11,17 @@ import SwiftUI
 /// listing — they came back to a blank form and no idea where they'd
 /// stopped.
 ///
-/// Now each app gets a `Record` holding its completed steps and its
-/// live metadata draft, written to UserDefaults on every mutation. The
-/// user can close the app mid-submission, come back tomorrow, and
-/// resume on the exact step they left.
+/// Now each app gets a `Record` holding its completed steps, its live
+/// metadata draft and where it stands in review, written to
+/// UserDefaults on every mutation. The user can close the app
+/// mid-submission, come back tomorrow, and resume on the exact step
+/// they left.
 @MainActor
 final class ASCSubmissionStore: ObservableObject {
     static let shared = ASCSubmissionStore()
 
-    struct Record: Codable, Identifiable, Hashable {
-        /// The iOS-side BuildJob id this submission belongs to.
-        let jobID: UUID
-        var appTitle: String
-        var completedSteps: Set<Int>
-        var metadata: AppStoreMetadata
-        var startedAt: Date
-        var lastTouchedAt: Date
-        /// Set once the user has confirmed they pressed Submit in ASC.
-        var submittedAt: Date?
-        /// Result of the last mandatory pre-flight check (Perfection
-        /// Mode). Recorded so the guide can show "last checked" even
-        /// before a fresh recheck completes, and so Home's callout can
-        /// tell the difference between "hasn't started" and "was
-        /// blocked last time".
-        var lastPreflightPassed: Bool?
-        var lastPreflightScore: Double?
-        var lastPreflightAt: Date?
-        /// Submission-checklist items the user has personally ticked.
-        ///
-        /// Optional, not a defaulted non-optional: Swift's synthesized
-        /// decoder does NOT fall back to a property's default value
-        /// when the key is absent, it throws. Since the whole record
-        /// array is decoded with `try?`, one missing key would silently
-        /// wipe every saved submission written before this field
-        /// existed. Optional decodes to nil instead, and callers read
-        /// it through `?? []`.
-        var checkedItems: Set<String>?
-
-        var id: UUID { jobID }
-
-        var isComplete: Bool { submittedAt != nil }
-
-        var progressFraction: Double {
-            Double(completedSteps.count) / Double(ASCStep.all.count)
-        }
-
-        /// The step the user should land on when they resume.
-        var resumeStep: Int {
-            (1...ASCStep.all.count).first { !completedSteps.contains($0) }
-                ?? ASCStep.all.count
-        }
-    }
+    /// The rules live in `ASCSubmissionRecord`; this type only stores.
+    typealias Record = ASCSubmissionRecord
 
     @Published private(set) var records: [UUID: Record] = [:] {
         didSet { save() }
@@ -79,12 +39,18 @@ final class ASCSubmissionStore: ObservableObject {
         records[jobID]
     }
 
-    /// Every in-flight submission, newest activity first. Drives the
-    /// "Continue submission" callout on Home.
+    /// Every submission that isn't live yet, newest activity first.
+    /// Includes ones waiting on Apple's review — that is when a
+    /// first-timer most needs to find their way back.
     var inFlight: [Record] {
         records.values
-            .filter { !$0.isComplete && !$0.completedSteps.isEmpty }
+            .filter { !$0.isComplete && (!$0.completedSteps.isEmpty || $0.isSubmitted) }
             .sorted { $0.lastTouchedAt > $1.lastTouchedAt }
+    }
+
+    /// The one submission Home should talk about.
+    var primary: Record? {
+        Journey.primarySubmission(among: Array(records.values))
     }
 
     // MARK: - Mutation
@@ -98,57 +64,50 @@ final class ASCSubmissionStore: ObservableObject {
         let fresh = Record(
             jobID: job.id,
             appTitle: job.description.title,
-            completedSteps: [],
-            metadata: AppStoreMetadata.draft(for: job.description),
-            startedAt: .now,
-            lastTouchedAt: .now,
-            submittedAt: nil,
-            lastPreflightPassed: nil,
-            lastPreflightScore: nil,
-            lastPreflightAt: nil,
-            checkedItems: []
+            metadata: AppStoreMetadata.draft(for: job.description)
         )
         records[job.id] = fresh
         return fresh
     }
 
+    private func update(_ jobID: UUID, _ change: (inout Record) -> Void) {
+        guard var record = records[jobID] else { return }
+        change(&record)
+        records[jobID] = record
+    }
+
     func markStepComplete(_ step: Int, for jobID: UUID) {
-        guard var r = records[jobID] else { return }
-        r.completedSteps.insert(step)
-        r.lastTouchedAt = .now
-        records[jobID] = r
+        update(jobID) { $0.complete(step) }
     }
 
     func markStepIncomplete(_ step: Int, for jobID: UUID) {
-        guard var r = records[jobID] else { return }
-        r.completedSteps.remove(step)
-        r.lastTouchedAt = .now
-        records[jobID] = r
+        update(jobID) { $0.reopen(step) }
     }
 
     func updateMetadata(_ metadata: AppStoreMetadata, for jobID: UUID) {
-        guard var r = records[jobID] else { return }
-        r.metadata = metadata
-        r.lastTouchedAt = .now
-        records[jobID] = r
+        update(jobID) {
+            guard $0.metadata != metadata else { return }
+            $0.metadata = metadata
+            $0.lastTouchedAt = .now
+        }
     }
 
     func recordPreflight(passed: Bool, score: Double?, for jobID: UUID) {
-        guard var r = records[jobID] else { return }
-        r.lastPreflightPassed = passed
-        r.lastPreflightScore = score
-        r.lastPreflightAt = .now
-        r.lastTouchedAt = .now
-        records[jobID] = r
+        update(jobID) {
+            $0.lastPreflightPassed = passed
+            $0.lastPreflightScore = score
+            $0.lastPreflightAt = .now
+            $0.lastTouchedAt = .now
+        }
     }
 
     func setChecklistItem(_ itemID: String, checked: Bool, for jobID: UUID) {
-        guard var r = records[jobID] else { return }
-        var items = r.checkedItems ?? []
-        if checked { items.insert(itemID) } else { items.remove(itemID) }
-        r.checkedItems = items
-        r.lastTouchedAt = .now
-        records[jobID] = r
+        update(jobID) {
+            var items = $0.checkedItems ?? []
+            if checked { items.insert(itemID) } else { items.remove(itemID) }
+            $0.checkedItems = items
+            $0.lastTouchedAt = .now
+        }
     }
 
     func checkedItems(for jobID: UUID) -> Set<String> {
@@ -156,11 +115,23 @@ final class ASCSubmissionStore: ObservableObject {
     }
 
     func markSubmitted(for jobID: UUID) {
-        guard var r = records[jobID] else { return }
-        r.submittedAt = .now
-        r.completedSteps = Set(1...ASCStep.all.count)
-        r.lastTouchedAt = .now
-        records[jobID] = r
+        update(jobID) { $0.markSubmitted() }
+    }
+
+    /// Fold in a review status. Returns true when it changed.
+    @discardableResult
+    func applyReview(_ state: ASCReviewState, version: String? = nil, for jobID: UUID) -> Bool {
+        var changed = false
+        update(jobID) { changed = $0.applyReview(state, version: version) }
+        return changed
+    }
+
+    func markResubmitted(for jobID: UUID) {
+        update(jobID) { $0.markResubmitted() }
+    }
+
+    func noteRejectionGuideline(_ guideline: String?, for jobID: UUID) {
+        update(jobID) { $0.noteRejectionGuideline(guideline) }
     }
 
     func discard(jobID: UUID) {
@@ -182,6 +153,12 @@ final class ASCSubmissionStore: ObservableObject {
         guard let data = UserDefaults.standard.data(forKey: Self.storageKey),
               let decoded = try? JSONDecoder().decode([Record].self, from: data)
         else { return }
-        records = Dictionary(uniqueKeysWithValues: decoded.map { ($0.jobID, $0) })
+        // Keyed without trapping on a duplicate: a corrupt store should
+        // lose one record, not crash the app at launch.
+        let migrated = decoded.map(Record.migrate)
+        records = Dictionary(
+            migrated.map { ($0.jobID, $0) },
+            uniquingKeysWith: { a, b in a.lastTouchedAt >= b.lastTouchedAt ? a : b }
+        )
     }
 }

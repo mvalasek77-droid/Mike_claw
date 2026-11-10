@@ -90,7 +90,7 @@ final class SwarmClient: ObservableObject {
             .filter { $0.enabled }
             .map { $0.wireForm }
         if !custom.isEmpty { body["custom_agents"] = custom }
-        let response: [String: Any] = try await postJSON("/api/coding/swarm/build", body: body)
+        let response: [String: Any] = try await postJSON("/api/coding/swarm/build", body: body, sendsProviderKeys: true)
         guard let id = response["job_id"] as? String else {
             throw SwarmError.malformed("missing job_id")
         }
@@ -105,7 +105,7 @@ final class SwarmClient: ObservableObject {
     /// Pick up a cancelled or failed job from its latest checkpoint.
     /// Throws if the backend can't find the saved session.
     func resume(jobID: String) async throws {
-        _ = try await postJSON("/api/coding/swarm/\(jobID)/resume", body: [:])
+        _ = try await postJSON("/api/coding/swarm/\(jobID)/resume", body: [:], sendsProviderKeys: true)
     }
 
     /// Soft-pause the orchestrator between agents.
@@ -365,7 +365,7 @@ final class SwarmClient: ObservableObject {
     /// long before a build exists and long after one is archived, and
     /// those are exactly the moments they most need an answer.
     func ascCoach(body: [String: Any]) async throws -> [String: Any] {
-        try await postJSON("/api/coding/swarm/asc/coach", body: body)
+        try await postJSON("/api/coding/swarm/asc/coach", body: body, sendsProviderKeys: true)
     }
 
     /// Export endpoint URL without credentials for display/share-sheet
@@ -597,8 +597,16 @@ final class SwarmClient: ObservableObject {
 
     // MARK: - HTTP helpers
 
-    private func postJSON(_ path: String, body: [String: Any]) async throws -> [String: Any] {
-        try await withRetry {
+    /// `sendsProviderKeys` is set only on requests that spend tokens.
+    /// The key rides in a header over TLS for that one request; the
+    /// server uses it for the job and keeps no copy.
+    private func postJSON(
+        _ path: String,
+        body: [String: Any],
+        sendsProviderKeys: Bool = false
+    ) async throws -> [String: Any] {
+        let providerKeys = sendsProviderKeys ? self.providerKeyHeaders() : [:]
+        return try await withRetry {
             guard let url = URL(string: self.credentials.backendURL + path) else { throw SwarmError.malformed("bad url") }
             var req = URLRequest(url: url)
             req.httpMethod = "POST"
@@ -606,6 +614,9 @@ final class SwarmClient: ObservableObject {
             req.setValue("application/json", forHTTPHeaderField: "Content-Type")
             if !self.credentials.backendToken.isEmpty {
                 req.setValue("Bearer \(self.credentials.backendToken)", forHTTPHeaderField: "Authorization")
+            }
+            for (header, value) in providerKeys {
+                req.setValue(value, forHTTPHeaderField: header)
             }
             req.httpBody = try JSONSerialization.data(withJSONObject: body)
 
@@ -615,6 +626,17 @@ final class SwarmClient: ObservableObject {
             }
             return (try JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
         }
+    }
+
+    private func providerKeyHeaders() -> [String: String] {
+        guard credentials.authMode == .byok,
+              // Never over plain HTTP, whatever the server address says.
+              credentials.backendURL.lowercased().hasPrefix("https://")
+        else { return [:] }
+        var headers: [String: String] = [:]
+        if !credentials.anthropicKey.isEmpty { headers["X-Anthropic-Key"] = credentials.anthropicKey }
+        if !credentials.openaiKey.isEmpty { headers["X-OpenAI-Key"] = credentials.openaiKey }
+        return headers
     }
 
     private func getJSON(_ path: String) async throws -> [String: Any] {
@@ -1177,42 +1199,5 @@ struct GitHubSyncResult: Hashable {
         remote = json["remote"] as? String ?? ""
         prRequested = json["pr_requested"] as? Bool ?? false
         prURL = json["pr_url"] as? String ?? ""
-    }
-}
-
-struct ReleaseReadinessRun: Hashable {
-    var releaseGate: String
-    var score: Int
-    var summary: String
-    var nextActions: [String]
-    var items: [ReleaseReadinessItem]
-
-    var isReadyForTestFlight: Bool { releaseGate == "ready_for_testflight" }
-
-    init(json: [String: Any]) {
-        releaseGate = json["release_gate"] as? String ?? "needs_setup"
-        score = json["score"] as? Int ?? 0
-        summary = json["summary"] as? String ?? ""
-        nextActions = json["next_actions"] as? [String] ?? []
-        items = ((json["items"] as? [[String: Any]]) ?? []).map(ReleaseReadinessItem.init(json:))
-    }
-}
-
-struct ReleaseReadinessItem: Identifiable, Hashable {
-    var key: String
-    var title: String
-    var status: String
-    var detail: String
-    var action: String
-    var required: Bool
-    var id: String { key }
-
-    init(json: [String: Any]) {
-        key = json["key"] as? String ?? UUID().uuidString
-        title = json["title"] as? String ?? key
-        status = json["status"] as? String ?? "needs_setup"
-        detail = json["detail"] as? String ?? ""
-        action = json["action"] as? String ?? ""
-        required = json["required"] as? Bool ?? false
     }
 }

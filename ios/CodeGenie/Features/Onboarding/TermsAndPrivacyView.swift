@@ -102,7 +102,7 @@ struct TermsAndPrivacyView: View {
     private var costsCard: some View {
         GlassCard(title: "Costs you should know about", icon: "dollarsign.circle.fill", tint: LiquidGlass.warning) {
             VStack(alignment: .leading, spacing: 8) {
-                bullet("**CodeGenie**: free for your first 3 builds. After that, pay-as-you-go (≈$0.50 per build with the default model) or $9.99/month for unlimited Sonnet + 20 Opus builds. Or bring your own Anthropic/OpenAI key and pay them directly.")
+                bullet("**AI usage**: you add your own Anthropic or OpenAI API key and pay them directly for what each build uses — typically well under a dollar with the default model. CodeGenie shows an estimate before every build.")
                 bullet("**Apple Developer Program**: $99 USD per year. Required only if you want to ship your app to the App Store or TestFlight. Optional for previewing on your own iPhone.")
                 bullet("**The App Store itself**: free to publish to. Apple takes a 15-30% cut only if you charge users for the app or sell in-app purchases.")
                 bullet("**GitHub**: free. We'll walk you through signup if you don't already have an account.")

@@ -8,6 +8,9 @@ submission is broken".
 """
 from __future__ import annotations
 
+import re
+from pathlib import Path
+
 import pytest
 
 from genie_swarm.asc_coach import (
@@ -18,7 +21,7 @@ from genie_swarm.asc_coach import (
     suggested_questions,
 )
 from genie_swarm.llm import LLMResponse
-from genie_swarm.models import Message
+from genie_swarm.models import ASC_TOTAL_STEPS, Message
 
 
 class FakeLLM:
@@ -67,7 +70,7 @@ async def test_users_live_situation_reaches_the_prompt():
     for expected in [
         "TideRider",
         "com.codegenie.tiderider",
-        "step 2 of 12",
+        "step 2 of 18",
         "Support URL is missing.",
         "Distribution IPA: none found.",
     ]:
@@ -161,15 +164,59 @@ async def test_provider_failure_propagates_for_the_route_to_translate():
 # ---------------------------------------------------------------------------
 
 def test_every_step_offers_questions():
-    for step in range(1, 13):
+    for step in range(1, ASC_TOTAL_STEPS + 1):
         assert suggested_questions(step), f"step {step} has no suggested questions"
 
 
 def test_suggestions_are_step_specific():
     assert any("bundle ID" in q for q in suggested_questions(2))
     assert any("screenshot" in q.lower() for q in suggested_questions(8))
-    assert any("reject" in q.lower() for q in suggested_questions(12))
+    assert any("reject" in q.lower() for q in suggested_questions(17))
 
 
 def test_suggestions_work_with_no_step():
     assert suggested_questions(None)
+
+
+# --------------------------------------------------------------------------- #
+# Staying in step with the phone
+# --------------------------------------------------------------------------- #
+
+_IOS = Path(__file__).resolve().parents[3] / "ios" / "CodeGenie"
+
+
+def _swift_step_numbers() -> list[int]:
+    source = (_IOS / "Models" / "ASCStep.swift").read_text(encoding="utf-8")
+    return [int(n) for n in re.findall(r"\.init\(number: (\d+),", source)]
+
+
+def test_step_count_matches_the_ios_guide():
+    numbers = _swift_step_numbers()
+    assert numbers == list(range(1, ASC_TOTAL_STEPS + 1))
+
+
+def test_phone_and_server_offer_the_same_questions_per_step():
+    """The phone shows its own copy of the chips until the first answer
+    arrives; if the two lists drift the chips change under the user."""
+    source = (_IOS / "Services" / "ASCCoachChat.swift").read_text(encoding="utf-8")
+    for step in range(1, ASC_TOTAL_STEPS + 1):
+        for question in suggested_questions(step)[:-1]:
+            assert f'"{question}"' in source, f"step {step}: {question!r} missing on the phone"
+
+
+def test_request_accepts_every_step_and_rejects_beyond():
+    from pydantic import ValidationError
+    from genie_swarm.models import ASCCoachRequest
+    ASCCoachRequest(question="q", step_number=ASC_TOTAL_STEPS)
+    with pytest.raises(ValidationError):
+        ASCCoachRequest(question="q", step_number=ASC_TOTAL_STEPS + 1)
+
+
+@pytest.mark.parametrize("needle", [
+    "Waiting for Review", "In Review", "Metadata Rejected",
+    "Pending Developer Release", "4.3", "Add for Review alone sends",
+    "Age rating", "App Review Information", "appeal",
+])
+def test_curriculum_covers_the_review_phase(needle):
+    from genie_swarm.asc_coach import SYSTEM_PROMPT
+    assert needle in SYSTEM_PROMPT
