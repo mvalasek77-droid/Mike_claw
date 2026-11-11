@@ -118,7 +118,13 @@ class CodeGenieTestBase: XCTestCase {
         let cta = app.buttons.matching(
             NSPredicate(format: "label CONTAINS[c] 'Start' AND label CONTAINS[c] 'build'")
         ).firstMatch
-        if cta.waitForExistence(timeout: 5) {
+        // A fresh Home leads with the next-step card; once an app
+        // exists, "Start a new build" sits below it.
+        let nextStep = app.buttons["journey.primaryAction"]
+        let describe = app.staticTexts["Describe the app you want"]
+        if describe.waitForExistence(timeout: 3), nextStep.exists {
+            nextStep.tap()
+        } else if cta.waitForExistence(timeout: 3) {
             cta.tap()
         } else {
             selectTab("Build")
