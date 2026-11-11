@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Shown while a build runs. Top half is the live progress orb + log,
 /// bottom half is the BitDrop mini-game so the user has something fun to
-/// do — and earns small build-speed boosts as a reward for playing.
+/// do while they wait. The game has no effect on the build.
 struct BuildScreen: View {
     @EnvironmentObject private var session: AppSession
     @Environment(\.dismiss) private var dismiss
@@ -47,7 +47,7 @@ struct BuildScreen: View {
             case .pipeline:
                 "Your app is built by a team of eight AI specialists working in order — Architect plans the structure, Coder writes Swift, Designer makes it look good, Integrator wires everything together, then Unit Tester, UI Tester, Reviewer, and Security Auditor sign off. The list shows where they are right now."
             case .bitdrop:
-                "A small built-in puzzle game so you have something to do while the AI works. It's optional — every cleared row gives a tiny build-speed boost as a thank-you, but ignoring it won't slow your app down."
+                "A small built-in puzzle game so you have something to do while the AI works. It's optional and has no effect on your build — it only passes the time."
             case .perfection:
                 "A 10,000-probe quality check across nine axes — Apple Review readiness, accessibility, performance, security, polish, and more. Run it before submitting to the App Store. If it flags blockers, fix them; if it's green, you have a much better shot at getting through App Review on the first try."
             }
@@ -384,7 +384,7 @@ struct BuildScreen: View {
             VStack(spacing: 10) {
                 jargonTip("A small puzzle to play while CodeGenie builds. Totally optional.") { jargonHelp = .bitdrop }
                 BitDropView(game: game)
-                Text("Clear rows of Swift symbols. Every row gives a 2% build-speed boost.")
+                Text("Clear rows of Swift symbols while your app builds.")
                     .font(.system(size: 12, weight: .regular, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
                     .multilineTextAlignment(.center)

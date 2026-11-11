@@ -78,7 +78,7 @@ final class ClientConnection {
         let payload = (message["payload"] as? [String: Any]) ?? [:]
 
         if !authenticated {
-            if type == "auth", let provided = payload["token"] as? String, provided == expectedToken {
+            if type == "auth", let provided = payload["token"] as? String, Self.equal(provided, expectedToken) {
                 authenticated = true
                 send(envelope: [
                     "v": 1, "kind": "response", "in_response_to": id, "ok": true,
@@ -109,6 +109,17 @@ final class ClientConnection {
                 ])
             }
         }
+    }
+
+    /// Compared without stopping at the first difference, so response
+    /// time says nothing about how much of a guess was right.
+    static func equal(_ a: String, _ b: String) -> Bool {
+        let x = Array(a.utf8), y = Array(b.utf8)
+        var difference = UInt8(truncatingIfNeeded: x.count ^ y.count)
+        for index in 0..<max(x.count, y.count) {
+            difference |= (index < x.count ? x[index] : 0) ^ (index < y.count ? y[index] : 0)
+        }
+        return difference == 0 && x.count == y.count
     }
 
     // MARK: Send

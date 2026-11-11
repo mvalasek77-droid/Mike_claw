@@ -91,15 +91,33 @@ final class T02_HomeScreenTests: CodeGenieTestBase {
         }
     }
 
-    // MARK: - Quality checklist
+    // MARK: - Next step
 
-    func test09_qualityChecklistExists() {
-        scrollDown(times: 3)
-        let checklist = app.otherElements.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Quality checklist'")
-        ).firstMatch
-        assertExists(checklist, "Quality checklist card should exist on Home")
-        screenshot("09-quality-checklist")
+    func test09_homeNamesOneNextStep() {
+        let card = app.descendants(matching: .any)["journey.card"]
+        assertExists(card, "Home should lead with a single next step")
+        assertExists(app.staticTexts["Describe the app you want"],
+                     "With nothing built yet, the next step is to describe an app")
+        let action = app.buttons["journey.primaryAction"]
+        assertExists(action, "The next step needs one button")
+        XCTAssertFalse(
+            app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] 'Quality checklist'")).firstMatch.exists,
+            "Home must not show a checklist of claims nothing verifies"
+        )
+        screenshot("09-next-step")
+    }
+
+    func test09b_nextStepOpensTheDescribeForm() {
+        let action = app.buttons["journey.primaryAction"]
+        guard action.waitForExistence(timeout: 3) else {
+            XCTFail("Next-step button missing"); return
+        }
+        action.tap()
+        let describe = app.staticTexts["Describe your app"]
+        let prompt = app.staticTexts["Two paths from here"]
+        XCTAssertTrue(describe.waitForExistence(timeout: 3) || prompt.waitForExistence(timeout: 2),
+                      "The next step should lead straight into describing an app")
+        screenshot("09b-next-step-opens-describe")
     }
 
     // MARK: - Experience compass

@@ -1,28 +1,51 @@
 import Foundation
 import Network
 
-/// A minimal WebSocket-ish server that speaks the CodeGenie Companion
-/// protocol described in `docs/COMPANION_PROTOCOL.md`.
+/// The listener for the CodeGenie Companion protocol described in
+/// `docs/COMPANION_PROTOCOL.md`: newline-delimited JSON over TLS.
 ///
-/// We use Apple's `Network.framework` instead of pulling in a full
-/// WebSocket library so the daemon stays a single binary with no
-/// external dependencies. The framing implemented here is a pragmatic
-/// subset of RFC 6455 — enough to talk to URLSessionWebSocketTask on
-/// the iOS side, not enough to be a general-purpose WebSocket server.
+/// Built on `Network.framework` so the daemon stays a single binary
+/// with no external dependencies.
 public final class CompanionServer {
     public struct Pairing {
         public let host: String
         public let port: UInt16
         public let token: String
+        /// SHA-256 of this Mac's certificate. The phone accepts only a
+        /// certificate with this fingerprint.
+        public let fingerprint: String
+
+        public var url: String {
+            var components = URLComponents()
+            components.scheme = "codegenie"
+            components.host = "pair"
+            components.queryItems = [
+                URLQueryItem(name: "host", value: host),
+                URLQueryItem(name: "port", value: String(port)),
+                URLQueryItem(name: "token", value: token),
+                URLQueryItem(name: "fp", value: fingerprint),
+            ]
+            return components.string ?? ""
+        }
     }
 
     private let listener: NWListener
     private let token: String
+    private let fingerprint: String
     private var connections: [UUID: ClientConnection] = [:]
     private let queue = DispatchQueue(label: "com.codegenie.companion.server")
 
     public init(port: UInt16) throws {
-        let params = NWParameters(tls: nil)
+        let identity = try TLSIdentity.loadOrCreate()
+        let tls = NWProtocolTLS.Options()
+        sec_protocol_options_set_min_tls_protocol_version(tls.securityProtocolOptions, .TLSv12)
+        guard let local = sec_identity_create(identity.identity) else {
+            throw TLSIdentity.Failure.noIdentity
+        }
+        sec_protocol_options_set_local_identity(tls.securityProtocolOptions, local)
+        self.fingerprint = identity.fingerprint
+
+        let params = NWParameters(tls: tls)
         params.allowLocalEndpointReuse = true
         params.includePeerToPeer = false
         let nwPort = port == 0 ? .any : NWEndpoint.Port(rawValue: port) ?? .any
@@ -40,7 +63,20 @@ public final class CompanionServer {
         let port = try await waitForPort()
         // Bonjour
         listener.service = NWListener.Service(name: "CodeGenie", type: "_codegenie-companion._tcp")
-        return Pairing(host: "127.0.0.1", port: port, token: token)
+        // The name other devices on the network can reach this Mac by.
+        // It used to report 127.0.0.1, which on the phone is the phone.
+        return Pairing(
+            host: Self.reachableHostName(),
+            port: port,
+            token: token,
+            fingerprint: fingerprint
+        )
+    }
+
+    static func reachableHostName() -> String {
+        let name = ProcessInfo.processInfo.hostName
+        if name.isEmpty || name == "localhost" { return "localhost" }
+        return name.contains(".") ? name : name + ".local"
     }
 
     public func stop() {

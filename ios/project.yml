@@ -67,12 +67,35 @@ targets:
           DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
           SWIFT_COMPILATION_MODE: wholemodule
 
+  CodeGenieUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: CodeGenieUITests
+        excludes:
+          - "*.md"
+          - "*.sh"
+    dependencies:
+      - target: CodeGenie
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.codegenie.app.uitests
+        TEST_TARGET_NAME: CodeGenie
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_STYLE: Automatic
+
 schemes:
   CodeGenie:
     build:
       targets:
         CodeGenie: all
+        CodeGenieUITests: [test]
     run:
       config: Debug
+    test:
+      config: Debug
+      targets:
+        - CodeGenieUITests
     archive:
       config: Release

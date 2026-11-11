@@ -20,7 +20,7 @@ final class T11_ASCSubmissionFlowTests: CodeGenieTestBase {
     func test01_ascGuideReachableFromBuildSuccess() {
         openBuildSuccessOverlay()
         let walkthrough = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Walk me through'")
+            NSPredicate(format: "label CONTAINS[c] 'Put it on my iPhone'")
         ).firstMatch
         assertExists(walkthrough,
                      "Build success must offer the submission walkthrough")
@@ -33,20 +33,20 @@ final class T11_ASCSubmissionFlowTests: CodeGenieTestBase {
     func test02_guideOpensOnASingleFocusedStep() {
         openASCGuide()
 
-        assertExists(app.staticTexts["Step 1 of 12"],
+        assertExists(app.staticTexts["Step 1 of 18"],
                      "The guide should say exactly which step you're on")
         assertExists(app.staticTexts["Sign in to Apple's website"],
                      "The focused step should be titled in plain language")
 
-        XCTAssertFalse(app.staticTexts["Step 7 of 12"].exists,
+        XCTAssertFalse(app.staticTexts["Step 7 of 18"].exists,
                        "Later steps must not be on screen — that's the whole point of focus mode")
         screenshot("02-single-focused-step")
     }
 
-    func test03_allTwelveStepsAreReachableOnRequest() {
+    func test03_everyStepIsReachableOnRequest() {
         openASCGuide()
         waitAndTap(app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'See all 12 steps'")
+            NSPredicate(format: "label CONTAINS[c] 'See all 18 steps'")
         ).firstMatch)
 
         assertExists(app.staticTexts["Part 1 — Get it on your phone"],
@@ -54,6 +54,8 @@ final class T11_ASCSubmissionFlowTests: CodeGenieTestBase {
         scrollDown(times: 4)
         assertExists(app.staticTexts["Part 2 — Put it on the App Store"],
                      "Phase 2 header should render in the overview")
+        assertExists(app.staticTexts["Part 3 — Through Apple's review"],
+                     "The review phase should be listed after submission")
         screenshot("03-full-overview")
     }
 
@@ -315,24 +317,32 @@ final class T11_ASCSubmissionFlowTests: CodeGenieTestBase {
     /// the moment of truth rather than letting stale state through.
     func test19_finalSubmitIsBlockedWithoutVerifiedReadiness() {
         openASCGuide()
-        jumpToStep(12)
+        jumpToStep(15)
         let submitted = app.buttons.matching(
             NSPredicate(format: "label CONTAINS[c] 'I submitted for review'")
         ).firstMatch
         guard submitted.waitForExistence(timeout: 4) else {
-            XCTFail("Step 12 submit action missing"); return
+            XCTFail("Step 15 submit action missing"); return
         }
         submitted.tap()
 
-        assertExists(app.navigationBars["A few things are still missing"],
-                     "Submit must re-verify the release checklist and block on what's outstanding, not just ask the user to confirm")
+        // With nothing confirmed, the user's own checklist stops the
+        // submit first; with that settled, the readiness audit does.
+        let checklist = app.navigationBars["Before you submit"]
+        let audit = app.navigationBars["A few things are still missing"]
+        XCTAssertTrue(
+            checklist.waitForExistence(timeout: 4) || audit.waitForExistence(timeout: 2),
+            "Submit must be blocked on what's outstanding, not just ask the user to confirm"
+        )
+        XCTAssertFalse(app.alerts["Did you press Submit in App Store Connect?"].exists,
+                       "The confirmation must not appear while anything is outstanding")
         screenshot("19-submit-blocked")
     }
 
     func test20_progressBarReflectsCompletedSteps() {
         openASCGuide()
         let progress = app.otherElements.matching(
-            NSPredicate(format: "label CONTAINS[c] 'of 12 steps complete'")
+            NSPredicate(format: "label CONTAINS[c] 'of 18 steps complete'")
         ).firstMatch
         assertExists(progress, "Progress should be announced for VoiceOver")
         screenshot("20-progress")
@@ -343,7 +353,7 @@ final class T11_ASCSubmissionFlowTests: CodeGenieTestBase {
     func test21_preflightChecksBeforeAnythingElseIsShown() {
         openBuildSuccessOverlay()
         let walkthrough = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Walk me through'")
+            NSPredicate(format: "label CONTAINS[c] 'Put it on my iPhone'")
         ).firstMatch
         guard walkthrough.waitForExistence(timeout: 10) else { return }
         walkthrough.tap()
@@ -363,7 +373,7 @@ final class T11_ASCSubmissionFlowTests: CodeGenieTestBase {
     func test22_unverifiableBuildOffersExplicitEscapeHatch() {
         openBuildSuccessOverlay()
         let walkthrough = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Walk me through'")
+            NSPredicate(format: "label CONTAINS[c] 'Put it on my iPhone'")
         ).firstMatch
         guard walkthrough.waitForExistence(timeout: 10) else { return }
         walkthrough.tap()
@@ -377,7 +387,7 @@ final class T11_ASCSubmissionFlowTests: CodeGenieTestBase {
         screenshot("22-unverifiable-escape-hatch")
         skip.tap()
 
-        assertExists(app.staticTexts["Step 1 of 12"],
+        assertExists(app.staticTexts["Step 1 of 18"],
                      "Explicitly skipping verification should reach the focused guide")
     }
 
@@ -459,7 +469,7 @@ final class T11_ASCSubmissionFlowTests: CodeGenieTestBase {
     private func openASCGuide() {
         openBuildSuccessOverlay()
         let walkthrough = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Walk me through'")
+            NSPredicate(format: "label CONTAINS[c] 'Put it on my iPhone'")
         ).firstMatch
         guard walkthrough.waitForExistence(timeout: 10) else { return }
         walkthrough.tap()
@@ -468,14 +478,81 @@ final class T11_ASCSubmissionFlowTests: CodeGenieTestBase {
         if skip.waitForExistence(timeout: 6) {
             skip.tap()
         }
-        _ = app.staticTexts["Step 1 of 12"].waitForExistence(timeout: 5)
+        _ = app.staticTexts["Step 1 of 18"].waitForExistence(timeout: 5)
+    }
+
+    // MARK: - New store steps and the review phase
+
+    func test27_ageRatingHasItsOwnStep() {
+        openASCGuide()
+        jumpToStep(11)
+        assertExists(app.staticTexts["Tell Apple who the app is suitable for"],
+                     "Age rating is a required questionnaire and needs its own walkthrough")
+        screenshot("27-age-rating")
+    }
+
+    func test28_reviewNotesStepDraftsNotesAndFlagsBlanks() {
+        openASCGuide()
+        jumpToStep(13)
+        assertExists(app.staticTexts["Give the reviewer what they need"],
+                     "App Review Information should have a walkthrough")
+        scrollDown(times: 3)
+        assertExists(app.staticTexts["Notes for the reviewer"],
+                     "The step should offer an editable draft of the notes")
+        let blanks = app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS[c] 'still to fill in'")
+        ).firstMatch
+        assertExists(blanks, "A fresh draft has blanks only the user can fill, and should say so")
+        assertExists(app.buttons["Copy notes"], "Notes should be copyable for pasting into App Store Connect")
+        screenshot("28-review-notes")
+    }
+
+    func test29_reviewStepsCannotBeUsedBeforeSubmitting() {
+        openASCGuide()
+        jumpToStep(16)
+        assertExists(app.staticTexts["Wait for a reviewer"],
+                     "The queue step should explain itself")
+        scrollDown(times: 3)
+        assertExists(app.staticTexts["Nothing to track yet"],
+                     "Review status controls must not be offered for an app that hasn't been submitted")
+        XCTAssertFalse(app.buttons["Check with Apple"].exists,
+                       "No status check before there is a submission")
+        screenshot("29-review-before-submit")
+    }
+
+    func test30_reviewStepsAreNeverTickedByHand() {
+        openASCGuide()
+        jumpToStep(17)
+        assertExists(app.staticTexts["Act on Apple's answer"],
+                     "The decision step should explain itself")
+        let manual = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] 'I did this'")
+        ).firstMatch
+        XCTAssertFalse(manual.waitForExistence(timeout: 1),
+                       "A review step follows Apple's status and must not have a manual done button")
+        screenshot("30-review-not-manual")
+    }
+
+    func test31_listingRequiresPrivacyPolicyAndCopyright() {
+        openASCGuide()
+        jumpToStep(9)
+        scrollDown(times: 3)
+        let privacy = app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS[c] 'Privacy policy'")
+        ).firstMatch
+        assertExists(privacy, "Apple requires a privacy policy URL for every app; the listing must show it")
+        let copyright = app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS[c] 'Copyright'")
+        ).firstMatch
+        assertExists(copyright, "Copyright is a required field on the version page")
+        screenshot("31-required-fields")
     }
 
     /// Focus mode shows one step at a time, so tests navigate the way a
     /// user does: open the overview, tap the step they want.
     private func jumpToStep(_ number: Int) {
         let toggle = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'See all 12 steps'")
+            NSPredicate(format: "label CONTAINS[c] 'See all 18 steps'")
         ).firstMatch
         guard toggle.waitForExistence(timeout: 5) else {
             XCTFail("Overview toggle missing — cannot reach step \(number)"); return
@@ -492,6 +569,6 @@ final class T11_ASCSubmissionFlowTests: CodeGenieTestBase {
             XCTFail("Step \(number) row not found in the overview"); return
         }
         row.tap()
-        _ = app.staticTexts["Step \(number) of 12"].waitForExistence(timeout: 4)
+        _ = app.staticTexts["Step \(number) of 18"].waitForExistence(timeout: 4)
     }
 }

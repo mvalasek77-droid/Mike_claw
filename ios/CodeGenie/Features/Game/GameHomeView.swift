@@ -63,7 +63,7 @@ struct GameHomeView: View {
                 Text("BitDrop")
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText)
-                Text("Stack Swift symbols. Clear rows. Earn build boosts.")
+                Text("Stack Swift symbols. Clear rows. Beat your best.")
                     .font(.system(size: 13, weight: .regular, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
             }
@@ -156,7 +156,7 @@ struct GameHomeView: View {
                 VStack(spacing: 14) {
                     Text("BitDrop").font(.system(size: 22, weight: .bold, design: .rounded))
                         .foregroundStyle(LiquidGlass.primaryText)
-                    Text("Stack falling Swift symbols (`{`, `}`, `→`, `•`) to fill rows. Cleared rows earn points and (during a real build) a 2% build-speed boost.")
+                    Text("Stack falling Swift symbols (`{`, `}`, `→`, `•`) to fill rows. Cleared rows earn points. It is here to pass the time while a build runs.")
                         .font(.system(size: 14, weight: .regular, design: .rounded))
                         .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
                         .multilineTextAlignment(.center)

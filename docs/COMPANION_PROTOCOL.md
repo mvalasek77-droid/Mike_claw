@@ -1,38 +1,49 @@
 # CodeGenie Companion Protocol
 
-Lightweight WebSocket bridge between the iOS app and a daemon running on
-the user's Mac. The phone tells the Mac to "open Xcode at this path",
-"open Safari at App Store Connect step 3", "build the app", "screenshot
-this URL" — keeping the user in the iPhone UI but reaching into the
-Mac when the task needs Xcode, Safari, or a real keyboard.
+An encrypted link between the iOS app and a daemon running on the
+user's Mac. The phone tells the Mac to "open Xcode at this path",
+"open Safari at App Store Connect", "archive and upload this app" —
+keeping the user in the iPhone UI but reaching into the Mac when the
+task needs Xcode, Safari, or a signing identity.
 
 ## Threat model & guarantees
 
-- **Local network only.** The companion binds to `127.0.0.1` plus the
-  device's link-local IPv6 address. Nothing is exposed to the internet.
-- **Pairing is mandatory.** A short-lived QR code shown by the daemon
-  carries `(host, port, token)` — the iOS client stores the token in
-  Keychain. Every subsequent connection presents the token in the
-  WebSocket subprotocol header.
-- **Tokens are revocable.** The daemon's tray icon has "Revoke all
-  tokens" → instantly rotates the secret and disconnects everyone.
+- **Local network only.** The companion listens on the Mac's local
+  network interfaces. Nothing is exposed to the internet.
+- **Encrypted and pinned.** The connection is TLS 1.2 or later. The
+  companion creates a self-signed certificate on first launch and puts
+  its SHA-256 fingerprint in the pairing code. The phone accepts a
+  certificate with that fingerprint and no other, so another device on
+  the same Wi-Fi cannot impersonate the Mac. This matters because the
+  App Store Connect signing key crosses this link during an upload.
+- **Pairing is mandatory.** The code shown by the daemon carries
+  `(host, port, token, fp)`. The phone stores it in the Keychain and
+  presents the token in the first message of every connection.
 - **Allow-listed actions only.** The daemon refuses any command not in
-  the schema below. There is no generic "run shell" command — the
-  swarm uses its own sandboxed runner for that.
-- **User-confirmed escalation.** Anything that types keystrokes,
-  presses keys, or moves the mouse triggers a banner the user has to
-  approve in real time.
+  the schema below. There is no generic "run shell" command.
+- **User-confirmed escalation.** Anything that types into a page
+  triggers a dialog on the Mac the user has to approve.
+
+## Pairing code
+
+```
+codegenie://pair?host=<name>.local&port=<port>&token=<token>&fp=<sha256 hex>
+```
+
+Shown as a QR code and as a link. A code without `fp` comes from a
+companion that predates encrypted pairing and is refused by the app.
 
 ## Discovery
 
-The daemon advertises Bonjour service `_codegenie-companion._tcp` so the
-iOS app can find it on the same Wi-Fi network. iOS shows a list of
-candidates; user picks one and scans the QR code.
+The daemon advertises Bonjour service `_codegenie-companion._tcp`. The
+app uses this only to show that a companion is running nearby. It never
+connects from an advertisement: an advertisement carries no token and
+no fingerprint.
 
 ## Transport
 
-WebSocket, JSON message frames. Exactly one message per frame — no
-batching. Both sides may send unsolicited events.
+TLS, carrying newline-delimited JSON: one message per line. Both sides
+may send unsolicited events. The first message must be `auth`.
 
 ## Message envelope
 

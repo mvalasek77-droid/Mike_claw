@@ -200,6 +200,7 @@ final class AppSession: ObservableObject {
             activeSwarmClient?.suspendStream()
         case .active:
             activeSwarmClient?.resumeStream()
+            CompanionBridge.shared.reconnectIfPaired()
         case .inactive:
             // Deliberately untouched. iPad's Stage Manager and the app
             // switcher pass through here without backgrounding, and

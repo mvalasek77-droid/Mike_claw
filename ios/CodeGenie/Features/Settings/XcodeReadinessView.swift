@@ -41,13 +41,11 @@ struct XcodeReadinessView: View {
     }
 
     private var statusCard: some View {
-        // We treat "backend token in keychain" as the proxy for "Mac
-        // companion is paired". Live reachability is checked at the
-        // moment of build by SwarmClient; this screen is a primer, not
-        // a probe.
-        let paired = !creds.backendToken.isEmpty
+        // Paired, not necessarily reachable this second: this screen
+        // is a primer, and reachability is checked when it matters.
+        let paired = CompanionBridge.shared.isPaired
         return GlassCard(
-            title: paired ? "Mac paired — Xcode reachable" : "Pair a Mac first",
+            title: paired ? "Mac paired" : "Pair a Mac first",
             icon: paired ? "checkmark.seal.fill" : "exclamationmark.triangle.fill",
             tint: paired ? LiquidGlass.success : LiquidGlass.warning
         ) {

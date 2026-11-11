@@ -1,242 +1,237 @@
 import Foundation
 import Network
 import Security
+import CryptoKit
 
-/// Talks to the CodeGenie Companion daemon running on the user's Mac.
+/// Talks to the CodeGenie Companion running on the user's Mac.
 ///
-/// Two phases:
-///  1. **Discovery.** Listen for Bonjour services advertising
-///     `_codegenie-companion._tcp` on the local network and surface
-///     candidates to `discovered`. The user picks one.
-///  2. **Connect.** Open a Network.framework TLS connection (line-
-///     delimited JSON, matching the daemon's wire format), send `auth`
-///     with the paired token, then dispatch typed commands.
+/// The connection is TLS, pinned to the certificate fingerprint from
+/// the pairing code, carrying newline-delimited JSON. Pinning is what
+/// makes a self-signed certificate safe here: the fingerprint was read
+/// off the Mac's own screen, so nothing else on the network can stand
+/// in for it. That matters because the App Store Connect signing key
+/// crosses this link when an app is uploaded.
 ///
-/// We deliberately avoid `URLSessionWebSocketTask` because the Mac
-/// daemon ships a minimal newline-delimited JSON server (no full RFC
-/// 6455 framing); using NWConnection on the iOS side keeps the wire
-/// format symmetric.
+/// The pairing lives in its own Keychain entry. It used to overwrite
+/// the backend's bearer token, which both broke server requests and
+/// made "is a Mac paired?" indistinguishable from "is a server token
+/// set?".
 @MainActor
 final class CompanionBridge: ObservableObject {
 
-    /// Shared instance so a pairing survives the screen that made it.
+    /// Shared so a pairing survives the screen that made it.
     static let shared = CompanionBridge()
 
     @Published private(set) var discovered: [Discovered] = []
     @Published private(set) var status: Status = .idle
     @Published private(set) var lastError: String?
+    /// The saved pairing, whether or not the Mac is reachable right now.
+    @Published private(set) var pairing: MacPairing?
 
     /// True when a Mac is paired and reachable right now.
     var isConnected: Bool { status == .connected }
+    /// True when a Mac has been paired, reachable or not.
+    var isPaired: Bool { pairing != nil }
 
     enum Status: Equatable {
         case idle, browsing, connecting, authenticating, connected, failed(String)
     }
 
     struct Discovered: Identifiable, Hashable {
-        let id = UUID()
+        var id: String { name }
         let name: String
-        let host: String
-        let port: UInt16
     }
 
     private static let requestTimeout: TimeInterval = 30
+    private static let connectTimeout: TimeInterval = 10
     private static let reconnectMaxAttempts = 5
     private static let reconnectMaxBackoff: TimeInterval = 16
 
-    /// SHA-256 fingerprint of the Mac daemon's self-signed TLS cert,
-    /// scanned from the pairing QR code. When set, only that cert is
-    /// accepted; when nil we fall back to standard system trust (which
-    /// will reject self-signed certs, protecting against MITM).
-    private var pinnedCertFingerprint: String?
-
-    /// Saved pairing info for auto-reconnect.
-    private var lastHost: String?
-    private var lastPort: UInt16?
-    private var lastToken: String?
     private var reconnectTask: Task<Void, Never>?
 
+    private init() {
+        pairing = Self.loadPairing()
+    }
+
     // MARK: - Discovery
+
+    // Bonjour tells the user a companion is running nearby, which is a
+    // useful "it's working" signal on the pairing screen. It is never
+    // used to connect: an advertisement carries no token and no
+    // fingerprint, so trusting one would defeat the pinning.
 
     private var browser: NWBrowser?
 
     func startBrowsing() {
-        status = .browsing
-        let params = NWParameters(tls: nil)
+        guard browser == nil else { return }
+        if status == .idle { status = .browsing }
+        let params = NWParameters()
         params.includePeerToPeer = true
         let browser = NWBrowser(
             for: .bonjour(type: "_codegenie-companion._tcp", domain: nil),
             using: params
         )
         browser.browseResultsChangedHandler = { [weak self] results, _ in
-            Task { @MainActor in self?.handle(browseResults: results) }
+            let names: [String] = results.compactMap { result in
+                if case let .service(name, _, _, _) = result.endpoint { return name }
+                return nil
+            }
+            Task { @MainActor in
+                self?.discovered = Array(Set(names)).sorted().map { Discovered(name: $0) }
+            }
         }
         browser.start(queue: .main)
         self.browser = browser
     }
 
     func stopBrowsing() {
-        browser?.cancel(); browser = nil
+        browser?.cancel()
+        browser = nil
         if status == .browsing { status = .idle }
-    }
-
-    private func handle(browseResults: Set<NWBrowser.Result>) {
-        var entries: [Discovered] = []
-        for r in browseResults {
-            guard case let .service(name, _, _, _) = r.endpoint else { continue }
-            // Resolve the port from the Bonjour result's metadata.
-            var port: UInt16 = 0
-            if case let .service(_, _, _, interface) = r.endpoint,
-               let metadata = r.metadata,
-               case let .bonjour(record) = metadata {
-                // NWBrowser doesn't expose port directly — we resolve
-                // via NWConnection to the endpoint. For the listing we
-                // store 0 and resolve on connect.
-                _ = interface // suppress unused warning
-                _ = record
-            }
-            entries.append(Discovered(name: name, host: name + ".local", port: port))
-        }
-        let unique = Array(Dictionary(grouping: entries, by: { $0.name })
-            .map { _, vs in vs[0] })
-            .sorted { $0.name < $1.name }
-        self.discovered = unique
-    }
-
-    /// Connect to a discovered service by resolving its Bonjour endpoint.
-    func connect(discovered: Discovered, token: String) async {
-        if discovered.port > 0 {
-            await connect(host: discovered.host, port: discovered.port, token: token)
-        } else {
-            await connect(host: discovered.host, port: 24601, token: token)
-        }
     }
 
     // MARK: - Connection
 
     private var conn: NWConnection?
     private var pending: [String: CheckedContinuation<[String: Any], Error>] = [:]
+    private var timeouts: [String: Task<Void, Never>] = [:]
 
-    /// Connect via a paired URL of the shape
-    /// `codegenie://pair?host=…&port=…&token=…`
-    /// (the daemon prints this on launch; the iOS UI shows a QR scanner).
+    /// Pair from a scanned or pasted code. On failure `status` carries
+    /// a message written for the person holding the phone.
     func connect(pairingURL: URL) async {
-        guard let host = pairingURL.queryItem("host"),
-              let portStr = pairingURL.queryItem("port"),
-              let port = UInt16(portStr),
-              let token = pairingURL.queryItem("token") else {
-            status = .failed("malformed pairing URL"); return
-        }
-        await connect(host: host, port: port, token: token)
+        await connect(pairingCode: pairingURL.absoluteString)
     }
 
-    /// Connect via host/port/token. The optional `certFingerprint` is the
-    /// SHA-256 hash of the Mac daemon's self-signed cert, scanned from the
-    /// QR code. When provided, only that exact cert is accepted (cert pinning).
-    func connect(host: String, port: UInt16, token: String, certFingerprint: String? = nil) async {
+    func connect(pairingCode: String) async {
+        switch MacPairing.parse(pairingCode) {
+        case .success(let parsed):
+            await connect(to: parsed, isReconnect: false)
+        case .failure(let problem):
+            lastError = problem.message
+            status = .failed(problem.message)
+        }
+    }
+
+    /// Reconnect to the saved Mac, quietly. Called on launch and when
+    /// the app returns to the foreground.
+    func reconnectIfPaired() {
+        guard let pairing, conn == nil, reconnectTask == nil else { return }
+        switch status {
+        case .connecting, .authenticating, .connected: return
+        default: break
+        }
+        Task { await connect(to: pairing, isReconnect: true) }
+    }
+
+    private func connect(to target: MacPairing, isReconnect: Bool) async {
+        teardownConnection(failing: BridgeError.disconnected)
         status = .connecting
-        lastHost = host
-        lastPort = port
-        lastToken = token
-        if let certFingerprint { pinnedCertFingerprint = certFingerprint }
 
-        let nwHost = NWEndpoint.Host(host)
-        let nwPort = NWEndpoint.Port(rawValue: port) ?? .any
-        let tlsOptions = NWProtocolTLS.Options()
-        let pinnedFP = pinnedCertFingerprint
+        let tls = NWProtocolTLS.Options()
+        sec_protocol_options_set_min_tls_protocol_version(tls.securityProtocolOptions, .TLSv12)
         sec_protocol_options_set_verify_block(
-            tlsOptions.securityProtocolOptions, { _, trust, complete in
-                guard let pinnedFP else {
-                    // No pinned cert — use standard system trust evaluation.
-                    // This rejects self-signed certs, which is safer than
-                    // accepting everything.
-                    let secTrust = sec_trust_copy_ref(trust).takeRetainedValue()
-                    var error: CFError?
-                    let ok = SecTrustEvaluateWithError(secTrust, &error)
-                    complete(ok)
-                    return
-                }
-                // Pin to the specific cert fingerprint from QR pairing.
-                let secTrust = sec_trust_copy_ref(trust).takeRetainedValue()
-                let certCount = SecTrustGetCertificateCount(secTrust)
-                guard certCount > 0 else { complete(false); return }
-                if let cert = SecTrustCopyCertificateChain(secTrust) as? [SecCertificate],
-                   let leaf = cert.first {
-                    let der = SecCertificateCopyData(leaf) as Data
-                    let hash = SHA256.hash(data: der)
-                    let hex = hash.map { String(format: "%02x", $0) }.joined()
-                    complete(hex == pinnedFP.lowercased())
-                } else {
-                    complete(false)
-                }
-            }, .main
+            tls.securityProtocolOptions,
+            { _, trust, complete in
+                complete(Self.certificateMatches(trust, pairing: target))
+            },
+            .global(qos: .userInitiated)
         )
-        let params = NWParameters(tls: tlsOptions)
+        let params = NWParameters(tls: tls)
         params.includePeerToPeer = true
-        let conn = NWConnection(host: nwHost, port: nwPort, using: params)
-        self.conn = conn
 
-        let ready = await waitForReady(conn)
-        if !ready {
-            status = .failed("could not reach \(host):\(port)"); return
+        guard let port = NWEndpoint.Port(rawValue: target.port) else {
+            status = .failed("The pairing code has an invalid port.")
+            return
+        }
+        let connection = NWConnection(host: NWEndpoint.Host(target.host), port: port, using: params)
+        conn = connection
+
+        guard await waitForReady(connection) else {
+            if conn === connection { conn = nil }
+            connection.cancel()
+            let message = "Couldn't reach your Mac. Check it's awake, on the same Wi-Fi, and that the companion is running. If you restarted the companion, scan its code again."
+            lastError = message
+            status = .failed(message)
+            return
         }
 
-        Credentials.shared.setBackendToken(token)
-        startReadLoop(conn)
-
+        startReadLoop(connection)
         status = .authenticating
         do {
-            _ = try await request(type: "auth", payload: ["token": token])
+            _ = try await request(type: "auth", payload: ["token": target.token])
+            // Saved only once the Mac has proved itself and accepted
+            // the token, so a mistyped code never replaces a good one.
+            if !isReconnect || pairing != target {
+                pairing = target
+                Self.savePairing(target)
+            }
             status = .connected
             lastError = nil
         } catch {
-            status = .failed("auth failed: \(error)")
-            disconnect()
+            teardownConnection(failing: BridgeError.disconnected)
+            let message = "Your Mac refused the pairing code. Scan the code it's showing now."
+            lastError = message
+            status = .failed(message)
         }
     }
 
-    /// Disconnect and optionally attempt auto-reconnect.
-    func disconnect(attemptReconnect: Bool = true) {
-        conn?.cancel(); conn = nil
-        pending.values.forEach { $0.resume(throwing: BridgeError.disconnected) }
-        pending.removeAll()
+    /// Runs off the main actor, on the security framework's queue.
+    private nonisolated static func certificateMatches(_ trust: sec_trust_t, pairing: MacPairing) -> Bool {
+        let secTrust = sec_trust_copy_ref(trust).takeRetainedValue()
+        guard let chain = SecTrustCopyCertificateChain(secTrust) as? [SecCertificate],
+              let leaf = chain.first
+        else { return false }
+        let der = SecCertificateCopyData(leaf) as Data
+        let digest = SHA256.hash(data: der).map { String(format: "%02x", $0) }.joined()
+        return pairing.matches(certificateDigest: digest)
+    }
+
+    /// The connection dropped on its own. Try to get it back.
+    private func connectionLost() {
         let wasConnected = status == .connected
-        if wasConnected { status = .idle }
-        // Auto-reconnect when the drop was unexpected (we were connected
-        // and have saved pairing info).
-        if attemptReconnect && wasConnected,
-           let host = lastHost, let port = lastPort, let token = lastToken {
-            scheduleReconnect(host: host, port: port, token: token)
+        teardownConnection(failing: BridgeError.disconnected)
+        status = .idle
+        guard wasConnected, let pairing else { return }
+        reconnectTask?.cancel()
+        reconnectTask = Task { [weak self] in
+            var backoff: TimeInterval = 1
+            for _ in 0..<Self.reconnectMaxAttempts {
+                try? await Task.sleep(nanoseconds: UInt64(backoff * 1_000_000_000))
+                guard !Task.isCancelled, let self else { return }
+                await self.connect(to: pairing, isReconnect: true)
+                if self.isConnected { break }
+                backoff = min(backoff * 2, Self.reconnectMaxBackoff)
+            }
+            self?.reconnectTask = nil
         }
     }
 
-    /// Explicitly disconnect without auto-reconnect (user-initiated unpair).
-    func unpair() {
+    /// Close the connection but stay paired — the Mac will be found
+    /// again next time.
+    func disconnect() {
         reconnectTask?.cancel()
         reconnectTask = nil
-        disconnect(attemptReconnect: false)
-        lastHost = nil; lastPort = nil; lastToken = nil
-        pinnedCertFingerprint = nil
+        teardownConnection(failing: BridgeError.disconnected)
         status = .idle
     }
 
-    private func scheduleReconnect(host: String, port: UInt16, token: String) {
-        reconnectTask?.cancel()
-        reconnectTask = Task { [weak self] in
-            var attempt = 0
-            var backoff: TimeInterval = 1.0
-            while !Task.isCancelled, let self, attempt < Self.reconnectMaxAttempts {
-                attempt += 1
-                try? await Task.sleep(nanoseconds: UInt64(backoff * 1_000_000_000))
-                if Task.isCancelled { break }
-                await self.connect(host: host, port: port, token: token)
-                if self.isConnected { return }
-                backoff = min(backoff * 2, Self.reconnectMaxBackoff)
-            }
-            if let self, !self.isConnected {
-                self.status = .failed("reconnect failed after \(attempt) attempts")
-            }
-        }
+    /// Forget this Mac entirely.
+    func unpair() {
+        disconnect()
+        pairing = nil
+        Self.deletePairing()
+        lastError = nil
+    }
+
+    private func teardownConnection(failing error: Error) {
+        conn?.stateUpdateHandler = nil
+        conn?.cancel()
+        conn = nil
+        timeouts.values.forEach { $0.cancel() }
+        timeouts.removeAll()
+        let waiting = pending
+        pending.removeAll()
+        waiting.values.forEach { $0.resume(throwing: error) }
     }
 
     // MARK: - Public command shortcuts
@@ -368,41 +363,46 @@ final class CompanionBridge: ObservableObject {
 
     // MARK: - Internals
 
-    private func request(type: String, payload: [String: Any], timeout: TimeInterval? = nil) async throws -> [String: Any] {
+    /// Send one request and wait for its response.
+    ///
+    /// Every request is bounded. Each waiting caller is resumed exactly
+    /// once — by the response, the timeout, a send failure, or the
+    /// connection going away — and whichever happens first removes the
+    /// entry so the others find nothing to resume.
+    private func request(
+        type: String,
+        payload: [String: Any],
+        timeout: TimeInterval? = nil
+    ) async throws -> [String: Any] {
         guard let conn else { throw BridgeError.notConnected }
         let id = "msg_" + UUID().uuidString.prefix(12)
         let envelope: [String: Any] = [
             "v": 1, "id": id, "kind": "request", "type": type, "payload": payload,
         ]
-        let effectiveTimeout = timeout ?? Self.requestTimeout
-        return try await withThrowingTaskGroup(of: [String: Any].self) { group in
-            group.addTask {
-                try await withCheckedThrowingContinuation { cont in
-                    self.pending[id] = cont
-                    self.send(conn: conn, envelope: envelope) { error in
-                        if let error {
-                            self.pending.removeValue(forKey: id)
-                            cont.resume(throwing: error)
-                        }
-                    }
-                }
+        guard var data = try? JSONSerialization.data(withJSONObject: envelope) else {
+            throw BridgeError.malformed
+        }
+        data.append(0x0A)
+        let limit = timeout ?? Self.requestTimeout
+
+        return try await withCheckedThrowingContinuation { continuation in
+            pending[id] = continuation
+            timeouts[id] = Task { [weak self] in
+                try? await Task.sleep(nanoseconds: UInt64(limit * 1_000_000_000))
+                guard !Task.isCancelled else { return }
+                self?.finish(id, with: .failure(BridgeError.timeout))
             }
-            group.addTask {
-                try await Task.sleep(nanoseconds: UInt64(effectiveTimeout * 1_000_000_000))
-                throw BridgeError.timeout
-            }
-            let result = try await group.next()!
-            group.cancelAll()
-            return result
+            conn.send(content: data, completion: .contentProcessed { [weak self] error in
+                guard let error else { return }
+                Task { @MainActor in self?.finish(id, with: .failure(error)) }
+            })
         }
     }
 
-    private func send(conn: NWConnection, envelope: [String: Any], completion: @escaping (Error?) -> Void) {
-        guard var data = try? JSONSerialization.data(withJSONObject: envelope) else {
-            completion(BridgeError.malformed); return
-        }
-        data.append(0x0A)
-        conn.send(content: data, completion: .contentProcessed { err in completion(err) })
+    private func finish(_ id: String, with result: Result<[String: Any], Error>) {
+        timeouts.removeValue(forKey: id)?.cancel()
+        guard let continuation = pending.removeValue(forKey: id) else { return }
+        continuation.resume(with: result)
     }
 
     private func waitForReady(_ conn: NWConnection) async -> Bool {
@@ -414,32 +414,34 @@ final class CompanionBridge: ObservableObject {
                     if gate.claim() { cont.resume(returning: true) }
                 case .failed, .cancelled:
                     if gate.claim() { cont.resume(returning: false) }
-                default: break
+                case .waiting:
+                    // No route yet. The deadline below decides how
+                    // long that is allowed to last.
+                    break
+                default:
+                    break
                 }
             }
             conn.start(queue: .main)
+            DispatchQueue.main.asyncAfter(deadline: .now() + Self.connectTimeout) {
+                if gate.claim() { cont.resume(returning: false) }
+            }
         }
     }
 
     private func startReadLoop(_ conn: NWConnection) {
-        var buffer = Data()
+        let buffer = LineBuffer()
 
         func tick() {
-            conn.receive(minimumIncompleteLength: 1, maximumLength: 64 * 1024) { [weak self] data, _, isComplete, _ in
-                guard let self else { return }
-                if let data { buffer.append(data) }
-                while let nl = buffer.firstIndex(of: 0x0A) {
-                    let line = buffer[..<nl]
-                    buffer.removeSubrange(...nl)
-                    if let json = try? JSONSerialization.jsonObject(with: line) as? [String: Any] {
-                        Task { @MainActor in self.dispatchIncoming(json) }
-                    }
+            conn.receive(minimumIncompleteLength: 1, maximumLength: 64 * 1024) { [weak self] data, _, isComplete, error in
+                let messages = buffer.append(data)
+                let finished = isComplete || error != nil
+                Task { @MainActor in
+                    guard let self, self.conn === conn else { return }
+                    for message in messages { self.dispatchIncoming(message) }
+                    if finished { self.connectionLost() }
                 }
-                if isComplete {
-                    Task { @MainActor in self.disconnect() }
-                } else {
-                    Task { @MainActor in tick() }
-                }
+                if !finished { Task { @MainActor in tick() } }
             }
         }
         tick()
@@ -447,27 +449,74 @@ final class CompanionBridge: ObservableObject {
 
     private func dispatchIncoming(_ message: [String: Any]) {
         let kind = (message["kind"] as? String) ?? ""
-        guard let respondTo = message["in_response_to"] as? String else { return }
 
-        if kind == "response" {
-            let cont = pending.removeValue(forKey: respondTo)
+        if kind == "response", let respondTo = message["in_response_to"] as? String {
             if (message["ok"] as? Bool) == true {
-                cont?.resume(returning: (message["payload"] as? [String: Any]) ?? [:])
+                finish(respondTo, with: .success((message["payload"] as? [String: Any]) ?? [:]))
             } else {
-                let err = (message["error"] as? String) ?? "remote error"
-                cont?.resume(throwing: BridgeError.remote(err))
+                let reason = (message["error"] as? String) ?? "remote error"
+                finish(respondTo, with: .failure(BridgeError.remote(reason)))
             }
         }
-        // "event" frames are surfaced to subscribers via NotificationCenter
-        // so individual screens (e.g. the submission guide) can stream
-        // `xcodebuild.line` events without owning the bridge directly.
+        // "event" frames are surfaced via NotificationCenter so a
+        // screen can show the Mac's progress without owning the bridge.
         if kind == "event" {
-            NotificationCenter.default.post(
-                name: .companionEvent,
-                object: nil,
-                userInfo: message
-            )
+            NotificationCenter.default.post(name: .companionEvent, object: nil, userInfo: message)
         }
+    }
+
+    // MARK: - Pairing storage (Keychain)
+
+    private static let keychainQuery: [String: Any] = [
+        kSecClass as String: kSecClassGenericPassword,
+        kSecAttrService as String: "com.codegenie.mac-pairing",
+        kSecAttrAccount as String: "default",
+    ]
+
+    private static func loadPairing() -> MacPairing? {
+        var query = keychainQuery
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
+        var result: CFTypeRef?
+        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
+              let data = result as? Data
+        else { return nil }
+        return try? JSONDecoder().decode(MacPairing.self, from: data)
+    }
+
+    private static func savePairing(_ pairing: MacPairing) {
+        guard let data = try? JSONEncoder().encode(pairing) else { return }
+        SecItemDelete(keychainQuery as CFDictionary)
+        var add = keychainQuery
+        add[kSecValueData as String] = data
+        add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        SecItemAdd(add as CFDictionary, nil)
+    }
+
+    private static func deletePairing() {
+        SecItemDelete(keychainQuery as CFDictionary)
+    }
+}
+
+/// Accumulates bytes from the socket and hands back whole JSON lines.
+/// Touched only from the connection's serial queue.
+private final class LineBuffer: @unchecked Sendable {
+    private var data = Data()
+    /// A line longer than this is not a message from our companion.
+    private static let limit = 8 * 1024 * 1024
+
+    func append(_ chunk: Data?) -> [[String: Any]] {
+        if let chunk { data.append(chunk) }
+        var messages: [[String: Any]] = []
+        while let newline = data.firstIndex(of: 0x0A) {
+            let line = data[data.startIndex..<newline]
+            data.removeSubrange(data.startIndex...newline)
+            if let json = try? JSONSerialization.jsonObject(with: Data(line)) as? [String: Any] {
+                messages.append(json)
+            }
+        }
+        if data.count > Self.limit { data.removeAll() }
+        return messages
     }
 }
 
@@ -481,17 +530,6 @@ private final class ContinuationGate: @unchecked Sendable {
         guard !didResume else { return false }
         didResume = true
         return true
-    }
-}
-
-// MARK: - Helpers
-
-private extension URL {
-    func queryItem(_ name: String) -> String? {
-        URLComponents(url: self, resolvingAgainstBaseURL: false)?
-            .queryItems?
-            .first(where: { $0.name == name })?
-            .value
     }
 }
 

@@ -112,9 +112,9 @@ struct SettingsView: View {
     private var pairMacBlock: some View {
         navTile(
             title: "Pair your Mac",
-            subtitle: creds.backendToken.isEmpty ? "First, link this phone to a Mac running Xcode." : "Reach into Xcode + Safari from this app.",
+            subtitle: CompanionBridge.shared.isPaired ? "Paired. Builds and uploads run on your Mac." : "Link this phone to a Mac running Xcode.",
             icon: "macbook.and.iphone",
-            tint: creds.backendToken.isEmpty ? LiquidGlass.warning : LiquidGlass.accent
+            tint: CompanionBridge.shared.isPaired ? LiquidGlass.accent : LiquidGlass.warning
         ) { showPairMac = true }
     }
 

@@ -52,8 +52,8 @@ struct PairMacView: View {
             QRScannerView(
                 onScan: { payload in
                     showScanner = false
-                    if let url = URL(string: payload), payload.hasPrefix("codegenie://") {
-                        Task { await bridge.connect(pairingURL: url) }
+                    if payload.lowercased().hasPrefix("codegenie://") {
+                        Task { await bridge.connect(pairingCode: payload) }
                     } else {
                         // Not one of ours — surface what was actually
                         // scanned in the manual field rather than
@@ -112,7 +112,7 @@ struct PairMacView: View {
             }
             Button("Disconnect this Mac") {
                 Haptics.warning()
-                bridge.disconnect()
+                bridge.unpair()
             }
             .font(.system(size: 13, weight: .semibold, design: .rounded))
             .foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
@@ -205,7 +205,7 @@ struct PairMacView: View {
     private var statusLine: String {
         switch bridge.status {
         case .idle, .browsing:
-            return "Point your phone's camera at the code in the Mac's menu bar."
+            return "Point your phone's camera at the code the companion is showing on your Mac."
         case .connecting:
             return "Connecting to your Mac…"
         case .authenticating:
@@ -213,7 +213,7 @@ struct PairMacView: View {
         case .connected:
             return "Connected."
         case .failed(let message):
-            return "That didn't work: \(message). Open \"It's not working\" below."
+            return message
         }
     }
 
@@ -319,12 +319,7 @@ struct PairMacView: View {
                         .accessibilityLabel("Pairing link")
 
                     PrimaryButton(title: "Connect", systemImage: "link", style: .filled) {
-                        let clean = pasteURL.trimmingCharacters(in: .whitespacesAndNewlines)
-                        guard let url = URL(string: clean) else {
-                            Haptics.error()
-                            return
-                        }
-                        Task { await bridge.connect(pairingURL: url) }
+                        Task { await bridge.connect(pairingCode: pasteURL) }
                     }
                     .disabled(pasteURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     .opacity(pasteURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1)

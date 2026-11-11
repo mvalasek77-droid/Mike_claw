@@ -1,42 +1,40 @@
 # CodeGenie UI Test Suite — Setup
 
-## Add the test target to your Xcode project
+## Running
 
-1. Open `CodeGenie.xcodeproj` in Xcode
-2. File → New → Target → **UI Testing Bundle**
-3. Name it `CodeGenieUITests`, language Swift, target `CodeGenie`
-4. Delete the auto-generated test file Xcode creates
-5. Add all `.swift` files from this directory to the new target:
-   - `CodeGenieTestBase.swift` (base class — add first)
-   - `T01_OnboardingFlowTests.swift`
-   - `T02_HomeScreenTests.swift`
-   - `T03_DescribeAndBuildTests.swift`
-   - `T04_SettingsTests.swift`
-   - `T05_ASCGuideTests.swift`
-   - `T06_TabNavigationTests.swift`
-   - `T07_GameAndPlayTests.swift`
-   - `T08_ProjectsGalleryTests.swift`
-   - `T09_AccessibilityTests.swift`
-   - `T10_EdgeCaseTests.swift`
+The UI test target is declared in `project.yml`, so generating the
+project is all the setup there is:
 
-## App launch arguments
-
-The test base class passes `-UITests` on every launch. To support
-the `-resetDefaults` and `-hasFinished*` flags, add this to
-`CodeGenieApp.swift` in your `init()`:
-
-```swift
-#if DEBUG
-if CommandLine.arguments.contains("-resetDefaults") {
-    let domain = Bundle.main.bundleIdentifier!
-    UserDefaults.standard.removePersistentDomain(forName: domain)
-}
-#endif
+```sh
+cd ios
+xcodegen generate
+xcodebuild test -project CodeGenie.xcodeproj -scheme CodeGenie \
+  -destination 'platform=iOS Simulator,name=iPhone 16'
 ```
 
-The `@AppStorage` flags (`hasFinishedOnboarding`, `hasAcceptedTerms`,
-`hasChosenPricing`) are already set via launch arguments, which
-`@AppStorage` reads automatically.
+## Launch arguments
+
+Every launch passes `-UITests`. In a debug build that does two things,
+both in `App/AppEnvironment.swift`:
+
+- builds run on a local stand-in, so the suite needs no server, no API
+  key and no network;
+- `-resetDefaults` clears saved state before the app reads any of it.
+
+Neither exists in a release build. `-hasFinishedOnboarding true` and
+similar pairs are ordinary `UserDefaults` launch arguments and need no
+app code.
+
+## Logic tests
+
+The rules behind the screens — submission steps, review states,
+listing validation, the next-step engine, pairing codes — are tested
+separately and much faster, without a simulator:
+
+```sh
+cd ios/CodeGenieLogic
+swift test
+```
 
 ## Run the suite
 
@@ -51,10 +49,11 @@ Pick any iPhone simulator (iPhone 15 Pro recommended) with iOS 17+.
 | File | Coverage |
 |------|----------|
 | T01 | Splash → 7 onboarding slides → Terms scroll gate → Pricing → Home |
-| T02 | Home: hero, CTA, ship readiness, quality checklist, tiles, sheets |
+| T02 | Home: hero, next-step card, ship readiness, tiles, sheets |
 | T03 | Describe form, suggestions, DNA readout, build screen layout |
 | T04 | Settings: auth mode, BYOK keys, power mode, all sub-screens |
-| T05 | ASC 10-step guide structure and navigation |
+| T05 | Apple Developer walkthrough |
+| T11 | App Store Connect guide: 18 steps, listing validation, gates, review phase |
 | T06 | Tab bar, all 5 tabs, rapid switching, dismiss behavior |
 | T07 | Play tab, BitDrop game, difficulty selectors |
 | T08 | Projects gallery, empty state, job cards |

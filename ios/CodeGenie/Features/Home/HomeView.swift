@@ -145,7 +145,7 @@ struct HomeView: View {
     /// describe-an-app flow. After the first time the user is trusted
     /// to know what they're doing.
     private func startBuildOrPromptSetup() {
-        let macPaired = !creds.backendToken.isEmpty
+        let macPaired = companion.isPaired
         let appleReady = creds.hasAppleDevCreds
         let githubReady = creds.hasGithub
         let done = [xcodeAcknowledged, macPaired, appleReady, githubReady].filter { $0 }.count
@@ -163,7 +163,7 @@ struct HomeView: View {
     /// configured. Auto-hides once everything is set up.
     @ViewBuilder
     private var shipReadinessCard: some View {
-        let macPaired = !creds.backendToken.isEmpty
+        let macPaired = companion.isPaired
         let appleReady = creds.hasAppleDevCreds
         let githubReady = creds.hasGithub
         let xcodeReady = xcodeAcknowledged
@@ -283,7 +283,7 @@ struct HomeView: View {
             latestJobID: latest?.id,
             latestJobTitle: latest?.description.title,
             latestJobStage: latest?.stage,
-            macPaired: companion.isConnected || !creds.backendToken.isEmpty,
+            macPaired: companion.isPaired,
             appleAccountReady: creds.hasAppleDevCreds,
             submission: ascStore.primary
         )
@@ -394,7 +394,7 @@ struct HomeView: View {
         case .setUpShipping:
             if !xcodeAcknowledged {
                 showXcodeReadiness = true
-            } else if !(companion.isConnected || !creds.backendToken.isEmpty) {
+            } else if !companion.isPaired {
                 showPairMac = true
             } else {
                 showAppleDev = true
