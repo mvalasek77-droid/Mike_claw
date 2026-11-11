@@ -94,7 +94,7 @@ struct AppleDevSetupView: View {
 
     private var prefixProblem: String? {
         if bundlePrefix.trimmingCharacters(in: .whitespaces).isEmpty {
-            return "Leave this empty and CodeGenie uses a shared prefix. That works until someone else ships an app with the same name — then Apple refuses yours."
+            return "Leave this empty and CodeGenie picks one for you."
         }
         // Checked against what was typed, not against the normalised
         // result: normalising strips every bad character, so validating

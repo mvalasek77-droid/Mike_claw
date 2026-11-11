@@ -286,7 +286,7 @@ final class T03_DescribeAndBuildTests: CodeGenieTestBase {
         if cta.waitForExistence(timeout: 5) { cta.tap() } else { selectTab("Build") }
 
         let buildNow = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Just build something'")
+            NSPredicate(format: "label CONTAINS[c] 'Build my app first'")
         ).firstMatch
         if buildNow.waitForExistence(timeout: 3) { buildNow.tap() }
 

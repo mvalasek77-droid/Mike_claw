@@ -75,7 +75,13 @@ final class AppSession: ObservableObject {
     }
 
     func startBuild(from description: AppDescription) -> BuildJob {
-        let job = BuildJob(description: description)
+        var job = BuildJob(description: description)
+        // The same value the build request carries, recorded so later
+        // steps keep using it whatever happens to the prefix setting.
+        job.bundleID = AppBundleID.make(
+            prefix: UserDefaults.standard.string(forKey: "apple.bundlePrefix") ?? "",
+            title: description.title
+        )
         currentJob = job
         recentJobs.insert(job, at: 0)
         Haptics.selection()

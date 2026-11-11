@@ -54,6 +54,12 @@ struct BuildJob: Identifiable, Hashable, Codable {
     var finishedAt: Date?
     var artifactURL: URL?
     var simulatorPreviewURL: URL?
+    /// The identifier this build was signed for. Fixed at build time:
+    /// the project carries it, so signing, the App Store Connect
+    /// record and the upload must all use this value even if the
+    /// user changes their prefix afterwards. Optional so jobs saved
+    /// before it existed still load.
+    var bundleID: String?
 
     init(id: UUID = .init(), description: AppDescription, stage: Stage = .planning, startedAt: Date = .now) {
         self.id = id; self.description = description; self.stage = stage; self.startedAt = startedAt

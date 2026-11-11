@@ -94,6 +94,15 @@ SKIP_PARTS = {
 }
 
 
+# The rule families applied to a workspace, by name. Reported so the
+# client can say how much was checked without inventing a number.
+CHECKS: tuple[str, ...] = (
+    "spec", "workspace_structure", "source_markers", "accessibility",
+    "motion", "network_resilience", "security", "large_files",
+    "product_quality",
+)
+
+
 def run_perfection_matrix(
     *,
     spec: AppSpec,
@@ -140,19 +149,11 @@ def run_perfection_matrix(
             "bytes_read": sum(f.bytes_read for f in scanned),
         },
         "runtime_ms": elapsed_ms,
-        "matrix": {
-            "virtual_agents": probes,
-            "devices": [
-                "iPhone SE", "iPhone 15", "iPhone 16 Pro Max",
-                "iPad Air", "iPad Pro",
-            ],
-            "os_versions": ["iOS 17", "iOS 18", "iOS 26"],
-            "conditions": [
-                "dark", "light", "AX5 dynamic type", "Reduce Motion",
-                "offline", "slow 3G", "low battery", "thermal pressure",
-                "fresh install", "background resume",
-            ],
-        },
+        # What was actually done: a fixed set of static rules read
+        # over the project's files. Nothing was run on a device, and
+        # this report used to list devices and conditions as if it had.
+        "method": "static",
+        "checks_run": len(CHECKS),
     }
 
 

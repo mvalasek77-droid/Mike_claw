@@ -28,9 +28,17 @@ struct TutorialView: View {
             header
             TabView(selection: $index) {
                 ForEach(slides.indices, id: \.self) { i in
-                    slideCard(slides[i])
-                        .tag(i)
-                        .padding(.horizontal, 20)
+                    // Scrollable: with larger text, or on a small
+                    // iPhone, a slide is taller than the page and its
+                    // last lines were simply cut off.
+                    ScrollView {
+                        slideCard(slides[i])
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 12)
+                    }
+                    .scrollIndicators(.hidden)
+                    .scrollBounceBehavior(.basedOnSize)
+                    .tag(i)
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
@@ -75,7 +83,7 @@ struct TutorialView: View {
             GlassSurface(tier: .raised) {
                 VStack(spacing: 16) {
                     OnboardingIllustrationView(kind: slide.illustration)
-                        .frame(height: 320)
+                        .frame(height: 240)
                         .frame(maxWidth: .infinity)
                         .background(
                             RadialGradient(
@@ -99,17 +107,17 @@ struct TutorialView: View {
                 Text(slide.title)
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.8)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 Text(slide.body)
                     .font(.system(size: 15, weight: .regular, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
                     .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 if let tip = slide.xcodeTip {
                     HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: "hammer.circle.fill")
+                        Image(systemName: "lightbulb.circle.fill")
                             .font(.system(size: 18))
                             .foregroundStyle(LiquidGlass.warning)
                             .accessibilityHidden(true)
@@ -125,7 +133,7 @@ struct TutorialView: View {
                             .strokeBorder(LiquidGlass.warning.opacity(0.25), lineWidth: 0.7)
                     )
                     .accessibilityElement(children: .combine)
-                    .accessibilityLabel("Xcode tip: \(tip)")
+                    .accessibilityLabel("Good to know: \(tip)")
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

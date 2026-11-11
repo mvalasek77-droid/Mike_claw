@@ -13,8 +13,6 @@ struct HomeView: View {
     @State private var showAppleDev = false
     @State private var showGitHub = false
     @State private var xcodeAcknowledged = UserDefaults.standard.bool(forKey: "xcode.readiness.acknowledged")
-    @State private var showAppOfYearDNA = false
-    @State private var showAutomationAudit = false
     @State private var showFirstBuildPrompt = false
     @StateObject private var ascStore = ASCSubmissionStore.shared
     @StateObject private var companion = CompanionBridge.shared
@@ -60,16 +58,6 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showTutorial) {
             TutorialView(mode: .replay) { showTutorial = false }
-                .presentationDragIndicator(.visible)
-                .presentationBackground(.ultraThinMaterial)
-        }
-        .sheet(isPresented: $showAppOfYearDNA) {
-            AppOfYearPlaybookView()
-                .presentationDragIndicator(.visible)
-                .presentationBackground(.ultraThinMaterial)
-        }
-        .sheet(isPresented: $showAutomationAudit) {
-            LaunchAutomationAuditView()
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
         }
@@ -481,36 +469,14 @@ struct HomeView: View {
         .accessibilityLabel("Start a new build. Describe another app.")
     }
 
-    /// Whether to expand the full quickGrid. First-timers see three
-    /// essentials (Watch tour / Xcode steps / Costs); the advanced
-    /// tiles unfold after their first finished build, or when they tap
-    /// "Show more". This is the audit fix for "11 things to click on
-    /// first launch".
-    @AppStorage("home.showAdvancedTiles") private var showAdvancedTiles: Bool = false
-
+    /// Reference material, below the path. Four tiles, all of which
+    /// do something for someone who has never shipped an app.
     private var quickGrid: some View {
-        VStack(spacing: 12) {
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-                QuickTile(title: "Watch the tour",  subtitle: "7-step tutorial",       icon: "play.rectangle.fill", tint: LiquidGlass.accentSecondary) { showTutorial = true }
-                QuickTile(title: "Xcode steps",     subtitle: "Pocket guide",          icon: "hammer.fill",         tint: LiquidGlass.warning)         { showXcodeGuide = true }
-                QuickTile(title: "Costs & keys",    subtitle: "Pick your provider",    icon: "creditcard.fill",     tint: LiquidGlass.success)         { showSettings = true }
-                if showAdvancedTiles || !session.recentJobs.isEmpty {
-                    QuickTile(title: "BitDrop",         subtitle: "Play & set a high score", icon: "gamecontroller.fill", tint: LiquidGlass.accent)        { showGame = true }
-                    QuickTile(title: "Award DNA",        subtitle: "App of Year gates",     icon: "trophy.fill",         tint: LiquidGlass.warning)         { showAppOfYearDNA = true }
-                    QuickTile(title: "Automation",       subtitle: "Launch audit",          icon: "checklist.checked",   tint: LiquidGlass.accentSecondary) { showAutomationAudit = true }
-                }
-            }
-            if !showAdvancedTiles && session.recentJobs.isEmpty {
-                Button {
-                    Haptics.selection()
-                    withAnimation(LiquidGlass.motion) { showAdvancedTiles = true }
-                } label: {
-                    Label("Show more — game, award DNA, automation audit", systemImage: "chevron.down")
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
-                }
-                .accessibilityHint("Reveals advanced tiles. They also appear automatically after your first build.")
-            }
+        LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+            QuickTile(title: "How it works", subtitle: "The 7-step tour",        icon: "play.rectangle.fill", tint: LiquidGlass.accentSecondary) { showTutorial = true }
+            QuickTile(title: "Costs & keys", subtitle: "What a build costs",     icon: "creditcard.fill",     tint: LiquidGlass.success)         { showSettings = true }
+            QuickTile(title: "Xcode steps",  subtitle: "Pocket guide",           icon: "hammer.fill",         tint: LiquidGlass.warning)         { showXcodeGuide = true }
+            QuickTile(title: "BitDrop",      subtitle: "A game for the wait",    icon: "gamecontroller.fill", tint: LiquidGlass.accent)          { showGame = true }
         }
     }
 

@@ -321,8 +321,8 @@ final class SwarmClient: ObservableObject {
         }
     }
 
-    /// Run the zero-token Perfection Matrix: 10,000 deterministic
-    /// virtual probes across Apple review, accessibility, performance,
+    /// Run the static quality check over the finished project. It
+    /// reads the code for common problems across Apple review, accessibility, performance,
     /// resilience, security, polish, and App Store packaging.
     func runPerfection(jobID: String, probes: Int = 10_000) async throws -> PerfectionRun {
         let r = try await postJSON(
@@ -768,6 +768,8 @@ struct ArchivedJob: Identifiable, Hashable {
 struct PerfectionRun: Identifiable, Hashable {
     let id: String
     let probesRun: Int
+    /// How many project files the check actually read.
+    let filesScanned: Int
     let score: Double
     let releaseGate: String
     let summary: String
@@ -782,9 +784,10 @@ struct PerfectionRun: Identifiable, Hashable {
         }
         id = runID
         probesRun = Self.int(json["probes_run"])
+        filesScanned = Self.int((json["workspace"] as? [String: Any])?["files_scanned"])
         score = Self.double(json["score"])
         releaseGate = (json["release_gate"] as? String) ?? "blocked"
-        summary = (json["summary"] as? String) ?? "Perfection Matrix complete."
+        summary = (json["summary"] as? String) ?? "Quality check complete."
         severityCounts = Self.intMap(json["severity_counts"])
         axes = ((json["axes"] as? [[String: Any]]) ?? []).map(PerfectionAxis.init(json:))
         findings = ((json["findings"] as? [[String: Any]]) ?? []).map(PerfectionFinding.init(json:))

@@ -78,19 +78,6 @@ final class T02_HomeScreenTests: CodeGenieTestBase {
         screenshot("07-header-settings")
     }
 
-    func test08_appOfYearTileOpensSheet() {
-        scrollDown(times: 2)
-        let tile = app.buttons["App of the Year Studio"]
-        if tile.waitForExistence(timeout: 3) {
-            tile.tap()
-            sleep(1)
-            let closeButton = app.buttons["Close App of the Year DNA"]
-            assertExists(closeButton, "App of Year sheet should open")
-            screenshot("08-app-of-year-sheet")
-            dismissSheet()
-        }
-    }
-
     // MARK: - Next step
 
     func test09_homeNamesOneNextStep() {
@@ -114,7 +101,7 @@ final class T02_HomeScreenTests: CodeGenieTestBase {
         }
         action.tap()
         let describe = app.staticTexts["Describe your app"]
-        let prompt = app.staticTexts["Two paths from here"]
+        let prompt = app.staticTexts["Good to know before you start"]
         XCTAssertTrue(describe.waitForExistence(timeout: 3) || prompt.waitForExistence(timeout: 2),
                       "The next step should lead straight into describing an app")
         screenshot("09b-next-step-opens-describe")
@@ -153,23 +140,6 @@ final class T02_HomeScreenTests: CodeGenieTestBase {
         ).firstMatch
         XCTAssertFalse(tile.waitForExistence(timeout: 2),
                        "The dead sample tile should no longer be on Home")
-    }
-
-    // MARK: - Launch automation audit
-
-    func test13_automationAuditTileOpensSheet() {
-        scrollDown(times: 2)
-        let tile = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'automation' OR label CONTAINS[c] 'Automation'")
-        ).firstMatch
-        if tile.waitForExistence(timeout: 3) {
-            tile.tap()
-            sleep(1)
-            let close = app.buttons["Close automation audit"]
-            assertExists(close, "Automation audit sheet should open")
-            screenshot("13-automation-audit")
-            dismissSheet()
-        }
     }
 
     // MARK: - Game tile

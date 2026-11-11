@@ -20,8 +20,15 @@ enum AppEnvironment {
     /// from a clean install. Must run before anything reads defaults.
     static func prepareForLaunch() {
         #if DEBUG
-        guard isUITesting,
-              ProcessInfo.processInfo.arguments.contains("-resetDefaults"),
+        guard isUITesting else { return }
+        // A half-typed description is kept between launches for real
+        // users; between tests it would leak one test's typing into
+        // the next.
+        if !ProcessInfo.processInfo.arguments.contains("-keepDrafts") {
+            UserDefaults.standard.removeObject(forKey: "describe.draft.title")
+            UserDefaults.standard.removeObject(forKey: "describe.draft.prompt")
+        }
+        guard ProcessInfo.processInfo.arguments.contains("-resetDefaults"),
               let domain = Bundle.main.bundleIdentifier
         else { return }
         UserDefaults.standard.removePersistentDomain(forName: domain)

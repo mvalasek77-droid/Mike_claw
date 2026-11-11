@@ -8,6 +8,7 @@ struct ProjectsGalleryView: View {
     @State private var compareOrigin: BuildJob?
     @State private var showWhereIsMyApp = false
     @State private var jobToDelete: BuildJob?
+    @StateObject private var submissions = ASCSubmissionStore.shared
 
     private var filtered: [BuildJob] {
         let q = query.trimmingCharacters(in: .whitespaces).lowercased()
@@ -36,14 +37,15 @@ struct ProjectsGalleryView: View {
                                 ProjectCard(
                                     job: job,
                                     backendID: session.backendJobIDs[job.id],
-                                    spend: session.backendJobIDs[job.id].flatMap { JobCostLog.shared.spend(for: $0) }
+                                    spend: session.backendJobIDs[job.id].flatMap { JobCostLog.shared.spend(for: $0) },
+                                    submissionStatus: submissions.record(for: job.id).flatMap {
+                                        $0.completedSteps.isEmpty && !$0.isSubmitted ? nil : $0.statusLine
+                                    }
                                 )
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel("Open \(job.description.title)")
-                            .accessibilityHint(session.backendJobIDs[job.id] != nil
-                                ? "Attach to the live build"
-                                : "Resume locally")
+                            .accessibilityHint("Opens this app's build")
                             .contextMenu {
                                 if session.backendJobIDs[job.id] != nil {
                                     Button {
@@ -201,6 +203,8 @@ private struct ProjectCard: View {
     let job: BuildJob
     var backendID: String? = nil
     var spend: JobCostLog.Spend? = nil
+    /// Where this app is on its way to the store, if it has started.
+    var submissionStatus: String? = nil
 
     var body: some View {
         GlassSurface(tier: .raised, corner: 22) {
@@ -231,19 +235,20 @@ private struct ProjectCard: View {
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
                     .lineLimit(2)
                 HStack(spacing: 6) {
-                    if let backendID {
+                    if let submissionStatus {
                         HStack(spacing: 4) {
-                            Image(systemName: "arrow.triangle.branch")
+                            Image(systemName: "paperplane.fill")
                                 .font(.system(size: 9, weight: .bold))
                                 .accessibilityHidden(true)
-                            Text("forked · \(backendID.prefix(12))")
-                                .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                            Text(submissionStatus)
+                                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                                .lineLimit(1)
                         }
                         .padding(.horizontal, 6).padding(.vertical, 3)
                         .background(LiquidGlass.accentSecondary.opacity(0.18), in: Capsule())
                         .overlay(Capsule().strokeBorder(LiquidGlass.accentSecondary.opacity(0.35)))
                         .foregroundStyle(LiquidGlass.accentSecondary)
-                        .accessibilityLabel("Forked from build \(backendID)")
+                        .accessibilityLabel("Submission: \(submissionStatus)")
                     }
                     if let spend, spend.usd > 0 {
                         HStack(spacing: 4) {

@@ -59,6 +59,7 @@ Pick any iPhone simulator (iPhone 15 Pro recommended) with iOS 17+.
 | T08 | Projects gallery, empty state, job cards |
 | T09 | Accessibility labels, Dynamic Type, VoiceOver traversal |
 | T10 | State persistence, regressions, landscape, bg/fg, no subscription |
+| T12 | First-timer path: no key, no Mac — every former dead end |
 
 ## Screenshots
 

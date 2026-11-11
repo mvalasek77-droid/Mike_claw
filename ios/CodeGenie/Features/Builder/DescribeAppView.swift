@@ -4,8 +4,12 @@ struct DescribeAppView: View {
     var onSubmit: (AppDescription) -> Void
 
     @StateObject private var creds = Credentials.shared
-    @State private var title: String = ""
-    @State private var prompt: String = ""
+    // Kept across launches. A first-time user is sent away mid-form to
+    // get an API key, and coming back to an empty page is how people
+    // give up.
+    @AppStorage("describe.draft.title") private var title: String = ""
+    @AppStorage("describe.draft.prompt") private var prompt: String = ""
+    @State private var keySetup: AIProvider?
     @State private var category: AppDescription.Category = .productivity
     @State private var style: AppDescription.Style = .liquidGlass
     @State private var showCostConfirm: Bool = false
@@ -36,6 +40,16 @@ struct DescribeAppView: View {
         let model = ModelCatalogue.model(id: creds.preferredModelID) ?? ModelCatalogue.all[0]
         return model.estimatedBuildCostUSD()
     }
+
+    private var neededProvider: AIProvider {
+        (ModelCatalogue.model(id: creds.preferredModelID) ?? ModelCatalogue.all[0]).provider
+    }
+
+    private var promptLength: Int {
+        prompt.trimmingCharacters(in: .whitespacesAndNewlines).count
+    }
+
+    private static let minimumPrompt = 12
 
     private enum Preflight {
         case ready(String)
@@ -84,7 +98,7 @@ struct DescribeAppView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Describe your app").font(.system(size: 28, weight: .bold, design: .rounded))
                 .foregroundStyle(LiquidGlass.primaryText)
-            Text("Be specific — like you're briefing a designer. CodeGenie scaffolds a full Xcode project from this.")
+            Text("Say what it does and who it's for. A sentence or two is enough — you can build again with changes.")
                 .font(.system(size: 14, weight: .regular, design: .rounded))
                 .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
         }
@@ -187,18 +201,32 @@ struct DescribeAppView: View {
     private var submitRow: some View {
         VStack(spacing: 10) {
             preflightBanner
-            PrimaryButton(title: "Build it", systemImage: "wand.and.stars", style: .filled) {
-                let cleanPrompt = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard cleanPrompt.count >= 12, preflight.isReady else { Haptics.error(); return }
+            if !preflight.isReady {
+                PrimaryButton(title: "Add my \(neededProvider.displayName) key", systemImage: "key.fill", style: .filled) {
+                    keySetup = neededProvider
+                }
+                .accessibilityHint("Explains what a key is and helps you get one. Your description is kept.")
+            }
+            PrimaryButton(title: "Build it", systemImage: "wand.and.stars", style: preflight.isReady ? .filled : .glass) {
+                guard promptLength >= Self.minimumPrompt, preflight.isReady else { Haptics.error(); return }
                 showCostConfirm = true
                 Haptics.selection()
             }
-            .disabled(prompt.trimmingCharacters(in: .whitespacesAndNewlines).count < 12 || !preflight.isReady)
-            .opacity((prompt.trimmingCharacters(in: .whitespacesAndNewlines).count < 12 || !preflight.isReady) ? 0.5 : 1)
-            Text("CodeGenie will generate the Xcode project, ask follow-ups, then run a build.")
+            .disabled(promptLength < Self.minimumPrompt || !preflight.isReady)
+            .opacity((promptLength < Self.minimumPrompt || !preflight.isReady) ? 0.5 : 1)
+            // A disabled button with no reason is a dead end.
+            Text(promptLength < Self.minimumPrompt
+                 ? "Describe your app in a few more words to continue."
+                 : "CodeGenie plans the app, writes it, and checks its own work. You can watch every step.")
                 .font(.system(size: 12, weight: .regular, design: .rounded))
-                .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
                 .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .sheet(item: $keySetup) { provider in
+            KeySetupView(provider: provider, onDone: {})
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
         }
         .sheet(isPresented: $showCostConfirm) {
             costConfirmSheet
@@ -279,6 +307,9 @@ struct DescribeAppView: View {
                             title: cleanTitle.isEmpty ? inferredTitle(from: cleanPrompt) : cleanTitle,
                             prompt: cleanPrompt, category: category, style: style
                         )
+                        // The draft has done its job.
+                        title = ""
+                        prompt = ""
                         onSubmit(final)
                     }
                     Button("Cancel") {

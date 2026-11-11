@@ -198,3 +198,20 @@ def test_perfection_probe_budget_is_bounded(tmp_path: Path, requested: int, expe
         now=1_800_000_000,
     )
     assert result["probes_run"] == expected
+
+
+def test_report_describes_what_was_actually_done(tmp_path: Path):
+    """A static read of the files — no claim of devices or conditions
+    that were never exercised."""
+    from genie_swarm.perfection import CHECKS
+
+    result = run_perfection_matrix(
+        spec=AppSpec(title="Tide Times", prompt="tides"),
+        workspace=tmp_path,
+    )
+    assert result["method"] == "static"
+    assert result["checks_run"] == len(CHECKS) > 0
+    assert "matrix" not in result
+    flat = repr(result)
+    assert "virtual_agents" not in flat
+    assert "iPhone SE" not in flat

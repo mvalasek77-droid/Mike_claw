@@ -38,6 +38,8 @@ struct AppStoreConnectGuideView: View {
     @StateObject private var coachChat = ASCCoachChat()
     @State private var showCoachChat = false
     @State private var showChecklist = false
+    @State private var showPairMac = false
+    @State private var showAppleSetup = false
     /// Mirrors the store so the review panel re-renders on every
     /// status change without reaching into the singleton mid-body.
     @State private var record: ASCSubmissionRecord?
@@ -154,6 +156,16 @@ struct AppStoreConnectGuideView: View {
             .presentationDragIndicator(.visible)
             .presentationBackground(.ultraThinMaterial)
         }
+        .sheet(isPresented: $showPairMac) {
+            PairMacView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
+        .sheet(isPresented: $showAppleSetup) {
+            AppleDevWalkthroughView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
         .sheet(item: $blockedGate) { gate in
             ASCReadinessBlockedSheet(
                 title: gate.title,
@@ -193,8 +205,8 @@ struct AppStoreConnectGuideView: View {
         await runPreflight()
     }
 
-    /// The mandatory, AI-run quality gate. Runs Perfection Mode's
-    /// 10,000-probe static check — Apple Review risk, accessibility,
+    /// The quality gate. Runs the static check of the project's code
+    /// — common App Review risks, accessibility,
     /// performance, privacy/security, polish — fresh every time the
     /// guide opens. This is deliberately a hard gate: it costs no
     /// tokens (pure rules engine) and it is the one check that's
@@ -204,7 +216,7 @@ struct AppStoreConnectGuideView: View {
     private func runPreflight() async {
         preflight = .checking
         guard let backendID = session.backendJobIDs[job.id] else {
-            preflight = .unverifiable("This build has no live backend job to check — CodeGenie can't verify it right now.")
+            preflight = .unverifiable("This app's files aren't on the build server any more, so CodeGenie can't check them. You can carry on, or build it again from Home.")
             return
         }
         do {
@@ -213,7 +225,7 @@ struct AppStoreConnectGuideView: View {
             if run.isReady {
                 preflight = .clear
                 banner = Banner(
-                    text: "Pre-flight passed — \(Int(run.score))/100 on Apple's automated quality bar. Let's get this into your hands.",
+                    text: "CodeGenie's check of your project passed (\(Int(run.score))/100). Let's get this into your hands.",
                     tone: .success
                 )
                 await runReadinessCheck()
@@ -240,7 +252,10 @@ struct AppStoreConnectGuideView: View {
     /// the build screen independently, this used to disagree with the
     /// identifier the project was actually signed with.
     private func defaultBundleID(for title: String) -> String {
-        AppBundleID.make(title: title)
+        // The ID the project was actually built with, when known. The
+        // prefix setting may have changed since, and Apple compares the
+        // upload against what is inside the app, not against Settings.
+        job.bundleID ?? session.recentJobs.first { $0.id == job.id }?.bundleID ?? AppBundleID.make(title: title)
     }
 
     /// Re-read the saved record after anything that can move steps on
@@ -435,7 +450,7 @@ struct AppStoreConnectGuideView: View {
                 Text("Checking your app")
                     .font(.system(size: 20, weight: .bold, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText)
-                Text("I'm running Apple's real review checklist against your build — App Review risk, accessibility, performance, privacy, security, and polish. No tokens spent, this takes a few seconds.")
+                Text("CodeGenie is reading through your project for the things that most often get a first app sent back: placeholder text, missing accessibility labels, privacy details, hard-coded secrets. It takes a few seconds and costs nothing.")
                     .font(.system(size: 14, weight: .regular, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.78))
                     .multilineTextAlignment(.center)
@@ -445,7 +460,7 @@ struct AppStoreConnectGuideView: View {
             .frame(maxWidth: .infinity)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Checking your app against Apple's requirements. Please wait.")
+        .accessibilityLabel("Checking your project for common App Store problems. Please wait.")
     }
 
     private func preflightBlockedCard(_ run: PerfectionRun?) -> some View {
@@ -462,7 +477,7 @@ struct AppStoreConnectGuideView: View {
                             .foregroundStyle(LiquidGlass.primaryText)
                     }
                     Text(run != nil
-                         ? "I checked your app and it scored \(Int(run!.score))/100 — below the bar Apple usually accepts. Here's exactly what to fix, worst first. Fixing these now is much faster than a rejection email in three days."
+                         ? "CodeGenie's check scored your project \(Int(run!.score))/100 and found things that commonly get an app sent back. Here they are, worst first. You can still put it on your own iPhone to try it — these need fixing before the public App Store."
                          : "The check didn't return a usable result. Try again below.")
                         .font(.system(size: 14, weight: .regular, design: .rounded))
                         .foregroundStyle(LiquidGlass.primaryText.opacity(0.82))
@@ -482,10 +497,53 @@ struct AppStoreConnectGuideView: View {
                 }
             }
 
-            PrimaryButton(title: "Recheck now", systemImage: "arrow.clockwise", style: .filled) {
-                Task { await runPreflight() }
+            if let run {
+                PrimaryButton(title: "Rebuild with these fixed", systemImage: "wand.and.stars", style: .filled) {
+                    rebuild(fixing: run)
+                }
+                .accessibilityHint("Starts a new build of the same app with these problems added to the instructions")
             }
-            .accessibilityHint("Re-runs the pre-flight check after you've made fixes")
+            PrimaryButton(title: "Try it on my iPhone first", systemImage: "iphone.gen3", style: .glass) {
+                preflight = .clear
+                banner = Banner(text: "Carrying on to TestFlight. These findings will need fixing before the App Store steps.", tone: .warning)
+                Haptics.selection()
+            }
+            .accessibilityHint("Continues to the TestFlight steps. The App Store submission stays blocked until the check passes.")
+            Button {
+                Task { await runPreflight() }
+            } label: {
+                Label("Check again", systemImage: "arrow.clockwise")
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(LiquidGlass.accent)
+                    .frame(minHeight: 44)
+            }
+        }
+    }
+
+    /// The findings are about the code, and the user can't edit code
+    /// here — so the way to act on them is another build that is told
+    /// about them. Without this the screen named problems and offered
+    /// only "check again", which could never change the answer.
+    private func rebuild(fixing run: PerfectionRun) {
+        let fixes = run.findings.prefix(8).map { finding in
+            "- \(finding.title): \(finding.recommendation ?? finding.body)"
+        }.joined(separator: "\n")
+        var description = job.description
+        let original = description.prompt
+            .components(separatedBy: "\n\nA review of the previous build found these problems")
+            .first ?? description.prompt
+        description = AppDescription(
+            title: description.title,
+            prompt: original + "\n\nA review of the previous build found these problems. Make sure this build has none of them:\n" + fixes,
+            category: description.category,
+            style: description.style,
+            features: description.features
+        )
+        dismiss()
+        // After the cover has gone: presenting the build screen while
+        // this one is still dismissing can drop the presentation.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            session.startBuildAndOpen(from: description)
         }
     }
 
@@ -552,14 +610,14 @@ struct AppStoreConnectGuideView: View {
             }
             Button {
                 preflight = .clear
-                banner = Banner(text: "Proceeding without verification — CodeGenie couldn't confirm this build meets Apple's requirements.", tone: .warning)
+                banner = Banner(text: "Carrying on without the check. CodeGenie couldn't read this build, so it will check again before the App Store submission.", tone: .warning)
                 Haptics.warning()
             } label: {
                 Text("Continue without verification")
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
             }
-            .accessibilityHint("Not recommended — skips Apple's automated quality check")
+            .accessibilityHint("Skips CodeGenie's check for now. It runs again before you submit to the App Store.")
         }
     }
 
@@ -744,12 +802,6 @@ struct AppStoreConnectGuideView: View {
                     watchOutCard(watchOut)
                 }
 
-                // Step 2 is where the bundle ID gets registered with
-                // Apple for good. Saying this afterwards is too late.
-                if step.number == 2, AppBundleID.usesFallbackPrefix() {
-                    watchOutCard("You haven't set your own app ID prefix, so this uses CodeGenie's shared one. Bundle IDs are unique across the entire App Store — if someone else already registered this exact ID, Apple will refuse yours. Set a prefix of your own in Settings, Apple Developer.")
-                }
-
                 actionRow(step)
 
                 // The walkthrough covers the happy path. This is the
@@ -818,6 +870,14 @@ struct AppStoreConnectGuideView: View {
                     .fixedSize(horizontal: false, vertical: true)
                 if let value = instruction.copyValue {
                     copyChip(value)
+                    if value.hasPrefix("https://"), let url = URL(string: value) {
+                        Link(destination: url) {
+                            Label("Open this page", systemImage: "arrow.up.right.square")
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                .foregroundStyle(LiquidGlass.accent)
+                                .frame(minHeight: 44, alignment: .leading)
+                        }
+                    }
                 }
             }
             Spacer(minLength: 0)
@@ -1320,6 +1380,20 @@ struct AppStoreConnectGuideView: View {
     // MARK: Mac status
 
     private var macStatusCard: some View {
+        Button {
+            guard !macPaired else { return }
+            Haptics.selection()
+            if companion.isPaired { companion.reconnectIfPaired() } else { showPairMac = true }
+        } label: {
+            macStatusLabel
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(macPaired ? "Mac connected" : "No Mac connected")
+        .accessibilityHint(macPaired ? "" : "Opens pairing")
+    }
+
+    private var macStatusLabel: some View {
         GlassSurface(tier: .raised, corner: 16) {
             HStack(spacing: 12) {
                 Image(systemName: macPaired ? "macbook.and.iphone" : "macbook.slash")
@@ -1327,22 +1401,26 @@ struct AppStoreConnectGuideView: View {
                     .foregroundStyle(macPaired ? LiquidGlass.success : LiquidGlass.primaryText.opacity(0.5))
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(macPaired ? "Mac connected" : "No Mac paired")
+                    Text(macPaired ? "Mac connected" : (companion.isPaired ? "Mac not answering" : "No Mac paired"))
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                         .foregroundStyle(LiquidGlass.primaryText)
                     Text(macPaired
-                         ? "CodeGenie can open App Store Connect and type your listing into it."
-                         : "You can still do every step by hand on the phone — pairing a Mac just saves typing.")
+                         ? "CodeGenie can build, sign and upload on it, and open App Store Connect for you."
+                         : "The upload in step 3 needs it. Everything on Apple's website you can do from this phone.")
                         .font(.system(size: 11, weight: .regular, design: .rounded))
                         .foregroundStyle(LiquidGlass.primaryText.opacity(0.68))
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
+                if !macPaired {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.4))
+                }
             }
             .padding(14)
+            .contentShape(Rectangle())
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(macPaired ? "Mac connected" : "No Mac paired. Manual steps still available.")
     }
 
     private func statusBadge(_ step: ASCStep, isDone: Bool, isCurrent: Bool) -> some View {
@@ -1709,16 +1787,8 @@ struct AppStoreConnectGuideView: View {
         defer { showTestFlightUploading = false }
 
         guard let backendID = session.backendJobIDs[job.id] else {
-            testFlightErrorMessage = "This build has no live backend job to upload — CodeGenie can't reach Apple's servers for it."
+            testFlightErrorMessage = "This app's files aren't on the build server any more, so there's nothing to upload. Build it again from Home, then come back to this step."
             showTestFlightErrorAlert = true
-            return
-        }
-
-        await runReadinessCheck()
-        let outstanding = ASCCoach.outstandingForTestFlightUpload(readiness)
-        guard outstanding.isEmpty else {
-            blockedGate = BlockedGate(kind: .testflightUpload, title: "Not ready to upload yet", items: outstanding)
-            Haptics.warning()
             return
         }
 
@@ -1735,46 +1805,37 @@ struct AppStoreConnectGuideView: View {
         let hasKey = !creds.ascKeyID.isEmpty
             && !creds.ascIssuerID.isEmpty
             && !creds.ascP8PEM.isEmpty
-        if macPaired && hasKey {
-            await shipViaMac(step: step, backendID: backendID)
+        // Packaging and signing happen on the Mac or not at all. There
+        // used to be a fallback that asked the server to do it, which
+        // could never work — the server has no signing key, by design —
+        // and left the user watching a spinner for fifteen minutes.
+        guard hasKey else {
+            banner = Banner(text: "Add your App Store Connect key first. It's what lets your Mac sign and upload the app.", tone: .warning)
+            showAppleSetup = true
+            Haptics.warning()
             return
         }
-
-        guard let cfg = ShipConfig.fromCredentials(bundleID: defaultBundleID(for: job.description.title)) else {
-            testFlightErrorMessage = "Missing Apple Developer credentials. Add them in Settings, then try again."
-            showTestFlightErrorAlert = true
-            return
-        }
-        do {
-            try await swarm.ship(jobID: backendID, config: cfg)
-        } catch {
-            testFlightErrorMessage = "\(error)"
-            showTestFlightErrorAlert = true
-            Haptics.error()
-            return
-        }
-
-        // The ship endpoint is fire-and-forget: it starts a background
-        // task and returns `{"ok": true}` straight away. Treating that
-        // as success told the user their app was uploaded before
-        // anything had even been packaged, and moved them on to "wait
-        // for Apple" for a build that never left the building.
-        switch await awaitShipOutcome(backendID: backendID) {
-        case .uploaded:
-            banner = Banner(text: "Uploaded. Apple is validating and processing it now.", tone: .success)
-            Haptics.success()
-            advance(step)
-        case .failed(let why):
-            testFlightErrorMessage = why
-            showTestFlightErrorAlert = true
-            Haptics.error()
-        case .stillRunning:
+        guard macPaired else {
             banner = Banner(
-                text: "Still working. This can take a while on a big app — leave it running and check back on the build screen.",
+                text: companion.isPaired
+                    ? "Your Mac isn't answering. Wake it, check the companion is running, then try again."
+                    : "This step runs on your Mac. Pair it once and CodeGenie does the rest from here.",
                 tone: .warning
             )
+            if companion.isPaired { companion.reconnectIfPaired() } else { showPairMac = true }
             Haptics.warning()
+            return
         }
+        // Last, once the two things the user can fix in a tap are in
+        // place: the server's own audit of the project.
+        await runReadinessCheck()
+        let outstanding = ASCCoach.outstandingForTestFlightUpload(readiness)
+        guard outstanding.isEmpty else {
+            blockedGate = BlockedGate(kind: .testflightUpload, title: "Not ready to upload yet", items: outstanding)
+            Haptics.warning()
+            return
+        }
+        await shipViaMac(step: step, backendID: backendID)
     }
 
     /// Fetch, sign, and upload entirely on the paired Mac.
@@ -1872,69 +1933,23 @@ struct AppStoreConnectGuideView: View {
         }
     }
 
-    private enum ShipOutcome {
-        case uploaded
-        case failed(String)
-        /// Neither finished nor failed before we stopped watching.
-        case stillRunning
-    }
-
-    /// Watch the job's event stream until shipping actually resolves.
-    ///
-    /// Polls the client's accumulated events rather than racing a
-    /// continuation against a timeout — the array is in memory and
-    /// tiny, and this keeps the whole wait on the main actor with no
-    /// shared mutable state to get wrong.
-    private func awaitShipOutcome(backendID: String) async -> ShipOutcome {
-        swarm.openStream(jobID: backendID)
-        defer { swarm.closeStream() }
-
-        // An archive plus a validate plus an upload legitimately runs
-        // for many minutes on a real app.
-        let deadline = Date().addingTimeInterval(15 * 60)
-        while Date() < deadline {
-            if let outcome = shipOutcome(in: swarm.events) { return outcome }
-            uploadStatusLine = latestShipLine(in: swarm.events)
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
-        }
-        return .stillRunning
-    }
-
-    private func shipOutcome(in events: [SwarmEvent]) -> ShipOutcome? {
-        for event in events {
-            switch event.type {
-            case "testflight.package":
-                // A null `ok` means packaging is still running.
-                if (event.payload["ok"] as? Bool) == false {
-                    return .failed((event.payload["preview"] as? String)
-                                   ?? "CodeGenie couldn't package your app.")
-                }
-            case "testflight.upload":
-                if (event.payload["ok"] as? Bool) == true { return .uploaded }
-                return .failed((event.payload["preview"] as? String)
-                               ?? "The upload to Apple didn't go through.")
-            default:
-                continue
-            }
-        }
-        return nil
-    }
-
-    /// The newest line from Apple's toolchain, so a multi-minute wait
-    /// shows something moving instead of a frozen button.
-    private func latestShipLine(in events: [SwarmEvent]) -> String? {
-        events.last {
-            $0.type == "testflight.package.progress"
-                || $0.type == "testflight.upload.progress"
-        }?.payload["line"] as? String
-    }
-
     /// The second hard gate, at the very end: re-verifies the full
     /// App Store checklist (icon, screenshots, listing, privacy
     /// policy, GitHub backup) immediately before letting the user say
     /// they pressed Submit — rather than trusting a self-report that
     /// might already be stale.
     private func attemptFinalSubmit() async {
+        // The check can be deferred to get onto TestFlight, but not
+        // past this point: it is re-run here, fresh, every time.
+        if let backendID = session.backendJobIDs[job.id],
+           let run = try? await swarm.runPerfection(jobID: backendID) {
+            store.recordPreflight(passed: run.isReady, score: run.score, for: job.id)
+            if !run.isReady {
+                preflight = .blocked(run)
+                Haptics.warning()
+                return
+            }
+        }
         await runReadinessCheck()
 
         // The user's own attestations gate this too. CodeGenie can

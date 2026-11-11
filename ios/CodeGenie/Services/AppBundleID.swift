@@ -27,6 +27,28 @@ enum AppBundleID {
         return "\(cleanPrefix).\(slug(title))"
     }
 
+    /// A prefix for someone who hasn't chosen one: the shared stem plus
+    /// a short code unique to this install, e.g. `com.codegenie.u7k2m9`.
+    ///
+    /// A first-time user builds before they know what a bundle ID is,
+    /// and the ID is baked into the project at build time. Giving them
+    /// the bare shared prefix meant two people who both built "Tides"
+    /// got the same identifier, and the second was refused by Apple
+    /// with no way to tell why. They can still replace this with their
+    /// own in Settings.
+    static func personalPrefix(using random: inout some RandomNumberGenerator) -> String {
+        let alphabet = Array("abcdefghjkmnpqrstuvwxyz23456789")
+        let code = (0..<6).map { _ in alphabet.randomElement(using: &random)! }
+        // Leads with a letter so the segment is valid everywhere a
+        // bundle ID is parsed.
+        return "\(fallbackPrefix).u\(String(code))"
+    }
+
+    static func personalPrefix() -> String {
+        var generator = SystemRandomNumberGenerator()
+        return personalPrefix(using: &generator)
+    }
+
     /// True when this prefix resolves to the shared placeholder, so
     /// screens can nudge the user before Apple does.
     static func usesFallback(prefix: String) -> Bool {

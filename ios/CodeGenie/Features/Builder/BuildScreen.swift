@@ -22,12 +22,12 @@ struct BuildScreen: View {
     @State private var showDiffReview: Bool = false
     @State private var startedAt: Date = .now
     @State private var showAppleDevSetup: Bool = false
-    @State private var showReleaseExplainer: Bool = false
     @State private var showGitHubSetup: Bool = false
     @State private var githubSyncing: Bool = false
     @State private var jargonHelp: JargonTerm?
     @State private var shipBanner: String?
     @State private var showWhereIsMyApp: Bool = false
+    @State private var showMoreSuccessActions: Bool = false
     @State private var hadConnection: Bool = false
     /// Why the build could not start, in words for the person waiting.
     @State private var startFailure: String?
@@ -39,7 +39,7 @@ struct BuildScreen: View {
             switch self {
             case .pipeline:   "Pipeline"
             case .bitdrop:    "BitDrop"
-            case .perfection: "Perfection Mode"
+            case .perfection: "Quality check"
             }
         }
         var body: String {
@@ -49,7 +49,7 @@ struct BuildScreen: View {
             case .bitdrop:
                 "A small built-in puzzle game so you have something to do while the AI works. It's optional and has no effect on your build — it only passes the time."
             case .perfection:
-                "A 10,000-probe quality check across nine axes — Apple Review readiness, accessibility, performance, security, polish, and more. Run it before submitting to the App Store. If it flags blockers, fix them; if it's green, you have a much better shot at getting through App Review on the first try."
+"CodeGenie reads through your finished project looking for the things that most often get a first app rejected or make it feel unfinished: leftover placeholder text, buttons without accessibility labels, missing privacy details, hard-coded secrets. It reads the code; it doesn't run the app, so it can't replace trying it yourself."
             }
         }
     }
@@ -146,28 +146,6 @@ struct BuildScreen: View {
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
-        }
-        .sheet(isPresented: $showReleaseExplainer) {
-            ReleaseStageExplainer(
-                onChoose: { choice in
-                    UserDefaults.standard.set(true, forKey: "release.explainer.seen")
-                    showReleaseExplainer = false
-                    switch choice {
-                    case .testflight, .appStore:
-                        // Same backend route today — ASC TestFlight is
-                        // the gate either way. The choice text just
-                        // sets the user's intent in the success banner.
-                        Task { await submitToAppStore(skipExplainer: true) }
-                    case .learnMore:
-                        if let url = URL(string: "https://developer.apple.com/distribute/") {
-                            openURL(url)
-                        }
-                    }
-                },
-                onCancel: { showReleaseExplainer = false }
-            )
-            .presentationDragIndicator(.visible)
-            .presentationBackground(.ultraThinMaterial)
         }
         .sheet(isPresented: $showSnapshotSettingsSheet) {
             SnapshotCapSettingsView()
@@ -590,36 +568,15 @@ struct BuildScreen: View {
                             .font(.system(size: 14, weight: .regular, design: .rounded))
                             .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
                             .multilineTextAlignment(.center)
-                        appLocationCard
-                        Button {
-                            Haptics.selection()
-                            jargonHelp = .perfection
-                        } label: {
-                            Label("What's Perfection Mode?", systemImage: "info.circle.fill")
-                                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                                .foregroundStyle(LiquidGlass.accent)
-                        }
-                        .accessibilityHint("Open a plain-English explainer for Perfection Mode")
-                        if let jobID = swarm.jobID {
-                            PrimaryButton(
-                                title: perfectionRunning ? "Running Perfection Mode..." : "Run Perfection Mode",
-                                systemImage: "checkmark.seal.fill",
-                                style: perfectionRun?.isReady == true ? .glass : .filled
-                            ) {
-                                Task { await runPerfection(jobID: jobID) }
-                            }
-                            .disabled(perfectionRunning)
-                            .accessibilityLabel("Run ten thousand probe Perfection Mode")
-                        }
                         if let perfectionRun {
                             perfectionSummary(perfectionRun)
-                        }
-                        if let perfectionError {
-                            Text(perfectionError)
-                                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                                .foregroundStyle(LiquidGlass.error.opacity(0.9))
-                                .multilineTextAlignment(.center)
-                                .accessibilityLabel("Perfection Mode failed: \(perfectionError)")
+                        } else if perfectionRunning {
+                            HStack(spacing: 8) {
+                                ProgressView().controlSize(.small).tint(LiquidGlass.accent)
+                                Text("Checking it for common App Store problems…")
+                                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+                            }
                         }
                         successActions
                     }
@@ -639,51 +596,68 @@ struct BuildScreen: View {
     /// at most ten children and that stack had grown to fourteen.
     @ViewBuilder
     private var successActions: some View {
+        // One obvious next step, one way to look, one way out. The
+        // rest is real but not what a first build needs in its face.
         PrimaryButton(title: "Put it on my iPhone", systemImage: "iphone.gen3", style: .filled) {
             // Keep the original id — ASCSubmissionStore keys its saved
             // progress on it, and Home looks the job back up in
             // recentJobs by the same id.
-            session.openAppStoreConnect(
-                for: BuildJob(id: initialJob.id,
-                              description: initialJob.description,
-                              stage: .readyForTest)
-            )
+            session.openAppStoreConnect(for: initialJob)
         }
+        .accessibilityHint("Opens the step-by-step guide. Your progress is saved as you go.")
         PrimaryButton(title: "See what was built", systemImage: "doc.text.magnifyingglass", style: .glass) {
-            // The original job, not a copy: the file list is looked up
-            // by its id.
             session.openPreview(for: initialJob)
         }
-        .accessibilityHint("Opens the ten-step App Store Connect guide. Your progress is saved.")
-        PrimaryButton(title: "Upload build to TestFlight", systemImage: "paperplane.fill", style: .glass) {
-            Task { await submitToAppStore() }
+        Button {
+            Haptics.selection()
+            dismiss()
+        } label: {
+            Text("Done for now")
+                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .contentShape(Rectangle())
         }
-        PrimaryButton(
-            title: githubSyncing ? "Pushing to GitHub..." : "Back up to GitHub",
-            systemImage: "chevron.left.forwardslash.chevron.right",
-            style: .glass
-        ) {
-            Task { await backupToGitHub() }
-        }
-        .disabled(githubSyncing)
-        if let url = swarm.jobID.flatMap({ swarm.exportURL(jobID: $0) }) {
-            ShareLink(item: url, preview: SharePreview("\(initialJob.description.title).zip", image: Image(systemName: "shippingbox.fill"))) {
-                HStack(spacing: 8) {
-                    Image(systemName: "square.and.arrow.down")
-                    Text("Download workspace")
+        .buttonStyle(.plain)
+        .accessibilityHint("Returns to Home. Your app stays in the Apps tab.")
+
+        DisclosureGroup("More options", isExpanded: $showMoreSuccessActions) {
+            VStack(spacing: 10) {
+                appLocationCard
+                if let jobID = swarm.jobID {
+                    PrimaryButton(
+                        title: perfectionRunning ? "Checking…" : "Run the quality check again",
+                        systemImage: "checkmark.shield",
+                        style: .glass
+                    ) {
+                        Task { await runPerfection(jobID: jobID) }
+                    }
+                    .disabled(perfectionRunning)
                 }
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                .padding(.horizontal, 16).padding(.vertical, 10)
-                .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
-                .background(.white.opacity(0.06), in: Capsule())
-                .overlay(Capsule().strokeBorder(.white.opacity(0.15)))
+                PrimaryButton(
+                    title: githubSyncing ? "Pushing to GitHub…" : "Back up to GitHub",
+                    systemImage: "chevron.left.forwardslash.chevron.right",
+                    style: .glass
+                ) {
+                    Task { await backupToGitHub() }
+                }
+                .disabled(githubSyncing)
             }
-            .accessibilityLabel("Download workspace zip")
+            .padding(.top, 10)
+        }
+        .font(.system(size: 13, weight: .semibold, design: .rounded))
+        .tint(LiquidGlass.primaryText.opacity(0.6))
+
+        if let perfectionError {
+            Text(perfectionError)
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .foregroundStyle(LiquidGlass.error.opacity(0.9))
+                .multilineTextAlignment(.center)
         }
         if let banner = shipBanner {
             Text(banner)
                 .font(.system(size: 12, weight: .medium, design: .rounded))
-                .foregroundStyle(LiquidGlass.success)
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
                 .multilineTextAlignment(.center)
                 .transition(.opacity)
         }
@@ -745,10 +719,10 @@ struct BuildScreen: View {
                     .foregroundStyle(run.isReady ? LiquidGlass.success : LiquidGlass.warning)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Perfection Mode")
+                    Text("Quality check")
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                         .foregroundStyle(LiquidGlass.primaryText)
-                    Text("\(run.probesRun) probes - \(run.gateLabel) - \(String(format: "%.1f", run.score))/100")
+                    Text("\(run.gateLabel) · \(Int(run.score))/100 · \(run.filesScanned) file\(run.filesScanned == 1 ? "" : "s") read")
                         .font(.system(size: 11, weight: .semibold, design: .monospaced))
                         .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
                 }
@@ -767,7 +741,7 @@ struct BuildScreen: View {
         }
         .padding(.vertical, 4)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Perfection Mode \(run.gateLabel), score \(String(format: "%.1f", run.score)) out of 100")
+        .accessibilityLabel("Quality check: \(run.gateLabel), \(Int(run.score)) out of 100")
     }
 
     // MARK: Build coroutine
@@ -869,59 +843,6 @@ struct BuildScreen: View {
         return f.string(from: .now)
     }
 
-    /// Wired to the "Submit to App Store" CTA in the success overlay.
-    /// Runs the orchestrator's `/ship` route on the existing job — no
-    /// rebuild.
-    ///
-    /// Four preconditions, in order:
-    ///   1. Perfection Mode must be green. Blocks shipping if there
-    ///      are unresolved quality matrix flags.
-    ///   2. Apple Developer credentials must exist. Otherwise we open
-    ///      the walkthrough — a first-timer doesn't know what's missing.
-    ///   3. The TestFlight-vs-App-Store explainer runs once per device
-    ///      so the user knows which door they're walking through.
-    ///   4. Then `/ship` fires.
-    private func submitToAppStore(skipExplainer: Bool = false) async {
-        if swarm.jobID != nil && perfectionRun?.isReady != true {
-            shipBanner = "Run Perfection Mode and clear blockers before App Store submission."
-            Haptics.warning()
-            return
-        }
-        guard Credentials.shared.hasAppleDevCreds else {
-            showAppleDevSetup = true
-            Haptics.warning()
-            return
-        }
-        let seenExplainer = UserDefaults.standard.bool(forKey: "release.explainer.seen")
-        if !seenExplainer && !skipExplainer {
-            showReleaseExplainer = true
-            Haptics.selection()
-            return
-        }
-        guard let jobID = swarm.jobID,
-              let cfg = ShipConfig.fromCredentials(
-                bundleID: defaultBundleID(for: initialJob.description.title)
-              ) else {
-            shipBanner = "Could not assemble ship config."
-            Haptics.error()
-            return
-        }
-        do {
-            let readiness = try await swarm.runReleaseReadiness(jobID: jobID, ship: cfg)
-            guard readiness.isReadyForTestFlight else {
-                shipBanner = readiness.nextActions.first ?? readiness.summary
-                Haptics.warning()
-                return
-            }
-            try await swarm.ship(jobID: jobID, config: cfg)
-            shipBanner = "Submitted — watch the transcript for processing status."
-            Haptics.success()
-        } catch {
-            shipBanner = "Submit failed: \(error)"
-            Haptics.error()
-        }
-    }
-
     private func runPerfection(jobID: String) async {
         perfectionRunning = true
         perfectionError = nil
@@ -930,8 +851,8 @@ struct BuildScreen: View {
             let run = try await swarm.runPerfection(jobID: jobID)
             perfectionRun = run
             shipBanner = run.isReady
-                ? "Perfection Mode passed — App Store handoff unlocked."
-                : "Perfection Mode found blockers. Fix them, then rerun."
+                ? "Quality check passed."
+                : "The quality check found things to fix before you submit."
             if run.isReady { Haptics.success() } else { Haptics.warning() }
         } catch {
             perfectionError = "Could not run Perfection Mode: \(error)"
@@ -942,15 +863,14 @@ struct BuildScreen: View {
     private func startPerfectionIfNeeded(jobID: String) {
         guard !perfectionAutostarted, !perfectionRunning, perfectionRun == nil else { return }
         perfectionAutostarted = true
-        shipBanner = "Perfection Mode is running automatically."
+        shipBanner = nil
         Task { await runPerfection(jobID: jobID) }
     }
 
     /// Wired to the "Back up to GitHub" CTA in the success overlay.
     /// Pushes the finished workspace to the user's configured GitHub
     /// repo on a fresh branch. If no GitHub credentials are set yet,
-    /// opens the walkthrough first — same hand-holding policy as
-    /// `submitToAppStore`.
+    /// opens the walkthrough first.
     private func backupToGitHub() async {
         let creds = Credentials.shared
         guard creds.hasGithub else {
@@ -1043,7 +963,7 @@ struct BuildScreen: View {
 
     /// Single source of truth — see `AppBundleID`.
     private func defaultBundleID(for title: String) -> String {
-        AppBundleID.make(title: title)
+        initialJob.bundleID ?? AppBundleID.make(title: title)
     }
 
     private func appendLog(for stage: BuildJob.Stage) {

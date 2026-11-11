@@ -109,6 +109,12 @@ final class Credentials: ObservableObject {
         }
         appleTeamID  = UserDefaults.standard.string(forKey: "apple.teamID") ?? ""
         bundleIDPrefix = UserDefaults.standard.string(forKey: "apple.bundlePrefix") ?? ""
+        if bundleIDPrefix.trimmingCharacters(in: .whitespaces).isEmpty {
+            // Decided before the first build, because that is when the
+            // identifier is fixed into the project. See `personalPrefix`.
+            bundleIDPrefix = AppBundleID.personalPrefix()
+            UserDefaults.standard.set(bundleIDPrefix, forKey: "apple.bundlePrefix")
+        }
         ascKeyID     = UserDefaults.standard.string(forKey: "apple.ascKeyID") ?? ""
         ascIssuerID  = UserDefaults.standard.string(forKey: "apple.ascIssuer") ?? ""
         ascP8PEM     = readAppleSecret(account: "asc.p8") ?? ""
@@ -137,7 +143,7 @@ final class Credentials: ObservableObject {
     var hasGithub: Bool { !githubUsername.isEmpty && !githubPAT.isEmpty }
 
     func setAppleTeamID(_ id: String) {
-        appleTeamID = id.trimmingCharacters(in: .whitespacesAndNewlines)
+        appleTeamID = CredentialCheck.tidy(id).uppercased()
         UserDefaults.standard.set(appleTeamID, forKey: "apple.teamID")
     }
 
@@ -157,17 +163,21 @@ final class Credentials: ObservableObject {
     }
 
     func setASCKeyID(_ id: String) {
-        ascKeyID = id.trimmingCharacters(in: .whitespacesAndNewlines)
+        ascKeyID = CredentialCheck.tidy(id).uppercased()
         UserDefaults.standard.set(ascKeyID, forKey: "apple.ascKeyID")
     }
 
     func setASCIssuerID(_ id: String) {
-        ascIssuerID = id.trimmingCharacters(in: .whitespacesAndNewlines)
+        ascIssuerID = CredentialCheck.tidy(id).lowercased()
         UserDefaults.standard.set(ascIssuerID, forKey: "apple.ascIssuer")
     }
 
     func setASCP8(_ pem: String) {
-        let clean = pem.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Stored in the form the signer reads. A paste routinely loses
+        // the line breaks, and a key saved that way fails later with an
+        // error that looks like Apple rejected it.
+        let trimmed = pem.trimmingCharacters(in: .whitespacesAndNewlines)
+        let clean = CredentialCheck.normalisedPrivateKey(trimmed) ?? trimmed
         ascP8PEM = clean
         writeAppleSecret(clean, account: "asc.p8")
     }
@@ -247,7 +257,7 @@ final class Credentials: ObservableObject {
     }
 
     func setKey(_ key: String, for provider: AIProvider) {
-        let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = CredentialCheck.tidy(key)
         write(trimmed, for: provider)
         switch provider {
         case .anthropic: anthropicKey = trimmed

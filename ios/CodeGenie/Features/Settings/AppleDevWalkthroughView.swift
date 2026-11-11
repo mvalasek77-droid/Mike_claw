@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Four-step, hand-holding walkthrough for users who have never set up
 /// an Apple Developer account. The existing `AppleDevSetupView` is the
@@ -18,8 +19,9 @@ struct AppleDevWalkthroughView: View {
     @State private var keyDraft: String = ""
     @State private var issuerDraft: String = ""
     @State private var p8Draft: String = ""
-    @State private var revealP8: Bool = false
     @State private var saved: Bool = false
+    @State private var showKeyFilePicker = false
+    @State private var keyFileNote: String?
 
     var body: some View {
         ZStack {
@@ -196,6 +198,7 @@ struct AppleDevWalkthroughView: View {
                         Spacer()
                     }
                     fieldRow("ABCD123456", text: $teamDraft, secure: false)
+                    problem(teamDraft.isEmpty ? nil : CredentialCheck.teamID(teamDraft).message)
                     Button {
                         creds.setAppleTeamID(teamDraft)
                         Haptics.success()
@@ -211,8 +214,8 @@ struct AppleDevWalkthroughView: View {
                 creds.setAppleTeamID(teamDraft)
                 withAnimation(LiquidGlass.motion) { step = 2 }
             }
-            .disabled(teamDraft.count < 6)
-            .opacity(teamDraft.count < 6 ? 0.5 : 1)
+            .disabled(!CredentialCheck.teamID(teamDraft).isUsable)
+            .opacity(CredentialCheck.teamID(teamDraft).isUsable ? 1 : 0.5)
         }
     }
 
@@ -246,10 +249,10 @@ struct AppleDevWalkthroughView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     walkRow(num: 1, body: "Tap **Generate API Key** (or the **+** if you've used it before).")
                     walkRow(num: 2, body: "Name it `CodeGenie`.")
-                    walkRow(num: 3, body: "Set Access to **App Manager** — that's the tier needed for TestFlight uploads.")
+                    walkRow(num: 3, body: "Set Access to **App Manager**. If signing later fails with a permissions message, make a new key with **Admin** access instead — some accounts need it to create signing certificates.")
                     walkRow(num: 4, body: "Tap Generate. The page now shows the **Issuer ID** at the top and your new key in the list.")
                     walkRow(num: 5, body: "Copy the **Key ID** (10 characters, e.g. `ABCDEFGH12`).")
-                    walkRow(num: 6, body: "Tap **Download API Key** — you can only download the `.p8` file once.")
+                    walkRow(num: 6, body: "Tap **Download API Key** — you can only download the `.p8` file once. On an iPhone it goes to the Files app, in Downloads.")
                     walkRow(num: 7, body: "Open it in any text editor on your Mac, copy everything between (and including) the BEGIN and END lines.")
                 }
             }
@@ -262,73 +265,147 @@ struct AppleDevWalkthroughView: View {
 
     // MARK: Step 3 — paste
 
+    private var allCredentialsUsable: Bool {
+        CredentialCheck.issuerID(issuerDraft).isUsable
+            && CredentialCheck.keyID(keyDraft).isUsable
+            && CredentialCheck.privateKey(p8Draft).isUsable
+    }
+
     private var pasteStep: some View {
         VStack(spacing: 14) {
-            GlassCard(title: "Issuer ID", icon: "number.square.fill", tint: LiquidGlass.accent) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Long UUID at the top of the API page. Same for every key on your team.")
-                        .font(.system(size: 12, weight: .regular, design: .rounded))
-                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
-                    fieldRow("00000000-0000-0000-0000-000000000000", text: $issuerDraft, secure: false)
+            GlassCard(title: "The key file", icon: "doc.badge.arrow.up.fill", tint: LiquidGlass.warning) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Apple gave you a file named AuthKey_….p8. Choose it and CodeGenie reads the key and its ID for you.")
+                        .font(.system(size: 13, weight: .regular, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
+                        .fixedSize(horizontal: false, vertical: true)
+                    PrimaryButton(
+                        title: CredentialCheck.privateKey(p8Draft).isUsable ? "Choose a different file" : "Choose the .p8 file",
+                        systemImage: "folder",
+                        style: CredentialCheck.privateKey(p8Draft).isUsable ? .glass : .filled
+                    ) {
+                        showKeyFilePicker = true
+                    }
+                    .accessibilityHint("Opens Files. Downloads from Safari are in the Downloads folder.")
+                    if CredentialCheck.privateKey(p8Draft).isUsable {
+                        Label("Key loaded.", systemImage: "checkmark.seal.fill")
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .foregroundStyle(LiquidGlass.success)
+                    }
+                    if let keyFileNote {
+                        problem(keyFileNote)
+                    }
+                    DisclosureGroup("Paste the contents instead") {
+                        VStack(alignment: .leading, spacing: 6) {
+                            // A multi-line editor, never a secure
+                            // field: a single-line field strips the
+                            // line breaks the key is made of.
+                            TextEditor(text: $p8Draft)
+                                .scrollContentBackground(.hidden)
+                                .frame(minHeight: 110)
+                                .font(.system(size: 12, design: .monospaced))
+                                .foregroundStyle(LiquidGlass.primaryText)
+                                .padding(10)
+                                .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
+                                .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.white.opacity(0.12)))
+                                .privacySensitive()
+                                .accessibilityLabel("Private key contents")
+                            problem(p8Draft.isEmpty ? nil : CredentialCheck.privateKey(p8Draft).message)
+                        }
+                        .padding(.top, 8)
+                    }
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .tint(LiquidGlass.accent)
                 }
             }
             GlassCard(title: "Key ID", icon: "key.fill", tint: LiquidGlass.accentSecondary) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("10 characters. Listed next to the key you just generated.")
+                    Text("10 characters, listed next to the key you just generated. It's also in the file's name.")
                         .font(.system(size: 12, weight: .regular, design: .rounded))
                         .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+                        .fixedSize(horizontal: false, vertical: true)
                     fieldRow("ABCDEFGH12", text: $keyDraft, secure: false)
+                    problem(keyDraft.isEmpty ? nil : CredentialCheck.keyID(keyDraft).message)
                 }
             }
-            GlassCard(title: ".p8 contents", icon: "doc.text.fill", tint: LiquidGlass.warning) {
+            GlassCard(title: "Issuer ID", icon: "number.square.fill", tint: LiquidGlass.accent) {
                 VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text("Paste from the file you downloaded.")
-                            .font(.system(size: 12, weight: .regular, design: .rounded))
-                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
-                        Spacer()
-                        Button { revealP8.toggle() } label: {
-                            Image(systemName: revealP8 ? "eye.slash" : "eye")
-                                .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
-                        }
-                        .accessibilityLabel(revealP8 ? "Hide private key" : "Show private key")
-                    }
-                    Group {
-                        if revealP8 {
-                            TextEditor(text: $p8Draft)
-                                .scrollContentBackground(.hidden)
-                                .frame(minHeight: 110)
-                        } else {
-                            SecureField("-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----", text: $p8Draft)
-                        }
-                    }
-                    .font(.system(size: 12, design: .monospaced))
-                    .foregroundStyle(LiquidGlass.primaryText)
-                    .padding(10)
-                    .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
-                    .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.white.opacity(0.12)))
+                    Text("The long code with dashes above the list of keys. It's the same for every key on your team.")
+                        .font(.system(size: 12, weight: .regular, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+                        .fixedSize(horizontal: false, vertical: true)
+                    fieldRow("00000000-0000-0000-0000-000000000000", text: $issuerDraft, secure: false)
+                    problem(issuerDraft.isEmpty ? nil : CredentialCheck.issuerID(issuerDraft).message)
                 }
             }
 
             PrimaryButton(title: saved ? "Saved — close" : "Save to Keychain", systemImage: saved ? "checkmark.seal.fill" : "lock.shield.fill", style: .filled) {
+                if saved {
+                    dismiss()
+                    return
+                }
                 creds.setASCIssuerID(issuerDraft)
                 creds.setASCKeyID(keyDraft)
                 creds.setASCP8(p8Draft)
                 Haptics.success()
-                if saved {
-                    dismiss()
-                } else {
-                    withAnimation { saved = true }
-                }
+                withAnimation { saved = true }
             }
-            .disabled(issuerDraft.isEmpty || keyDraft.isEmpty || p8Draft.isEmpty)
-            .opacity((issuerDraft.isEmpty || keyDraft.isEmpty || p8Draft.isEmpty) ? 0.5 : 1)
+            .disabled(!allCredentialsUsable)
+            .opacity(allCredentialsUsable ? 1 : 0.5)
 
             if saved {
-                Label("Stored in iOS Keychain", systemImage: "lock.shield.fill")
+                Label("Stored in this iPhone's Keychain. It goes to your Mac when you upload, and nowhere else.", systemImage: "lock.shield.fill")
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
                     .foregroundStyle(LiquidGlass.success)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+        }
+        .fileImporter(
+            isPresented: $showKeyFilePicker,
+            allowedContentTypes: [.data, .text, .item],
+            allowsMultipleSelection: false
+        ) { result in
+            importKeyFile(result)
+        }
+    }
+
+    /// Read the chosen file. Files outside the app's sandbox must be
+    /// opened inside a security scope and the scope always released.
+    private func importKeyFile(_ result: Result<[URL], Error>) {
+        keyFileNote = nil
+        guard case .success(let urls) = result, let url = urls.first else {
+            if case .failure = result { keyFileNote = "Couldn't open that file. Try choosing it again." }
+            return
+        }
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+
+        guard let data = try? Data(contentsOf: url), data.count < 64 * 1024,
+              let text = String(data: data, encoding: .utf8)
+        else {
+            keyFileNote = "That file couldn't be read as a key. Choose the AuthKey_….p8 file Apple gave you."
+            return
+        }
+        guard CredentialCheck.privateKey(text).isUsable else {
+            keyFileNote = CredentialCheck.privateKey(text).message
+            Haptics.error()
+            return
+        }
+        p8Draft = text
+        if let id = CredentialCheck.keyID(fromFileName: url.lastPathComponent) {
+            keyDraft = id
+        }
+        saved = false
+        Haptics.success()
+    }
+
+    @ViewBuilder
+    private func problem(_ message: String?) -> some View {
+        if let message {
+            Label(message, systemImage: "exclamationmark.triangle.fill")
+                .font(.system(size: 12, weight: .medium, design: .rounded))
+                .foregroundStyle(LiquidGlass.warning)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 

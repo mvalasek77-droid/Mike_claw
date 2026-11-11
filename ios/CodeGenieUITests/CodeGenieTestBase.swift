@@ -127,7 +127,7 @@ class CodeGenieTestBase: XCTestCase {
         // First-run fork: offer to set shipping up first. Take the
         // "just build" branch so the build actually starts.
         let buildNow = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Just build something'")
+            NSPredicate(format: "label CONTAINS[c] 'Build my app first'")
         ).firstMatch
         if buildNow.waitForExistence(timeout: 3) { buildNow.tap() }
 

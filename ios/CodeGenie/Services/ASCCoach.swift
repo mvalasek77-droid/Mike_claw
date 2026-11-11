@@ -423,19 +423,20 @@ extension ASCCoach {
         case 2:
             return Walkthrough(
                 plainTitle: "Tell Apple your app exists",
-                whatThisIs: "Before you can upload anything, Apple needs an empty record to attach it to. You are just reserving the name and the ID here — no screenshots, no description, nothing public.",
+                whatThisIs: "Two short forms on two Apple websites. First you register your app's ID, which is its permanent, unique name inside Apple's systems. Then you create an empty record for the app to be uploaded into. Nothing here is public yet.",
                 doThis: [
-                    .init(text: "Click Apps in the top row, then the blue + button near the top-left, then New App."),
-                    .init(text: "Platforms: tick iOS."),
-                    .init(text: "Name: this is the public name on the App Store. It must be unique across the whole store.", copyValue: appName),
+                    .init(text: "Open the Identifiers page on Apple's developer site and click the blue + button.", copyValue: "https://developer.apple.com/account/resources/identifiers/add/bundleId"),
+                    .init(text: "Choose App IDs, Continue, then App, Continue."),
+                    .init(text: "Description: your app's name is fine. Bundle ID: leave it on Explicit and paste this exact value.", copyValue: bundleID),
+                    .init(text: "Scroll down, click Continue, then Register. That's the ID done."),
+                    .init(text: "Now go to App Store Connect. Click Apps, then the blue + button near the top-left, then New App."),
+                    .init(text: "Platforms: tick iOS. Name: the public name on the App Store, which must be unique across the whole store.", copyValue: appName),
                     .init(text: "Primary Language: whatever language your app's text is in."),
-                    .init(text: "Bundle ID: pick this exact one from the dropdown. It has to match what CodeGenie built, or the upload in the next step is rejected.", copyValue: bundleID),
-                    .init(text: "SKU: your own private reference code. Nobody ever sees it. Reusing the bundle ID is fine.", copyValue: bundleID),
-                    .init(text: "User Access: leave it on Full Access."),
-                    .init(text: "Click Create."),
+                    .init(text: "Bundle ID: pick the one you just registered from the dropdown. SKU: your own private reference — reusing the bundle ID is fine.", copyValue: bundleID),
+                    .init(text: "User Access: leave it on Full Access. Click Create."),
                 ],
-                watchOut: "If your bundle ID isn't in the dropdown, it hasn't been registered yet. Go to developer.apple.com → Certificates, Identifiers & Profiles → Identifiers → + and register it first, then come back and reload this page.",
-                timeEstimate: "5 minutes"
+                watchOut: "If the bundle ID isn't in the dropdown, the registration in the first four steps didn't finish, or the page was open before you registered it — reload it. If Apple says the name is taken, another app already uses it: pick a different public name. The bundle ID stays the same.",
+                timeEstimate: "10 minutes"
             )
 
         case 3:
