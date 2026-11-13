@@ -9,7 +9,7 @@ import XCTest
 /// - Setup guides (GitHub, Apple Dev, Xcode readiness)
 /// - Power user mode toggle
 /// - Power-user surfaces (cost cap, agent routing, custom agents,
-///   Apple Dev, Mac pairing, admin)
+///   Apple Dev, admin)
 /// - Tutorial replay
 /// - Telemetry toggle
 /// - Support (bug report, changelog)
@@ -198,18 +198,13 @@ final class T04_SettingsTests: CodeGenieTestBase {
         }
     }
 
-    func test13_pairMacOpens() {
+    func test13_noMacPairingIsOffered() {
         enablePowerMode()
         scrollDown(times: 4)
-        let pair = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Pair' OR label CONTAINS[c] 'Mac'")
-        ).firstMatch
-        if pair.waitForExistence(timeout: 3) {
-            pair.tap()
-            sleep(1)
-            screenshot("13-pair-mac")
-            dismissSheet()
-        }
+        XCTAssertFalse(
+            app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Pair your Mac'")).firstMatch.exists,
+            "There is no Mac helper app to pair with; Settings must not offer one"
+        )
     }
 
     func test14_adminOpens() {

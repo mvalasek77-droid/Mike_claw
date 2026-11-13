@@ -9,13 +9,11 @@ struct HomeView: View {
     @State private var showTutorial = false
     @State private var showGame = false
     @State private var showXcodeReadiness = false
-    @State private var showPairMac = false
     @State private var showAppleDev = false
     @State private var showGitHub = false
     @State private var xcodeAcknowledged = UserDefaults.standard.bool(forKey: "xcode.readiness.acknowledged")
     @State private var showFirstBuildPrompt = false
     @StateObject private var ascStore = ASCSubmissionStore.shared
-    @StateObject private var companion = CompanionBridge.shared
 
     var body: some View {
         ScrollView {
@@ -96,11 +94,6 @@ struct HomeView: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
         }
-        .sheet(isPresented: $showPairMac) {
-            PairMacView()
-                .presentationDragIndicator(.visible)
-                .presentationBackground(.ultraThinMaterial)
-        }
         .sheet(isPresented: $showAppleDev) {
             AppleDevWalkthroughView()
                 .presentationDragIndicator(.visible)
@@ -133,10 +126,7 @@ struct HomeView: View {
     /// describe-an-app flow. After the first time the user is trusted
     /// to know what they're doing.
     private func startBuildOrPromptSetup() {
-        let macPaired = companion.isPaired
-        let appleReady = creds.hasAppleDevCreds
-        let githubReady = creds.hasGithub
-        let done = [xcodeAcknowledged, macPaired, appleReady, githubReady].filter { $0 }.count
+        let done = [xcodeAcknowledged, creds.hasAppleDevCreds, creds.hasGithub].filter { $0 }.count
         let promptShown = UserDefaults.standard.bool(forKey: "firstBuild.prompt.shown")
         if done == 0 && !promptShown {
             showFirstBuildPrompt = true
@@ -147,16 +137,15 @@ struct HomeView: View {
 
     // MARK: Ship readiness
 
-    /// Live progress card showing how many of the four ship gates are
-    /// configured. Auto-hides once everything is set up.
+    /// The one-time things worth doing before the guide asks for them.
+    /// Hides itself once they're done.
     @ViewBuilder
     private var shipReadinessCard: some View {
-        let macPaired = companion.isPaired
         let appleReady = creds.hasAppleDevCreds
         let githubReady = creds.hasGithub
         let xcodeReady = xcodeAcknowledged
-        let done = [xcodeReady, macPaired, appleReady, githubReady].filter { $0 }.count
-        if done < 4 {
+        let done = [xcodeReady, appleReady, githubReady].filter { $0 }.count
+        if done < 3 {
             GlassSurface(tier: .raised, corner: 22) {
                 VStack(alignment: .leading, spacing: 14) {
                     HStack(spacing: 10) {
@@ -166,38 +155,30 @@ struct HomeView: View {
                             .frame(width: 32, height: 32)
                             .background(Circle().fill(LiquidGlass.warning.opacity(0.18)))
                         VStack(alignment: .leading, spacing: 1) {
-                            Text("Set up shipping")
+                            Text("Get ahead")
                                 .font(.system(size: 16, weight: .bold, design: .rounded))
                                 .foregroundStyle(LiquidGlass.primaryText)
-                            Text("\(done) of 4 done — one-time setup, in plain English.")
+                            Text("\(done) of 3 done — things with a wait, worth starting early.")
                                 .font(.system(size: 12, weight: .regular, design: .rounded))
                                 .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                         }
                         Spacer()
                     }
-                    progressDots(done: done, total: 4)
+                    progressDots(done: done, total: 3)
                     VStack(spacing: 6) {
                         shipRow(
                             icon: "hammer.fill",
                             tint: LiquidGlass.accentSecondary,
                             title: "Xcode",
-                            subtitle: xcodeReady ? "You're caught up." : "What it is, how to install.",
+                            subtitle: xcodeReady ? "You're caught up." : "A big download on your Mac. Start it now.",
                             done: xcodeReady
                         ) { showXcodeReadiness = true }
-
-                        shipRow(
-                            icon: "macbook.and.iphone",
-                            tint: LiquidGlass.accent,
-                            title: "Pair your Mac",
-                            subtitle: macPaired ? "Connected." : "Link this phone to a Mac running Xcode.",
-                            done: macPaired
-                        ) { showPairMac = true }
 
                         shipRow(
                             icon: "applelogo",
                             tint: LiquidGlass.success,
                             title: "Apple Developer",
-                            subtitle: appleReady ? "Connected — TestFlight enabled." : "The $99/yr program. We walk you through it.",
+                            subtitle: appleReady ? "Details saved." : "The $99/yr program. Approval can take a day.",
                             done: appleReady
                         ) { showAppleDev = true }
 
@@ -213,7 +194,7 @@ struct HomeView: View {
                 .padding(18)
             }
             .accessibilityElement(children: .contain)
-            .accessibilityLabel("Ship checklist — \(done) of 4 done")
+            .accessibilityLabel("Ship checklist — \(done) of 3 done")
         }
     }
 
@@ -271,8 +252,6 @@ struct HomeView: View {
             latestJobID: latest?.id,
             latestJobTitle: latest?.description.title,
             latestJobStage: latest?.stage,
-            macPaired: companion.isPaired,
-            appleAccountReady: creds.hasAppleDevCreds,
             submission: ascStore.primary
         )
     }
@@ -378,14 +357,6 @@ struct HomeView: View {
         case .openLatestBuild:
             if let job = session.recentJobs.first {
                 session.openJob(job, backendID: session.backendJobIDs[job.id])
-            }
-        case .setUpShipping:
-            if !xcodeAcknowledged {
-                showXcodeReadiness = true
-            } else if !companion.isPaired {
-                showPairMac = true
-            } else {
-                showAppleDev = true
             }
         case .openSubmission(let jobID):
             if let job = session.recentJobs.first(where: { $0.id == jobID }) {

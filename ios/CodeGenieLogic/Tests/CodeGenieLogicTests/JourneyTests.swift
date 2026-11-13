@@ -38,26 +38,12 @@ final class JourneyTests: XCTestCase {
         XCTAssertEqual(next.action, .openLatestBuild)
     }
 
-    func testAFinishedBuildWithoutSetupNamesExactlyWhatIsMissing() {
-        var facts = Journey.Facts(latestJobID: jobID, latestJobTitle: "Tide Times", latestJobStage: .readyForTest)
-        var next = Journey.nextStep(facts)
-        XCTAssertEqual(next.action, .setUpShipping)
-        XCTAssertTrue(next.detail.contains("a paired Mac and your Apple Developer details"))
-
-        facts.macPaired = true
-        next = Journey.nextStep(facts)
-        XCTAssertEqual(next.action, .setUpShipping)
-        XCTAssertFalse(next.detail.contains("a paired Mac"))
-        XCTAssertTrue(next.detail.contains("your Apple Developer details"))
-    }
-
-    func testAFinishedBuildWithSetupGoesStraightToSubmission() {
-        let next = Journey.nextStep(.init(
-            latestJobID: jobID, latestJobTitle: "Tide Times", latestJobStage: .readyForTest,
-            macPaired: true, appleAccountReady: true
-        ))
+    func testAFinishedBuildLeadsStraightIntoTheGuide() {
+        let next = Journey.nextStep(.init(latestJobID: jobID, latestJobTitle: "Tide Times", latestJobStage: .readyForTest))
         XCTAssertEqual(next.action, .openSubmission(jobID: jobID))
         XCTAssertEqual(next.milestone, .phone)
+        XCTAssertTrue(next.detail.contains("Xcode"), "the user should know a Mac is involved before they tap")
+        XCTAssertTrue(next.detail.lowercased().contains("nobody has seen it run"))
     }
 
     func testASubmissionInProgressNamesTheExactStep() {
@@ -69,13 +55,21 @@ final class JourneyTests: XCTestCase {
         XCTAssertEqual(next.milestone, .phone)
     }
 
-    func testAfterTestFlightTheGoalBecomesTheStore() {
-        let r = record { r in (1...6).forEach { r.complete($0) } }
+    func testOnceInstalledTheGoalIsTestingNotTheStore() {
+        let r = record { r in (1...8).forEach { r.complete($0) } }
+        let next = Journey.nextStep(.init(submission: r))
+        XCTAssertEqual(next.milestone, .test)
+        XCTAssertEqual(next.buttonTitle, "Continue testing")
+        XCTAssertTrue(next.detail.lowercased().contains("works"))
+    }
+
+    func testAfterTestingTheGoalBecomesTheStore() {
+        let r = record { r in (1...11).forEach { r.complete($0) } }
         XCTAssertEqual(Journey.nextStep(.init(submission: r)).milestone, .store)
     }
 
     func testWaitingOnApplesProcessingIsMarkedAsWaiting() {
-        let r = record { r in (1...3).forEach { r.complete($0) } }
+        let r = record { r in (1...6).forEach { r.complete($0) } }
         XCTAssertTrue(Journey.nextStep(.init(submission: r)).isWaiting)
     }
 
@@ -112,10 +106,7 @@ final class JourneyTests: XCTestCase {
     }
 
     func testMilestonesBehindTheUserAreReached() {
-        let next = Journey.nextStep(.init(
-            latestJobID: jobID, latestJobTitle: "T", latestJobStage: .readyForTest,
-            macPaired: true, appleAccountReady: true
-        ))
+        let next = Journey.nextStep(.init(latestJobID: jobID, latestJobTitle: "T", latestJobStage: .readyForTest))
         XCTAssertTrue(Journey.reached(.describe, for: next))
         XCTAssertTrue(Journey.reached(.build, for: next))
         XCTAssertFalse(Journey.reached(.phone, for: next))
@@ -125,10 +116,9 @@ final class JourneyTests: XCTestCase {
     func testEveryNextStepHasSomethingToTap() {
         let stages = BuildJob.Stage.allCases
         for stage in stages {
-            for paired in [true, false] {
+            do {
                 let next = Journey.nextStep(.init(
-                    latestJobID: jobID, latestJobTitle: "Tide Times", latestJobStage: stage,
-                    macPaired: paired, appleAccountReady: paired
+                    latestJobID: jobID, latestJobTitle: "Tide Times", latestJobStage: stage
                 ))
                 XCTAssertFalse(next.title.isEmpty)
                 XCTAssertFalse(next.detail.isEmpty)

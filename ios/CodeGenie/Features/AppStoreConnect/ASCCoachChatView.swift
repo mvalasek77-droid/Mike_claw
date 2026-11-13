@@ -15,7 +15,6 @@ struct ASCCoachChatView: View {
     let appName: String
     let bundleID: String
     let completed: Set<Int>
-    let macPaired: Bool
     let blockingIssues: [String]
     let outstandingItems: [String]
 
@@ -236,7 +235,6 @@ struct ASCCoachChatView: View {
                 appName: appName,
                 bundleID: bundleID,
                 completed: completed,
-                macPaired: macPaired,
                 blockingIssues: blockingIssues,
                 outstandingItems: outstandingItems
             )

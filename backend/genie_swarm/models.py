@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field
 # current step number with each coach question, so this must match
 # `ASCStep.all` in the iOS app; a test reads the Swift file to keep
 # the two honest.
-ASC_TOTAL_STEPS = 18
+ASC_TOTAL_STEPS = 23
 
 
 def _new_id(prefix: str) -> str:

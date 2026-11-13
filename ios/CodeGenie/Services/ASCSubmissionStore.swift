@@ -134,6 +134,46 @@ final class ASCSubmissionStore: ObservableObject {
         update(jobID) { $0.noteRejectionGuideline(guideline) }
     }
 
+    // MARK: Testing
+
+    func setTestResult(_ result: TestResult?, for testID: String, in plan: [TestCase], jobID: UUID) {
+        update(jobID) { $0.setTestResult(result, for: testID, in: plan) }
+    }
+
+    @discardableResult
+    func confirmTestingPassed(with plan: [TestCase], for jobID: UUID) -> Bool {
+        var accepted = false
+        update(jobID) { accepted = $0.confirmTestingPassed(with: plan) }
+        return accepted
+    }
+
+    /// A rebuild replaces the build this submission was about.
+    func resetForNewBuild(jobID: UUID) {
+        update(jobID) { $0.resetForNewBuild() }
+    }
+
+    /// Carry a submission over to the job a rebuild created, so the
+    /// user's place, listing and Xcode setup follow the new build.
+    func move(from oldJobID: UUID, to newJob: BuildJob) {
+        guard let old = records[oldJobID], records[newJob.id] == nil else { return }
+        var moved = ASCSubmissionRecord(jobID: newJob.id, appTitle: newJob.description.title, metadata: old.metadata)
+        moved.completedSteps = old.completedSteps
+        moved.startedAt = old.startedAt
+        moved.checkedItems = old.checkedItems
+        moved.tutorialSeen = old.tutorialSeen
+        moved.resetForNewBuild()
+        records[oldJobID] = nil
+        records[newJob.id] = moved
+    }
+
+    func markTutorialSeen(for jobID: UUID) {
+        update(jobID) { $0.tutorialSeen = true }
+    }
+
+    func markAfterSubmissionSeen(for jobID: UUID) {
+        update(jobID) { $0.afterSubmissionSeen = true }
+    }
+
     func discard(jobID: UUID) {
         records[jobID] = nil
     }

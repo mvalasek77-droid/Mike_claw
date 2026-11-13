@@ -12,12 +12,10 @@ struct BuiltAppView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var session: AppSession
     @StateObject private var swarm = SwarmClient()
-    @StateObject private var companion = CompanionBridge.shared
 
     @State private var load: LoadState = .loading
     @State private var openFile: OpenFile?
-    @State private var macStatus: String?
-    @State private var macBusy = false
+    @State private var statusNote: String?
     @State private var exportedCopy: URL?
     @State private var exporting = false
 
@@ -76,7 +74,7 @@ struct BuiltAppView: View {
                 Text("This is your app")
                     .font(.system(size: 20, weight: .bold, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText)
-                Text("Below is the real project CodeGenie wrote — the same files Xcode builds from. To see it running, install it on your iPhone through TestFlight or open it in Xcode on your Mac.")
+                Text("Below is the real project CodeGenie wrote — the same files Xcode builds from. An iPhone can't run it straight from here: the guide shows you how to open it in Xcode on a Mac and install it on your phone.")
                     .font(.system(size: 14, weight: .regular, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
                     .lineSpacing(3)
@@ -212,18 +210,7 @@ struct BuiltAppView: View {
                 dismiss()
                 session.openAppStoreConnect(for: job)
             }
-            .accessibilityHint("Opens the step-by-step guide to installing through TestFlight")
-
-            if companion.isConnected, backendID != nil {
-                PrimaryButton(
-                    title: macBusy ? "Sending to your Mac…" : "Open in Xcode on my Mac",
-                    systemImage: "macbook",
-                    style: .glass
-                ) {
-                    Task { await openOnMac() }
-                }
-                .disabled(macBusy)
-            }
+            .accessibilityHint("Opens the step-by-step guide: Xcode on your Mac, then TestFlight")
 
             if backendID != nil {
                 if let exportedCopy {
@@ -246,8 +233,8 @@ struct BuiltAppView: View {
                 }
             }
 
-            if let macStatus {
-                Text(macStatus)
+            if let statusNote {
+                Text(statusNote)
                     .font(.system(size: 12, weight: .medium, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                     .multilineTextAlignment(.center)
@@ -271,26 +258,6 @@ struct BuiltAppView: View {
         }
     }
 
-    private func openOnMac() async {
-        guard let backendID, let exportURL = swarm.exportURL(jobID: backendID) else { return }
-        macBusy = true
-        defer { macBusy = false }
-        do {
-            macStatus = "Copying the project to your Mac…"
-            let root = try await companion.fetchWorkspace(
-                jobID: backendID,
-                exportURL: exportURL.absoluteString,
-                token: Credentials.shared.backendToken
-            )
-            try await companion.openXcodeProject(root)
-            macStatus = "Open in Xcode on your Mac. Press ⌘R there to run it."
-            Haptics.success()
-        } catch {
-            macStatus = "Couldn't reach your Mac. Check it's awake and the companion is running."
-            Haptics.error()
-        }
-    }
-
     private func exportCopy() async {
         guard let backendID else { return }
         exporting = true
@@ -299,7 +266,7 @@ struct BuiltAppView: View {
             exportedCopy = try await swarm.downloadExport(jobID: backendID)
             Haptics.success()
         } catch {
-            macStatus = "Couldn't download the project. Try again in a moment."
+            statusNote = "Couldn't download the project. Try again in a moment."
             Haptics.error()
         }
     }

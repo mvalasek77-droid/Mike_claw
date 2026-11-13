@@ -53,7 +53,7 @@ Pick any iPhone simulator (iPhone 15 Pro recommended) with iOS 17+.
 | T03 | Describe form, suggestions, DNA readout, build screen layout |
 | T04 | Settings: auth mode, BYOK keys, power mode, all sub-screens |
 | T05 | Apple Developer walkthrough |
-| T11 | App Store Connect guide: 18 steps, listing validation, gates, review phase |
+| T11 | App Store Connect guide: 23 steps: tutorial, Xcode walkthrough, test plan, listing, review |
 | T06 | Tab bar, all 5 tabs, rapid switching, dismiss behavior |
 | T07 | Play tab, BitDrop game, difficulty selectors |
 | T08 | Projects gallery, empty state, job cards |

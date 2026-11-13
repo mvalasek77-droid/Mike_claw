@@ -163,6 +163,56 @@ class CodeGenieTestBase: XCTestCase {
         return app.staticTexts["Your app is built"].waitForExistence(timeout: timeout)
     }
 
+    // MARK: - Submission guide helpers
+
+    static let guideStepCount = 23
+
+    /// Build an app with the stand-in builder, open the guide from the
+    /// success screen, and get past the two things that precede step
+    /// one: the tutorial, and the code check (which has no server to
+    /// talk to under test, so it lands on "can't verify").
+    func openSubmissionGuide(skippingTutorial: Bool = true) {
+        _ = runLocalBuildToGreen()
+        let entry = app.buttons["Put it on my iPhone"]
+        guard entry.waitForExistence(timeout: 10) else { return }
+        entry.tap()
+
+        if skippingTutorial {
+            let skip = app.buttons["Skip the tutorial"]
+            if skip.waitForExistence(timeout: 6) { skip.tap() }
+        } else {
+            return
+        }
+        let carryOn = app.buttons["Continue without verification"]
+        if carryOn.waitForExistence(timeout: 6) { carryOn.tap() }
+        _ = app.staticTexts["Step 1 of \(Self.guideStepCount)"].waitForExistence(timeout: 5)
+    }
+
+    /// Focus mode shows one step at a time, so tests navigate the way a
+    /// user does: open the overview, tap the step they want.
+    func jumpToGuideStep(_ number: Int) {
+        let overview = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] 'See all \(Self.guideStepCount) steps'")
+        ).firstMatch
+        var tries = 0
+        while !overview.exists && tries < 8 {
+            app.swipeUp()
+            tries += 1
+        }
+        if overview.exists { overview.tap() }
+
+        let row = app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH 'Step \(number). '")
+        ).firstMatch
+        tries = 0
+        while !row.exists && tries < 10 {
+            app.swipeUp()
+            tries += 1
+        }
+        if row.exists { row.tap() }
+        _ = app.staticTexts["Step \(number) of \(Self.guideStepCount)"].waitForExistence(timeout: 4)
+    }
+
     func dismissSheet() {
         let topCoord = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.15))
         let botCoord = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.9))

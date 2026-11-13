@@ -53,19 +53,19 @@ extension OnboardingSlide {
         ),
         .init(
             chapter: "Step 4 of 7",
-            title: "You'll need a Mac for the next part",
-            body: "Apple only lets iPhone apps be packaged on a Mac with Xcode. Pair yours once and CodeGenie drives it from your phone — you never open Xcode yourself.",
+            title: "Then onto your own iPhone",
+            body: "Apple only lets iPhone apps be packaged on a Mac. CodeGenie sends the project to yours and tells you exactly what to click in Xcode — about six buttons — until the real app is on your Home Screen.",
             illustration: .macWithXcode,
             palette: [.teal, .blue],
-            xcodeTip: "You also need the Apple Developer Program, which Apple charges $99 a year for. Neither is needed just to build."
+            xcodeTip: "You need a Mac, the free Xcode app, and Apple's Developer Program at $99 a year. None of it is needed just to build."
         ),
         .init(
             chapter: "Step 5 of 7",
-            title: "On your own iPhone first",
-            body: "Six short steps put the real app on your Home Screen through TestFlight, Apple's testing app. Share it with friends before anyone else sees it.",
+            title: "Test it before anyone else does",
+            body: "AI wrote the app, so nobody knows yet whether it works. You get a short test plan made for your app: what to tap, what should happen. Whatever fails goes straight into a rebuild.",
             illustration: .simulatorToDevice,
             palette: [.orange, .pink],
-            xcodeTip: "TestFlight needs no screenshots, description or pricing. That all comes later, and only if you want to go public."
+            xcodeTip: "Apple's most common rejection is an app that didn't work when they tried it. Ten minutes of testing prevents it."
         ),
         .init(
             chapter: "Step 6 of 7",

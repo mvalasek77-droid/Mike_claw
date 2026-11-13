@@ -1,1 +1,0 @@
-../../../CodeGenie/Models/MacPairing.swift

@@ -1,10 +1,10 @@
 import SwiftUI
 
-/// Plain-English explainer + status check for Xcode on the paired Mac.
+/// Plain-English explainer for Xcode: what it is and how to get it.
 ///
 /// First-timers don't know what Xcode is, why they need a Mac, or what
 /// "command line tools" means. This screen says it once, plainly, and
-/// shows a live status pulled from the Mac companion if one is paired.
+/// says plainly that the user will open it themselves, guided.
 struct XcodeReadinessView: View {
     @StateObject private var creds = Credentials.shared
     @Environment(\.dismiss) private var dismiss
@@ -41,21 +41,15 @@ struct XcodeReadinessView: View {
     }
 
     private var statusCard: some View {
-        // Paired, not necessarily reachable this second: this screen
-        // is a primer, and reachability is checked when it matters.
-        let paired = CompanionBridge.shared.isPaired
-        return GlassCard(
-            title: paired ? "Mac paired" : "Pair a Mac first",
-            icon: paired ? "checkmark.seal.fill" : "exclamationmark.triangle.fill",
-            tint: paired ? LiquidGlass.success : LiquidGlass.warning
+        GlassCard(
+            title: "You'll use it yourself, briefly",
+            icon: "hand.point.up.left.fill",
+            tint: LiquidGlass.accent
         ) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(paired
-                     ? "When you start a build, CodeGenie sends the source to your Mac, runs Xcode there, and streams the result back to your phone."
-                     : "CodeGenie needs to talk to a Mac running Xcode. Open Settings → Pair your Mac to get connected first.")
-                    .font(.system(size: 13, weight: .regular, design: .rounded))
-                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
-            }
+            Text("When your app is built, CodeGenie sends the project to your Mac and its guide tells you exactly what to click in Xcode: open it, sign in, press Run, press Archive. About six buttons in total. You never write or read code there.")
+                .font(.system(size: 13, weight: .regular, design: .rounded))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -99,7 +93,7 @@ struct XcodeReadinessView: View {
                     .background(LiquidGlass.auroraGradient, in: RoundedRectangle(cornerRadius: 14))
                     .foregroundStyle(LiquidGlass.primaryText)
                 }
-                .accessibilityHint("Opens the Mac App Store on your paired Mac")
+                .accessibilityHint("Opens the Mac App Store page for Xcode. Open it on your Mac.")
 
                 Link(destination: URL(string: "https://apps.apple.com/app/xcode/id497799835")!) {
                     HStack(spacing: 6) {

@@ -7,7 +7,6 @@ struct SettingsView: View {
     @State private var revealAnthropic = false
     @State private var revealOpenAI = false
     @State private var savedFlash: AIProvider?
-    @State private var showPairMac = false
     @State private var showTutorial = false
     @State private var showAgentRouting = false
     @State private var showAppleDev = false
@@ -34,7 +33,6 @@ struct SettingsView: View {
                     modeBlock
                     shipChecklistHeader
                     xcodeReadinessBlock
-                    pairMacBlock
                     appleDevBlock
                     githubBlock
                     if userMode.isPower {
@@ -52,11 +50,6 @@ struct SettingsView: View {
                 .padding(.top, 14)
             }
             .scrollIndicators(.hidden)
-        }
-        .sheet(isPresented: $showPairMac) {
-            PairMacView()
-                .presentationDragIndicator(.visible)
-                .presentationBackground(.ultraThinMaterial)
         }
         .sheet(isPresented: $showTutorial) {
             TutorialView(mode: .replay) { showTutorial = false }
@@ -107,15 +100,6 @@ struct SettingsView: View {
             anthropicDraft = creds.anthropicKey
             openaiDraft    = creds.openaiKey
         }
-    }
-
-    private var pairMacBlock: some View {
-        navTile(
-            title: "Pair your Mac",
-            subtitle: CompanionBridge.shared.isPaired ? "Paired. Builds and uploads run on your Mac." : "Link this phone to a Mac running Xcode.",
-            icon: "macbook.and.iphone",
-            tint: CompanionBridge.shared.isPaired ? LiquidGlass.accent : LiquidGlass.warning
-        ) { showPairMac = true }
     }
 
     /// Section header for the four ship-readiness tiles. Treated as a

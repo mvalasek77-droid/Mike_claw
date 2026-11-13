@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   backend-pytest:
@@ -33,25 +34,50 @@ jobs:
         working-directory: backend
         run: pytest -q
 
-  swift-brace-audit:
-    name: Swift brace audit
+  swift-logic:
+    name: Swift logic tests
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    container: swift:6.0-noble
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Verify every Swift file is brace-balanced
+      # The app's rules, compiled and tested without a simulator.
+      - name: Run logic tests
+        working-directory: ios/CodeGenieLogic
+        run: swift test
+
+      # Every Swift file must at least parse. This replaces a
+      # brace-counting check that let real syntax errors through.
+      - name: Parse every Swift file
         run: |
-          set -e
-          fail=0
-          for f in $(find ios/CodeGenie mac_companion -name '*.swift'); do
-            open=$(grep -o '{' "$f" | wc -l)
-            close=$(grep -o '}' "$f" | wc -l)
-            if [ "$open" != "$close" ]; then
-              echo "MISMATCH $f: { = $open, } = $close"
-              fail=1
-            fi
-          done
-          if [ $fail -ne 0 ]; then exit 1; fi
-          echo "OK: $(find ios/CodeGenie mac_companion -name '*.swift' | wc -l) Swift files balanced"
+          find ios/CodeGenie ios/CodeGenieUITests -name '*.swift' -print0 \
+            | xargs -0 swiftc -frontend -parse
+
+  ios-build:
+    name: iOS app builds
+    runs-on: macos-15
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate the Xcode project
+        working-directory: ios
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      # A real compile of the app and its UI tests. Nothing else in
+      # this pipeline type-checks the SwiftUI code.
+      - name: Build for the simulator
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild build-for-testing \
+            -project CodeGenie.xcodeproj \
+            -scheme CodeGenie \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            | tail -n 200

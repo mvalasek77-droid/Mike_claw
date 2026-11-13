@@ -159,14 +159,14 @@ final class T12_FirstTimerJourneyTests: CodeGenieTestBase {
         XCTAssertTrue(runLocalBuildToGreen())
         app.buttons["Done for now"].tap()
 
-        let setUp = app.staticTexts.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Get ready to install'")
+        let next = app.staticTexts.matching(
+            NSPredicate(format: "label BEGINSWITH 'Put ' AND label ENDSWITH ' on your iPhone'")
         ).firstMatch
-        assertExists(setUp, "With an app built and nothing set up, the next step is setup — named, not implied")
-        let needs = app.staticTexts.matching(
-            NSPredicate(format: "label CONTAINS[c] 'a paired Mac'")
+        assertExists(next, "With an app built, the next step is getting it onto a phone")
+        let honest = app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS[c] 'nobody has seen it run'")
         ).firstMatch
-        assertExists(needs, "It should say exactly what is missing")
+        assertExists(honest, "Home should say that built is not the same as working")
         screenshot("08-home-after-build")
     }
 
@@ -184,46 +184,37 @@ final class T12_FirstTimerJourneyTests: CodeGenieTestBase {
         screenshot("09-built-app")
     }
 
-    // MARK: - The upload without a Mac
+    // MARK: - Into the guide
 
-    func test10_uploadingWithoutAMacExplainsAndOffersPairing() {
+    func test10_theSuccessScreenSaysTheAppIsUntested() {
         launchReadyToBuild()
         XCTAssertTrue(runLocalBuildToGreen())
-        app.buttons["Put it on my iPhone"].tap()
-        let skip = app.buttons["Continue without verification"]
-        if skip.waitForExistence(timeout: 6) { skip.tap() }
-
-        let noMac = app.staticTexts.matching(
-            NSPredicate(format: "label CONTAINS[c] 'No Mac paired'")
+        let warning = app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS[c] 'not yet tested'")
         ).firstMatch
-        scrollDown(times: 3)
-        assertExists(noMac, "The guide should say plainly that no Mac is paired")
-        screenshot("10-no-mac")
+        assertExists(warning, "A finished build should be described as untested, because it is")
     }
 
-    // MARK: - Registering the app ID
-
-    func test11_creatingTheAppRecordStartsWithRegisteringItsID() {
+    func test11_creatingTheAppRecordCoversRegisteringItsID() {
         launchReadyToBuild()
-        XCTAssertTrue(runLocalBuildToGreen())
-        app.buttons["Put it on my iPhone"].tap()
-        let skip = app.buttons["Continue without verification"]
-        if skip.waitForExistence(timeout: 6) { skip.tap() }
-
-        let overview = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'See all 18 steps'")
-        ).firstMatch
-        scrollDown(times: 4)
-        if overview.waitForExistence(timeout: 3) { overview.tap() }
-        let stepTwo = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Step 2.'")
-        ).firstMatch
-        if stepTwo.waitForExistence(timeout: 3) { stepTwo.tap() }
-
+        openSubmissionGuide()
+        jumpToGuideStep(5)
         let register = app.staticTexts.matching(
             NSPredicate(format: "label CONTAINS[c] 'Identifiers page'")
         ).firstMatch
-        assertExists(register, "The ID has to be registered before it can be picked, and the step must say so")
+        assertExists(register, "The ID has to exist at Apple before it can be picked, and the step must say so")
         screenshot("11-register-id")
+    }
+
+    func test12_theGuideNeverAsksToPairAMac() {
+        launchReadyToBuild()
+        openSubmissionGuide()
+        for step in [1, 2, 6] {
+            jumpToGuideStep(step)
+            XCTAssertFalse(
+                app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] 'pair'")).firstMatch.exists,
+                "Step \(step): there is no helper app, so nothing to pair"
+            )
+        }
     }
 }

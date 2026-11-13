@@ -30,6 +30,13 @@ struct ASCSubmissionRecord: Codable, Identifiable, Hashable {
     var schema: Int?
     /// Present from the moment the version is submitted.
     var review: ASCReviewProgress?
+    /// What the user found when they worked through the test plan,
+    /// keyed by test id.
+    var testResults: [String: TestResult]?
+    /// The opening tutorial has been read (or deliberately skipped).
+    var tutorialSeen: Bool?
+    /// The "what happens now" explanation was shown after submitting.
+    var afterSubmissionSeen: Bool?
 
     var id: UUID { jobID }
 
@@ -52,6 +59,9 @@ struct ASCSubmissionRecord: Codable, Identifiable, Hashable {
         self.checkedItems = []
         self.schema = ASCStep.schemaVersion
         self.review = nil
+        self.testResults = [:]
+        self.tutorialSeen = false
+        self.afterSubmissionSeen = false
     }
 
     // MARK: - Reading
@@ -97,6 +107,65 @@ struct ASCSubmissionRecord: Codable, Identifiable, Hashable {
         completedSteps.insert(step)
         lastTouchedAt = date
     }
+
+    // MARK: - Testing
+
+    var results: [String: TestResult] { testResults ?? [:] }
+
+    /// Record one test's outcome, then let the testing steps follow
+    /// from the results. Passing nil clears a result.
+    mutating func setTestResult(
+        _ result: TestResult?,
+        for testID: String,
+        in plan: [TestCase],
+        at date: Date = Date()
+    ) {
+        var all = testResults ?? [:]
+        all[testID] = result
+        testResults = all
+        lastTouchedAt = date
+        syncTestSteps(with: plan)
+    }
+
+    /// The test steps are never ticked on trust: the first is done
+    /// when the required tests have all been tried and none is
+    /// failing, and the verdict cannot stand once something fails.
+    mutating func syncTestSteps(with plan: [TestCase]) {
+        let summary = TestPlan.summary(of: plan, results: results)
+        if summary.isPassing {
+            completedSteps.insert(ASCStep.testPlanStepNumber)
+        } else {
+            completedSteps.remove(ASCStep.testPlanStepNumber)
+            completedSteps.remove(ASCStep.testVerdictStepNumber)
+        }
+    }
+
+    /// The user declares testing finished. Refused while anything is
+    /// untested or failing. Returns whether it was accepted.
+    @discardableResult
+    mutating func confirmTestingPassed(with plan: [TestCase], at date: Date = Date()) -> Bool {
+        guard TestPlan.summary(of: plan, results: results).isPassing else { return false }
+        completedSteps.insert(ASCStep.testPlanStepNumber)
+        completedSteps.insert(ASCStep.testVerdictStepNumber)
+        lastTouchedAt = date
+        return true
+    }
+
+    /// A fresh build replaces the one that was tested, so what was
+    /// learned about the old one no longer counts. The upload has to
+    /// be repeated too.
+    mutating func resetForNewBuild(at date: Date = Date()) {
+        testResults = [:]
+        let stale = [
+            ASCStep.uploadStepNumber, ASCStep.processingStepNumber, 8,
+            ASCStep.testPlanStepNumber, 10, ASCStep.testVerdictStepNumber,
+            ASCStep.buildSelectionStepNumber,
+        ]
+        completedSteps.subtract(stale)
+        lastTouchedAt = date
+    }
+
+    var isTestingComplete: Bool { isPhaseComplete(.testing) }
 
     mutating func reopen(_ step: Int, at date: Date = Date()) {
         completedSteps.remove(step)
@@ -158,7 +227,9 @@ struct ASCSubmissionRecord: Codable, Identifiable, Hashable {
 
     private mutating func syncReviewSteps() {
         guard let state = review?.state else { return }
-        let queue = 16, decision = 17, release = 18
+        let queue = ASCStep.queueStepNumber
+        let decision = ASCStep.decisionStepNumber
+        let release = ASCStep.releaseStepNumber
 
         // Withdrawn, or bounced back to the start: Submit has to be
         // pressed again, so the submit step reopens too.
@@ -179,25 +250,57 @@ struct ASCSubmissionRecord: Codable, Identifiable, Hashable {
 
     /// Bring a saved record up to the current step numbering.
     ///
-    /// The original list had twelve steps. Three were inserted (age
-    /// rating, review information, build selection) and three added for
-    /// review, so saved step numbers from 11 onwards moved.
+    /// The list has been renumbered twice: once when the store steps
+    /// and review were added, and again when the Mac part became a
+    /// walkthrough in Xcode and testing became its own phase. Each hop
+    /// is applied in turn, so a record from any version lands correctly.
     static func migrate(_ record: ASCSubmissionRecord) -> ASCSubmissionRecord {
-        guard (record.schema ?? 1) < ASCStep.schemaVersion else { return record }
         var out = record
-        let renumbered: [Int: Int] = [11: 12, 12: ASCStep.submitStepNumber]
-        out.completedSteps = Set(record.completedSteps.compactMap { old in
-            guard (1...12).contains(old) else { return nil }
-            return renumbered[old] ?? old
-        })
-        if let submitted = record.submittedAt {
-            // Already with Apple. The steps that were inserted before
-            // Submit were necessarily done on Apple's side, and what
-            // remains is the review that used to be untracked.
+        var version = record.schema ?? 1
+        guard version < ASCStep.schemaVersion else { return record }
+
+        if version == 1 {
+            // Twelve steps → eighteen: pricing moved from 11 to 12 and
+            // submit from 12 to 15.
+            let moved: [Int: Int] = [11: 12, 12: 15]
+            out.completedSteps = Set(out.completedSteps.compactMap { old in
+                (1...12).contains(old) ? (moved[old] ?? old) : nil
+            })
+            if out.submittedAt != nil { out.completedSteps.formUnion(1...15) }
+            version = 2
+        }
+
+        if version == 2 {
+            // Eighteen → twenty-three. The single "upload" step became
+            // five Xcode steps, and testing gained two steps of its own.
+            var next: Set<Int> = []
+            for old in out.completedSteps {
+                switch old {
+                case 1: break                       // sign-in, now part of step 5
+                case 2: next.insert(5)              // app record
+                case 3: next.formUnion([1, 2, 3, 4, ASCStep.uploadStepNumber])
+                case 4: next.insert(ASCStep.processingStepNumber)
+                case 5: next.insert(8)              // TestFlight install
+                case 6: next.insert(10)             // invite testers
+                case 7...15: next.insert(old + 5)   // store steps
+                default: break                      // review steps follow the status
+                }
+            }
+            out.completedSteps = next
+            version = 3
+        }
+
+        if let submitted = out.submittedAt {
+            // Already with Apple: everything before Submit happened,
+            // including testing, which there is no way to re-prove.
             out.completedSteps.formUnion(1...ASCStep.submitStepNumber)
-            out.review = ASCReviewProgress(state: .waitingForReview, at: submitted)
+            if out.review == nil {
+                out.review = ASCReviewProgress(state: .waitingForReview, at: submitted)
+            }
+            out.afterSubmissionSeen = true
         }
         out.schema = ASCStep.schemaVersion
+        if out.review != nil { out.syncReviewSteps() }
         return out
     }
 }

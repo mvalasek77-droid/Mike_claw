@@ -221,6 +221,19 @@ enum SubmissionChecklist {
         })
     }
 
+    /// Items the test plan has already established, so the user isn't
+    /// asked to vouch a second time for something they just proved.
+    static func satisfiedByTesting(plan: [TestCase], results: [String: TestResult]) -> Set<String> {
+        func passed(_ id: String) -> Bool { results[id]?.outcome == .passed }
+        var out: Set<String> = []
+        if passed("first_launch") && passed("main_task") { out.insert("runs_on_device") }
+        if passed("no_placeholder") { out.insert("no_placeholder") }
+        if passed("every_button") { out.insert("no_broken_links") }
+        // An app with no login has nothing to hand the reviewer.
+        if !plan.contains(where: { $0.id == "login" }) || passed("login") { out.insert("demo_account") }
+        return out
+    }
+
     /// Everything still needing the user's own confirmation.
     static func outstanding(
         checked: Set<String>,

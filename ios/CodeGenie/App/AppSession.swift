@@ -152,9 +152,27 @@ final class AppSession: ObservableObject {
         Haptics.selection()
     }
 
-    func startBuildAndOpen(from description: AppDescription) {
+    @discardableResult
+    func startBuildAndOpen(from description: AppDescription) -> BuildJob {
         currentJobBackendID = nil
-        _ = startBuild(from: description)
+        return startBuild(from: description)
+    }
+
+    /// Build the same app again, told what was wrong with the last
+    /// one. The submission in progress follows the new build, so the
+    /// user returns to where they were rather than to step one.
+    func rebuild(_ job: BuildJob, fixing brief: String) {
+        let marker = "\n\nProblems found in the previous build"
+        let original = job.description.prompt.components(separatedBy: marker).first ?? job.description.prompt
+        let description = AppDescription(
+            title: job.description.title,
+            prompt: original + marker + ". This build must have none of them:\n" + brief,
+            category: job.description.category,
+            style: job.description.style,
+            features: job.description.features
+        )
+        let fresh = startBuildAndOpen(from: description)
+        ASCSubmissionStore.shared.move(from: job.id, to: fresh)
     }
 
     func openPreview(for job: BuildJob) {
@@ -206,7 +224,6 @@ final class AppSession: ObservableObject {
             activeSwarmClient?.suspendStream()
         case .active:
             activeSwarmClient?.resumeStream()
-            CompanionBridge.shared.reconnectIfPaired()
         case .inactive:
             // Deliberately untouched. iPad's Stage Manager and the app
             // switcher pass through here without backgrounding, and

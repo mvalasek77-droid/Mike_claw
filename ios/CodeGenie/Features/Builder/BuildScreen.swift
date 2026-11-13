@@ -564,7 +564,7 @@ struct BuildScreen: View {
                         Text("Your app is built")
                             .font(.system(size: 24, weight: .bold, design: .rounded))
                             .foregroundStyle(LiquidGlass.primaryText)
-                        Text("It's saved here in CodeGenie — find it any time on the Apps tab. Next: put it on your iPhone. The guide takes you through it one step at a time.")
+                        Text("Built — but not yet tested. AI wrote it and nobody has seen it run. Next, put it on your iPhone and try it; the guide takes you through that one step at a time.")
                             .font(.system(size: 14, weight: .regular, design: .rounded))
                             .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
                             .multilineTextAlignment(.center)
@@ -604,7 +604,7 @@ struct BuildScreen: View {
             // recentJobs by the same id.
             session.openAppStoreConnect(for: initialJob)
         }
-        .accessibilityHint("Opens the step-by-step guide. Your progress is saved as you go.")
+        .accessibilityHint("Opens the step-by-step guide: Xcode on your Mac, TestFlight, then testing. Your progress is saved.")
         PrimaryButton(title: "See what was built", systemImage: "doc.text.magnifyingglass", style: .glass) {
             session.openPreview(for: initialJob)
         }

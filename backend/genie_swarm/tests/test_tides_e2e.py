@@ -781,7 +781,7 @@ async def test_asc_coach_responds(recorded_llm):
 
 def test_asc_suggested_questions():
     """suggested_questions should return a non-empty list."""
-    q = suggested_questions(step_number=2)
+    q = suggested_questions(step_number=5)
     assert len(q) > 0
     assert any("bundle" in q_text.lower() for q_text in q)
 

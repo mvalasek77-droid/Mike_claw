@@ -1,13 +1,13 @@
 import XCTest
 
-/// App Store Connect submission flow.
+/// The guide from a finished build to a live app.
 ///
-/// Covers the focused one-step-at-a-time guide, the two-phase step
-/// structure (get it on your phone first, App Store second), the
-/// click-by-click walkthrough content, listing validation against
-/// Apple's real field limits, the metadata editor, per-step actions and
-/// their no-Mac fallbacks, and — most importantly — that progress
-/// survives closing the guide and relaunching the app.
+/// Four parts: onto the phone (the user works in Xcode on their Mac,
+/// following instructions), testing, the store page, and Apple's
+/// review. These tests cover the tutorial that opens it, the content
+/// of the Xcode steps, the test plan and the gates it puts in front of
+/// submission, listing validation, and that progress survives
+/// relaunching the app.
 final class T11_ASCSubmissionFlowTests: CodeGenieTestBase {
 
     override func setUpWithError() throws {
@@ -15,560 +15,372 @@ final class T11_ASCSubmissionFlowTests: CodeGenieTestBase {
         launchReadyToBuild()
     }
 
-    // MARK: - Reachability
+    private var total: Int { Self.guideStepCount }
 
-    func test01_ascGuideReachableFromBuildSuccess() {
-        openBuildSuccessOverlay()
-        let walkthrough = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Put it on my iPhone'")
-        ).firstMatch
-        assertExists(walkthrough,
-                     "Build success must offer the submission walkthrough")
-        screenshot("01-asc-entry-point")
+    private func text(containing fragment: String) -> XCUIElement {
+        app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", fragment)).firstMatch
     }
 
-    /// Focus mode: the guide opens on one step, not twelve. Seeing all
-    /// twelve at once is what made this screen unreadable for someone
-    /// who has never submitted an app.
-    func test02_guideOpensOnASingleFocusedStep() {
-        openASCGuide()
-
-        assertExists(app.staticTexts["Step 1 of 18"],
-                     "The guide should say exactly which step you're on")
-        assertExists(app.staticTexts["Sign in to Apple's website"],
-                     "The focused step should be titled in plain language")
-
-        XCTAssertFalse(app.staticTexts["Step 7 of 18"].exists,
-                       "Later steps must not be on screen — that's the whole point of focus mode")
-        screenshot("02-single-focused-step")
+    private func button(containing fragment: String) -> XCUIElement {
+        app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", fragment)).firstMatch
     }
 
-    func test03_everyStepIsReachableOnRequest() {
-        openASCGuide()
-        waitAndTap(app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'See all 18 steps'")
-        ).firstMatch)
+    // MARK: - Tutorial
 
-        assertExists(app.staticTexts["Part 1 — Get it on your phone"],
-                     "Phase 1 header should render in the overview")
+    func test01_guideOpensWithATutorial() {
+        openSubmissionGuide(skippingTutorial: false)
+        assertExists(app.staticTexts["Here's the whole trip"],
+                     "The first thing shown is the shape of the whole process")
+        assertExists(app.buttons["Next"], "The tutorial should be paged")
+        screenshot("01-tutorial-overview")
+    }
+
+    func test02_tutorialSaysWhatIsNeededAndThatTestingIsRequired() {
+        openSubmissionGuide(skippingTutorial: false)
+        let next = app.buttons["Next"]
+        guard next.waitForExistence(timeout: 6) else { XCTFail("Tutorial missing"); return }
+        next.tap()
+        assertExists(app.staticTexts["What you'll need"], "Requirements come before step one")
+        assertExists(text(containing: "$99"), "The cost of Apple's program must be stated up front")
+        next.tap()
+        assertExists(text(containing: "You'll use Xcode yourself"), "The Mac part is the user's, and says so")
+        next.tap()
+        assertExists(app.staticTexts["Testing is not optional"], "Testing is introduced before the user starts")
+        screenshot("02-tutorial-testing")
+        next.tap()
+        assertExists(app.buttons["Start with step 1"], "The last page leads into the guide")
+    }
+
+    func test03_tutorialCanBeReplayed() {
+        openSubmissionGuide()
+        let help = app.buttons["How this works"]
+        assertExists(help, "The tutorial should stay one tap away")
+        help.tap()
+        assertExists(app.staticTexts["Here's the whole trip"], "It should replay from the start")
+    }
+
+    func test04_tutorialIsNotShownTwice() {
+        openSubmissionGuide()
+        app.buttons["Close submission guide"].tap()
+        let resume = app.buttons["journey.primaryAction"]
+        if resume.waitForExistence(timeout: 4) { resume.tap() }
+        XCTAssertFalse(app.staticTexts["Here's the whole trip"].waitForExistence(timeout: 2),
+                       "Once seen, the tutorial should not interrupt again")
+    }
+
+    // MARK: - Structure
+
+    func test05_guideOpensOnASingleFocusedStep() {
+        openSubmissionGuide()
+        assertExists(app.staticTexts["Step 1 of \(total)"], "The guide should open on step 1")
+        assertExists(app.staticTexts["Get your project onto your Mac"], "The step's plain-English title")
+        XCTAssertFalse(app.staticTexts["Step 9 of \(total)"].exists, "Later steps stay out of sight")
+        screenshot("05-focused-step")
+    }
+
+    func test06_everyStepSaysWhereItHappens() {
+        openSubmissionGuide()
+        assertExists(text(containing: "On this iPhone"), "Step 1 happens on the phone")
+        jumpToGuideStep(2)
+        assertExists(text(containing: "In Xcode on your Mac"), "Step 2 happens in Xcode")
+        jumpToGuideStep(5)
+        assertExists(text(containing: "On Apple's website"), "Step 5 happens on the web")
+    }
+
+    func test07_overviewListsFourParts() {
+        openSubmissionGuide()
+        let overview = button(containing: "See all \(total) steps")
         scrollDown(times: 4)
-        assertExists(app.staticTexts["Part 2 — Put it on the App Store"],
-                     "Phase 2 header should render in the overview")
-        assertExists(app.staticTexts["Part 3 — Through Apple's review"],
-                     "The review phase should be listed after submission")
-        screenshot("03-full-overview")
-    }
-
-    // MARK: - The walkthrough content itself
-
-    /// The core fix: every step spells out the literal clicks, not a
-    /// one-line summary that assumes you already know the console.
-    func test04_focusedStepGivesLiteralClickByClickInstructions() {
-        openASCGuide()
-        assertExists(app.staticTexts["Do this"],
-                     "Each step must list the actual clicks")
-        let firstInstruction = app.otherElements.matching(
-            NSPredicate(format: "label BEGINSWITH 'Step 1.'")
-        ).firstMatch
-        XCTAssertTrue(firstInstruction.waitForExistence(timeout: 4),
-                      "Instructions should be numbered and readable by VoiceOver")
-        screenshot("04-click-by-click")
-    }
-
-    func test05_stepWarnsAboutTheCommonMistake() {
-        openASCGuide()
-        let watchOut = app.otherElements.matching(
-            NSPredicate(format: "label BEGINSWITH 'Where people get stuck'")
-        ).firstMatch
-        XCTAssertTrue(watchOut.waitForExistence(timeout: 4),
-                      "Every step should name the thing that usually goes wrong")
-        screenshot("05-watch-out")
-    }
-
-    /// Bundle ID typos are the most common cause of a rejected upload,
-    /// so the value is offered as a copy button rather than as text to
-    /// retype.
-    func test06_exactValuesAreOfferedAsCopyButtons() {
-        openASCGuide()
-        jumpToStep(2)
-        // Matches the shape, not the prefix: the prefix comes from the
-        // user's Apple settings now, so pinning it here would assert an
-        // implementation detail rather than the behaviour that matters.
-        let copyButton = app.buttons.matching(
-            NSPredicate(format: "label BEGINSWITH 'Copy com.'")
-        ).firstMatch
-        XCTAssertTrue(copyButton.waitForExistence(timeout: 4),
-                      "The bundle ID must be copyable, not retyped by hand")
-        copyButton.tap()
-        assertExists(app.staticTexts.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Copied'")
-        ).firstMatch, "Copying should confirm")
-        screenshot("06-copy-bundle-id")
-    }
-
-    func test07_stepSetsATimeExpectation() {
-        openASCGuide()
-        jumpToStep(4)
-        let estimate = app.staticTexts.matching(
-            NSPredicate(format: "label CONTAINS[c] 'minutes' OR label CONTAINS[c] 'hours'")
-        ).firstMatch
-        XCTAssertTrue(estimate.waitForExistence(timeout: 4),
-                      "A 30-minute wait must be labelled so it doesn't read as a hang")
-        screenshot("07-time-estimate")
-    }
-
-    // MARK: - Listing card (step 9)
-
-    func test08_listingCardShowsCharacterBudgets() {
-        openASCGuide()
-        jumpToStep(9)
-        let nameRow = app.otherElements.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Name' AND label CONTAINS[c] 'characters'")
-        ).firstMatch
-        XCTAssertTrue(nameRow.waitForExistence(timeout: 4),
-                      "Listing rows should show an n-of-limit character count")
-        screenshot("08-character-budgets")
-    }
-
-    func test09_copyAllPutsListingOnClipboard() {
-        openASCGuide()
-        jumpToStep(9)
-        let copyAll = app.buttons["Copy the whole listing to the clipboard"]
-        guard copyAll.waitForExistence(timeout: 4) else {
-            XCTFail("Copy-all button missing"); return
+        guard overview.waitForExistence(timeout: 3) else { XCTFail("Overview toggle missing"); return }
+        overview.tap()
+        for part in [
+            "Part 1 — Get it on your phone",
+            "Part 2 — Test it properly",
+            "Part 3 — Put it on the App Store",
+            "Part 4 — Through Apple's review",
+        ] {
+            let header = app.staticTexts[part]
+            var tries = 0
+            while !header.exists && tries < 8 { app.swipeUp(); tries += 1 }
+            assertExists(header, "\(part) should be listed")
         }
-        copyAll.tap()
-        assertExists(app.staticTexts.matching(
-            NSPredicate(format: "label CONTAINS[c] 'copied'")
-        ).firstMatch, "Copying should confirm with a banner")
-        screenshot("09-copy-listing")
+        screenshot("07-four-parts")
     }
 
-    func test10_missingSupportURLIsFlaggedAsBlocking() {
-        openASCGuide()
-        jumpToStep(9)
-        // A fresh draft ships with an empty support URL on purpose —
-        // a placeholder would sail past validation and fail review.
-        let blocker = app.staticTexts.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Support URL'")
-        ).firstMatch
-        XCTAssertTrue(blocker.waitForExistence(timeout: 4),
-                      "Missing support URL must be surfaced as a blocker")
-        screenshot("10-support-url-blocker")
-    }
-
-    // MARK: - Metadata editor
-
-    func test11_editListingOpensEditor() {
-        openASCGuide()
-        jumpToStep(9)
-        waitAndTap(app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Edit listing'")
-        ).firstMatch)
-        assertExists(app.navigationBars["Edit listing"])
-        screenshot("11-metadata-editor")
-    }
-
-    func test12_editorEnforcesAppleNameLimit() {
-        openASCGuide()
-        jumpToStep(9)
-        waitAndTap(app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Edit listing'")
-        ).firstMatch)
-
-        let nameField = app.textFields["App name"]
-        guard nameField.waitForExistence(timeout: 4) else {
-            XCTFail("App name field missing"); return
-        }
-        nameField.tap()
-        // 35 characters — five past Apple's 30-char cap.
-        nameField.typeText(String(repeating: "A", count: 35))
-
-        assertExists(app.staticTexts.matching(
-            NSPredicate(format: "label CONTAINS '35/30'")
-        ).firstMatch, "Counter should show the field is over Apple's limit")
-        screenshot("12-name-over-limit")
-    }
-
-    func test13_keywordsExplainSharedCharacterBudget() {
-        openASCGuide()
-        jumpToStep(9)
-        waitAndTap(app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Edit listing'")
-        ).firstMatch)
+    func test08_stepsGiveLiteralInstructionsAWarningAndATime() {
+        openSubmissionGuide()
+        assertExists(app.staticTexts["Do this"], "Every step lists what to do")
         scrollDown(times: 1)
-        assertExists(app.staticTexts.matching(
-            NSPredicate(format: "label CONTAINS[c] 'commas included'")
-        ).firstMatch,
-        "Keywords help text must explain it is one shared 100-char budget")
-        screenshot("13-keywords-budget")
+        assertExists(text(containing: "Where people get stuck"), "Every step names its common snag")
+        assertExists(text(containing: "AirDrop"), "Step 1 should say how the project gets to the Mac")
+        screenshot("08-instructions")
     }
 
-    // MARK: - No-Mac fallbacks
+    // MARK: - The Mac part, by hand
 
-    func test14_everyStepWorksWithoutAMac() {
-        openASCGuide()
-        assertExists(app.otherElements.matching(
-            NSPredicate(format: "label CONTAINS[c] 'No Mac paired'")
-        ).firstMatch, "Unpaired state should be stated plainly")
-        // The promise of the unpaired copy is that the phone alone is enough.
-        assertExists(app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Open in Safari'")
-        ).firstMatch, "Step 1 must offer an on-phone route")
-        screenshot("14-no-mac-fallback")
+    func test09_projectIsPreparedThenSharedNotSentToAHelperApp() {
+        openSubmissionGuide()
+        scrollDown(times: 2)
+        assertExists(app.buttons["Get the project ready to send"],
+                     "Step 1 packs the project so it can be shared to the Mac")
+        XCTAssertFalse(button(containing: "Pair").exists, "There is no helper app to pair with")
+        XCTAssertFalse(button(containing: "Open on my Mac").exists,
+                       "CodeGenie cannot open things on the Mac and must not offer to")
+        screenshot("09-transfer")
     }
 
-    // MARK: - Save & continue
+    func test10_xcodeStepTellsTheUserWhichFileToOpen() {
+        openSubmissionGuide()
+        jumpToGuideStep(2)
+        assertExists(app.staticTexts["Open your project in Xcode"], "Step 2 is opening Xcode")
+        assertExists(text(containing: ".xcodeproj"), "It must name the file to double-click")
+        scrollDown(times: 3)
+        assertExists(app.buttons["Done in Xcode"], "The user reports back when it worked")
+        assertExists(app.buttons["It showed an error"], "And has somewhere to go when it didn't")
+        screenshot("10-open-in-xcode")
+    }
 
-    func test15_completingAStepPersistsAcrossRelaunch() {
-        openASCGuide()
+    func test11_anXcodeErrorLeadsStraightToTheCoach() {
+        openSubmissionGuide()
+        jumpToGuideStep(3)
+        scrollDown(times: 3)
+        let error = app.buttons["It showed an error"]
+        guard error.waitForExistence(timeout: 4) else { XCTFail("Error button missing"); return }
+        error.tap()
+        assertExists(app.navigationBars["Ask about submitting"],
+                     "An error in Xcode should open the coach, on that step")
+        assertExists(button(containing: "Personal Team"),
+                     "The coach should offer the questions people have at this step")
+        screenshot("11-error-to-coach")
+    }
 
-        let safari = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Open in Safari'")
-        ).firstMatch
-        guard safari.waitForExistence(timeout: 4) else {
-            XCTFail("Step 1 action missing"); return
-        }
-        safari.tap()
+    func test12_signingStepShowsTheBundleIDToCompare() {
+        openSubmissionGuide()
+        jumpToGuideStep(3)
+        assertExists(text(containing: "Signing & Capabilities"), "It must name the tab")
+        scrollDown(times: 2)
+        let chip = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Copy com.'")).firstMatch
+        assertExists(chip, "The exact bundle ID should be shown and copyable")
+        screenshot("12-signing")
+    }
 
-        // Come back from Safari, then cold-launch the app.
-        app.activate()
+    func test13_runStepOffersARebuildWhenItWontCompile() {
+        openSubmissionGuide()
+        jumpToGuideStep(4)
+        assertExists(app.staticTexts["See it run"], "Step 4 runs the app in the Simulator")
+        scrollDown(times: 3)
+        assertExists(button(containing: "rebuild it"),
+                     "A project that won't build must have a way forward that isn't editing code")
+    }
+
+    func test14_archiveStepNamesTheMenuItems() {
+        openSubmissionGuide()
+        jumpToGuideStep(6)
+        assertExists(app.staticTexts["Send your app to Apple"], "Step 6 is the upload")
+        assertExists(text(containing: "Any iOS Device"), "It must say which destination to pick")
+        scrollDown(times: 2)
+        assertExists(text(containing: "Distribute App"), "And which button uploads")
+        scrollDown(times: 2)
+        assertExists(app.buttons["Xcode says the upload finished"], "The user confirms what Xcode reported")
+        screenshot("14-archive")
+    }
+
+    func test15_appRecordStepOffersLinksAndExactValues() {
+        openSubmissionGuide()
+        jumpToGuideStep(5)
+        assertExists(app.staticTexts["Tell Apple your app exists"], "Step 5 creates the record")
+        scrollDown(times: 1)
+        assertExists(app.links.matching(NSPredicate(format: "label CONTAINS[c] 'Open this page'")).firstMatch,
+                     "Addresses in the steps should be tappable")
+        screenshot("15-app-record")
+    }
+
+    // MARK: - Progress is kept
+
+    func test16_completingAStepSurvivesRelaunch() {
+        openSubmissionGuide()
+        jumpToGuideStep(2)
+        scrollDown(times: 3)
+        let done = app.buttons["Done in Xcode"]
+        guard done.waitForExistence(timeout: 4) else { XCTFail("Step 2 action missing"); return }
+        done.tap()
+
         app.terminate()
         launchReadyToBuild()
-
-        let callout = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Continue submitting'")
-        ).firstMatch
-        XCTAssertTrue(callout.waitForExistence(timeout: 6),
-                      "Home must offer to continue an in-flight submission after relaunch")
-        screenshot("15-continue-after-relaunch")
+        assertExists(text(containing: "step 1 of \(total)"),
+                     "Home should offer to continue, on the first unfinished step")
+        app.buttons["journey.primaryAction"].tap()
+        let carryOn = app.buttons["Continue without verification"]
+        if carryOn.waitForExistence(timeout: 6) { carryOn.tap() }
+        assertExists(text(containing: "1 step done"), "The finished step should still be finished")
+        screenshot("16-resumed")
     }
 
-    func test16_continueCalloutResumesOnTheRightStep() {
-        openASCGuide()
-        let safari = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Open in Safari'")
-        ).firstMatch
-        guard safari.waitForExistence(timeout: 4) else { return }
-        safari.tap()
-        app.activate()
-
-        dismissSheet()
-        sleep(1)
-
-        let callout = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Continue submitting'")
-        ).firstMatch
-        guard callout.waitForExistence(timeout: 5) else {
-            XCTFail("Continue callout missing"); return
-        }
-        // The label carries the resume position, so assert on it directly.
-        XCTAssertTrue(callout.label.contains("step 2"),
-                      "Resuming should land on step 2 after step 1 completed — got: \(callout.label)")
-        callout.tap()
-        assertExists(app.staticTexts.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Picked up where you left off'")
-        ).firstMatch)
-        screenshot("16-resumed-banner")
+    func test17_aFinishedStepCanBeReopened() {
+        openSubmissionGuide()
+        jumpToGuideStep(2)
+        scrollDown(times: 3)
+        app.buttons["Done in Xcode"].tap()
+        jumpToGuideStep(2)
+        scrollDown(times: 4)
+        assertExists(app.buttons["Reopen this step"], "A mis-tap should be undoable")
     }
 
-    func test17_completedStepCanBeReopened() {
-        openASCGuide()
-        let safari = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Open in Safari'")
-        ).firstMatch
-        guard safari.waitForExistence(timeout: 4) else { return }
-        safari.tap()
-        sleep(1)
+    // MARK: - Testing
 
-        // Step 1 is done and we've advanced to step 2; go back to it.
-        jumpToStep(1)
-        let reopen = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Reopen this step'")
-        ).firstMatch
-        XCTAssertTrue(reopen.waitForExistence(timeout: 4),
-                      "A finished step must be reopenable — users mis-tap")
-        screenshot("17-reopen-step")
+    func test18_testPlanIsWrittenOutWithWhatToDoAndExpect() {
+        openSubmissionGuide()
+        jumpToGuideStep(9)
+        assertExists(app.staticTexts["Find out whether it actually works"], "Step 9 is testing")
+        scrollDown(times: 3)
+        assertExists(text(containing: "required test"), "The plan should say how much is left")
+        var tries = 0
+        let first = button(containing: "Open it for the very first time")
+        while !first.exists && tries < 6 { app.swipeUp(); tries += 1 }
+        assertExists(first, "The plan starts with a fresh install")
+        assertExists(text(containing: "You should see"), "Each test states its expected result")
+        assertExists(text(containing: "Why it matters"), "And why it is worth doing")
+        screenshot("18-test-plan")
     }
 
-    func test18_finishedStepsCollapseIntoOneLine() {
-        openASCGuide()
-        let safari = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Open in Safari'")
-        ).firstMatch
-        guard safari.waitForExistence(timeout: 4) else { return }
-        safari.tap()
-
-        let strip = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'step' AND label CONTAINS[c] 'done'")
-        ).firstMatch
-        XCTAssertTrue(strip.waitForExistence(timeout: 4),
-                      "Completed work should collapse to a single reviewable line")
-        screenshot("18-completed-strip")
+    func test19_testingExplainsWhyItMatters() {
+        openSubmissionGuide()
+        jumpToGuideStep(9)
+        assertExists(text(containing: "written by AI"),
+                     "The user should be told plainly why an untested build can't be trusted")
+        scrollDown(times: 2)
+        assertExists(text(containing: "Be strict"), "And how to judge a result")
     }
 
-    // MARK: - Submission is gated, not self-reported
+    func test20_aFailedTestAsksWhatHappened() {
+        openSubmissionGuide()
+        jumpToGuideStep(9)
+        var tries = 0
+        let failed = app.buttons["Didn't work"]
+        while !failed.exists && tries < 8 { app.swipeUp(); tries += 1 }
+        guard failed.exists else { XCTFail("Verdict buttons missing"); return }
+        failed.tap()
+        assertExists(app.staticTexts["What happened?"], "A failure should ask for one line about it")
+        scrollUp(times: 4)
+        assertExists(text(containing: "1 test failed"), "The summary should reflect the failure")
+        screenshot("20-failed-test")
+    }
 
-    /// Local builds have no live backend job, so the release-readiness
-    /// recheck `attemptFinalSubmit()` runs before showing the
-    /// confirmation alert can never come back "ready" — the button
-    /// must show the blocked sheet instead of trusting the user's
-    /// word. This is the second hard gate: CodeGenie re-verifies at
-    /// the moment of truth rather than letting stale state through.
-    func test19_finalSubmitIsBlockedWithoutVerifiedReadiness() {
-        openASCGuide()
-        jumpToStep(15)
-        let submitted = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'I submitted for review'")
-        ).firstMatch
-        guard submitted.waitForExistence(timeout: 4) else {
-            XCTFail("Step 15 submit action missing"); return
-        }
+    func test21_theTestStepCannotBeTickedByHand() {
+        openSubmissionGuide()
+        jumpToGuideStep(9)
+        scrollDown(times: 2)
+        XCTAssertFalse(app.buttons["I did this"].exists, "Testing is finished by results, not a tap")
+        assertExists(text(containing: "completes itself when every required test"),
+                     "And the step should say so")
+    }
+
+    func test22_theVerdictStaysClosedUntilTestsAreTried() {
+        openSubmissionGuide()
+        jumpToGuideStep(11)
+        assertExists(app.staticTexts["Decide: ready, or rebuild?"], "Step 11 is the checkpoint")
+        scrollDown(times: 3)
+        assertExists(app.buttons["Back to the test plan"], "With nothing tested there is nothing to decide")
+        XCTAssertFalse(button(containing: "It's ready").exists, "It can't be declared ready untested")
+        screenshot("22-verdict-closed")
+    }
+
+    func test23_secondTesterStepExplainsWhyAnOutsiderMatters() {
+        openSubmissionGuide()
+        jumpToGuideStep(10)
+        assertExists(app.staticTexts["Watch someone else use it"], "Step 10 brings in another person")
+        assertExists(text(containing: "you know where to tap"), "It should say why you can't do this yourself")
+    }
+
+    // MARK: - The store page
+
+    func test24_listingShowsBudgetsAndRequiredFields() {
+        openSubmissionGuide()
+        jumpToGuideStep(14)
+        scrollDown(times: 3)
+        assertExists(text(containing: "/30"), "Name and subtitle show Apple's 30-character budget")
+        assertExists(text(containing: "Privacy policy"), "Apple requires a privacy policy URL for every app")
+        assertExists(text(containing: "Copyright"), "Copyright is required on the version page")
+        screenshot("24-listing")
+    }
+
+    func test25_anIncompleteListingIsFlaggedAndEditable() {
+        openSubmissionGuide()
+        jumpToGuideStep(14)
+        scrollDown(times: 3)
+        assertExists(text(containing: "Apple will reject"), "Missing required fields must be flagged")
+        let edit = app.buttons["Edit listing"]
+        guard edit.waitForExistence(timeout: 3) else { XCTFail("Edit listing missing"); return }
+        edit.tap()
+        assertExists(app.navigationBars["Edit listing"], "The editor should open")
+        screenshot("25-editor")
+    }
+
+    func test26_storeStepsCoverAgeRatingAndReviewNotes() {
+        openSubmissionGuide()
+        jumpToGuideStep(16)
+        assertExists(app.staticTexts["Tell Apple who the app is suitable for"], "Age rating has its own step")
+        jumpToGuideStep(18)
+        assertExists(app.staticTexts["Give the reviewer what they need"], "So do the reviewer's notes")
+        scrollDown(times: 3)
+        assertExists(app.staticTexts["Notes for the reviewer"], "With an editable draft")
+        assertExists(text(containing: "still to fill in"), "That says which blanks remain")
+    }
+
+    // MARK: - Submitting
+
+    func test27_submitIsRefusedWhileTestingIsUnfinished() {
+        openSubmissionGuide()
+        jumpToGuideStep(20)
+        scrollDown(times: 3)
+        let submitted = app.buttons["I submitted for review"]
+        guard submitted.waitForExistence(timeout: 4) else { XCTFail("Submit action missing"); return }
         submitted.tap()
 
-        // With nothing confirmed, the user's own checklist stops the
-        // submit first; with that settled, the readiness audit does.
-        let checklist = app.navigationBars["Before you submit"]
-        let audit = app.navigationBars["A few things are still missing"]
-        XCTAssertTrue(
-            checklist.waitForExistence(timeout: 4) || audit.waitForExistence(timeout: 2),
-            "Submit must be blocked on what's outstanding, not just ask the user to confirm"
-        )
-        XCTAssertFalse(app.alerts["Did you press Submit in App Store Connect?"].exists,
-                       "The confirmation must not appear while anything is outstanding")
-        screenshot("19-submit-blocked")
+        XCTAssertFalse(app.alerts["Did you press Submit in App Store Connect?"].waitForExistence(timeout: 2),
+                       "The confirmation must not appear for an untested app")
+        assertExists(app.staticTexts["Step 9 of \(total)"],
+                     "The user should be taken to the test plan instead")
+        assertExists(text(containing: "Testing isn't finished"), "And told why")
+        screenshot("27-submit-refused")
     }
 
-    func test20_progressBarReflectsCompletedSteps() {
-        openASCGuide()
-        let progress = app.otherElements.matching(
-            NSPredicate(format: "label CONTAINS[c] 'of 18 steps complete'")
-        ).firstMatch
-        assertExists(progress, "Progress should be announced for VoiceOver")
-        screenshot("20-progress")
-    }
+    // MARK: - Review
 
-    // MARK: - Pre-flight gate (proactive, hard-blocking on entry)
-
-    func test21_preflightChecksBeforeAnythingElseIsShown() {
-        openBuildSuccessOverlay()
-        let walkthrough = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Put it on my iPhone'")
-        ).firstMatch
-        guard walkthrough.waitForExistence(timeout: 10) else { return }
-        walkthrough.tap()
-
-        // The AI narrates that it is actively checking, before any step
-        // content — this is the "proactive" requirement: no button the
-        // user has to remember to press.
-        let checking = app.staticTexts.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Checking your app'")
-        ).firstMatch
-        let reachedGate = checking.waitForExistence(timeout: 3)
-            || app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] \"Can't verify\"")).firstMatch.waitForExistence(timeout: 3)
-        XCTAssertTrue(reachedGate, "Opening the guide must immediately run a check, not show step 1 first")
-        screenshot("21-preflight-checking")
-    }
-
-    func test22_unverifiableBuildOffersExplicitEscapeHatch() {
-        openBuildSuccessOverlay()
-        let walkthrough = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Put it on my iPhone'")
-        ).firstMatch
-        guard walkthrough.waitForExistence(timeout: 10) else { return }
-        walkthrough.tap()
-
-        // Local builds have no live backend job to check against.
-        let skip = app.buttons["Continue without verification"]
-        guard skip.waitForExistence(timeout: 6) else {
-            XCTFail("Expected the unverifiable state for a local build with no backend job")
-            return
-        }
-        screenshot("22-unverifiable-escape-hatch")
-        skip.tap()
-
-        assertExists(app.staticTexts["Step 1 of 18"],
-                     "Explicitly skipping verification should reach the focused guide")
-    }
-
-    // MARK: - Phase 1: get it on your phone
-
-    func test23_uploadStepHasClaudeDrivenButton() {
-        openASCGuide()
-        jumpToStep(3)
-        let upload = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Upload to TestFlight'")
-        ).firstMatch
-        XCTAssertTrue(upload.waitForExistence(timeout: 4),
-                      "Step 3 must be a button CodeGenie drives itself, not a self-report checkbox")
-        screenshot("23-upload-button")
-    }
-
-    func test24_openTestFlightStepExplainsWhereToLook() {
-        openASCGuide()
-        jumpToStep(5)
-        assertExists(app.staticTexts["Install it on your own iPhone"],
-                     "Step 5 should be titled the way a person would say it")
-        let explain = app.otherElements.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Apple emails you an invite'")
-        ).firstMatch
-        XCTAssertTrue(explain.waitForExistence(timeout: 4),
-                      "Step 5 should say where the invite comes from")
-        screenshot("24-open-testflight-copy")
-    }
-
-    func test25_inviteTestersExplainsInternalVsExternal() {
-        openASCGuide()
-        jumpToStep(6)
-        let internalCopy = app.otherElements.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Internal:'")
-        ).firstMatch
-        let externalCopy = app.otherElements.matching(
-            NSPredicate(format: "label CONTAINS[c] 'External:'")
-        ).firstMatch
-        XCTAssertTrue(internalCopy.waitForExistence(timeout: 4) && externalCopy.exists,
-                      "Step 6 must explain both tester types, not just say 'invite testers'")
-        screenshot("25-invite-testers")
-    }
-
-    func test26_becomingTestableShowsMilestoneCard() {
-        openASCGuide()
-        for _ in 0..<6 {
-            let action = app.buttons.matching(NSPredicate(
-                format: "label CONTAINS[c] 'Open in Safari' OR label CONTAINS[c] 'I installed it' OR label CONTAINS[c] 'I invited testers' OR label CONTAINS[c] 'Build finished processing'"
-            )).firstMatch
-            guard action.waitForExistence(timeout: 3) else { break }
-            action.tap()
-            sleep(1)
-        }
-        let milestone = app.staticTexts.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Your app is testable'")
-        ).firstMatch
-        // Step 3 (the real upload) can't succeed against a local build,
-        // so this loop realistically stalls there — assert only when
-        // all six phase-1 steps happened to complete.
-        if milestone.waitForExistence(timeout: 3) {
-            screenshot("26-testable-milestone")
-        }
-    }
-
-    // MARK: - Helpers
-
-    /// Runs a real build on the local simulated builder and waits for
-    /// the success overlay. The canned-sample shortcut this used to
-    /// rely on was removed with the sample gallery.
-    private func openBuildSuccessOverlay() {
-        _ = runLocalBuildToGreen()
-    }
-
-    /// Opens the guide and clears the pre-flight gate. Local builds
-    /// have no live backend job, so the gate always lands on
-    /// "unverifiable" rather than "checking" or "blocked" — tests that
-    /// need the step content use the explicit escape hatch, exactly as
-    /// a real device tester would when offline.
-    private func openASCGuide() {
-        openBuildSuccessOverlay()
-        let walkthrough = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Put it on my iPhone'")
-        ).firstMatch
-        guard walkthrough.waitForExistence(timeout: 10) else { return }
-        walkthrough.tap()
-
-        let skip = app.buttons["Continue without verification"]
-        if skip.waitForExistence(timeout: 6) {
-            skip.tap()
-        }
-        _ = app.staticTexts["Step 1 of 18"].waitForExistence(timeout: 5)
-    }
-
-    // MARK: - New store steps and the review phase
-
-    func test27_ageRatingHasItsOwnStep() {
-        openASCGuide()
-        jumpToStep(11)
-        assertExists(app.staticTexts["Tell Apple who the app is suitable for"],
-                     "Age rating is a required questionnaire and needs its own walkthrough")
-        screenshot("27-age-rating")
-    }
-
-    func test28_reviewNotesStepDraftsNotesAndFlagsBlanks() {
-        openASCGuide()
-        jumpToStep(13)
-        assertExists(app.staticTexts["Give the reviewer what they need"],
-                     "App Review Information should have a walkthrough")
-        scrollDown(times: 3)
-        assertExists(app.staticTexts["Notes for the reviewer"],
-                     "The step should offer an editable draft of the notes")
-        let blanks = app.staticTexts.matching(
-            NSPredicate(format: "label CONTAINS[c] 'still to fill in'")
-        ).firstMatch
-        assertExists(blanks, "A fresh draft has blanks only the user can fill, and should say so")
-        assertExists(app.buttons["Copy notes"], "Notes should be copyable for pasting into App Store Connect")
-        screenshot("28-review-notes")
-    }
-
-    func test29_reviewStepsCannotBeUsedBeforeSubmitting() {
-        openASCGuide()
-        jumpToStep(16)
-        assertExists(app.staticTexts["Wait for a reviewer"],
-                     "The queue step should explain itself")
+    func test28_reviewStepsOfferNothingBeforeSubmission() {
+        openSubmissionGuide()
+        jumpToGuideStep(21)
+        assertExists(app.staticTexts["Wait for a reviewer"], "The queue step explains itself")
         scrollDown(times: 3)
         assertExists(app.staticTexts["Nothing to track yet"],
-                     "Review status controls must not be offered for an app that hasn't been submitted")
-        XCTAssertFalse(app.buttons["Check with Apple"].exists,
-                       "No status check before there is a submission")
-        screenshot("29-review-before-submit")
+                     "Status controls must not be offered for an app that hasn't been submitted")
+        XCTAssertFalse(app.buttons["Check with Apple"].exists, "No status check before a submission")
     }
 
-    func test30_reviewStepsAreNeverTickedByHand() {
-        openASCGuide()
-        jumpToStep(17)
-        assertExists(app.staticTexts["Act on Apple's answer"],
-                     "The decision step should explain itself")
-        let manual = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'I did this'")
-        ).firstMatch
-        XCTAssertFalse(manual.waitForExistence(timeout: 1),
-                       "A review step follows Apple's status and must not have a manual done button")
-        screenshot("30-review-not-manual")
+    func test29_reviewStepsAreNeverTickedByHand() {
+        openSubmissionGuide()
+        jumpToGuideStep(22)
+        assertExists(app.staticTexts["Act on Apple's answer"], "The decision step explains itself")
+        scrollDown(times: 2)
+        XCTAssertFalse(app.buttons["I did this"].exists, "A review step follows Apple's status")
     }
 
-    func test31_listingRequiresPrivacyPolicyAndCopyright() {
-        openASCGuide()
-        jumpToStep(9)
-        scrollDown(times: 3)
-        let privacy = app.staticTexts.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Privacy policy'")
-        ).firstMatch
-        assertExists(privacy, "Apple requires a privacy policy URL for every app; the listing must show it")
-        let copyright = app.staticTexts.matching(
-            NSPredicate(format: "label CONTAINS[c] 'Copyright'")
-        ).firstMatch
-        assertExists(copyright, "Copyright is a required field on the version page")
-        screenshot("31-required-fields")
+    // MARK: - Help on every step
+
+    func test30_everyStepOffersTheCoach() {
+        openSubmissionGuide()
+        for step in [1, 6, 9, 14, 20] {
+            jumpToGuideStep(step)
+            var tries = 0
+            let ask = app.buttons["Stuck on this step? Ask the coach"]
+            while !ask.exists && tries < 8 { app.swipeUp(); tries += 1 }
+            assertExists(ask, "Step \(step) should offer the coach")
+        }
     }
 
-    /// Focus mode shows one step at a time, so tests navigate the way a
-    /// user does: open the overview, tap the step they want.
-    private func jumpToStep(_ number: Int) {
-        let toggle = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'See all 18 steps'")
-        ).firstMatch
-        guard toggle.waitForExistence(timeout: 5) else {
-            XCTFail("Overview toggle missing — cannot reach step \(number)"); return
-        }
-        toggle.tap()
-
-        let row = app.buttons.matching(
-            NSPredicate(format: "label BEGINSWITH 'Step \(number).'")
-        ).firstMatch
-        for _ in 0..<6 where !row.exists {
-            scrollDown(times: 1)
-        }
-        guard row.waitForExistence(timeout: 4) else {
-            XCTFail("Step \(number) row not found in the overview"); return
-        }
-        row.tap()
-        _ = app.staticTexts["Step \(number) of 18"].waitForExistence(timeout: 4)
+    func test31_progressHeaderNamesThePart() {
+        openSubmissionGuide()
+        assertExists(text(containing: "Part 1 of 4"), "The header should say which part this is")
+        assertExists(text(containing: "0 of \(total) complete"), "And how far along")
     }
 }

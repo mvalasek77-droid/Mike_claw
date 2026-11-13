@@ -10,7 +10,7 @@ import Foundation
 enum Journey {
 
     enum Milestone: Int, CaseIterable, Identifiable {
-        case describe, build, phone, store, live
+        case describe, build, phone, test, store, live
 
         var id: Int { rawValue }
 
@@ -19,6 +19,7 @@ enum Journey {
             case .describe: "Describe"
             case .build:    "Build"
             case .phone:    "On your phone"
+            case .test:     "Tested"
             case .store:    "App Store"
             case .live:     "Live"
             }
@@ -29,7 +30,6 @@ enum Journey {
         case describeApp
         case resumeBuild
         case openLatestBuild
-        case setUpShipping
         case openSubmission(jobID: UUID)
         case startAnother
     }
@@ -39,8 +39,6 @@ enum Journey {
         var latestJobID: UUID?
         var latestJobTitle: String?
         var latestJobStage: BuildJob.Stage?
-        var macPaired: Bool
-        var appleAccountReady: Bool
         /// The submission that matters most right now, if any.
         var submission: ASCSubmissionRecord?
 
@@ -49,16 +47,12 @@ enum Journey {
             latestJobID: UUID? = nil,
             latestJobTitle: String? = nil,
             latestJobStage: BuildJob.Stage? = nil,
-            macPaired: Bool = false,
-            appleAccountReady: Bool = false,
             submission: ASCSubmissionRecord? = nil
         ) {
             self.buildInProgressTitle = buildInProgressTitle
             self.latestJobID = latestJobID
             self.latestJobTitle = latestJobTitle
             self.latestJobStage = latestJobStage
-            self.macPaired = macPaired
-            self.appleAccountReady = appleAccountReady
             self.submission = submission
         }
     }
@@ -129,28 +123,20 @@ enum Journey {
             )
 
         case .readyForTest, .shipping:
-            if facts.macPaired && facts.appleAccountReady, let id = facts.latestJobID {
+            guard let id = facts.latestJobID else {
                 return NextStep(
-                    milestone: .phone,
-                    eyebrow: "Next",
-                    title: "Put \(title) on your iPhone",
-                    detail: "Six short steps get the real app onto your Home Screen through TestFlight. The App Store comes after, when you're ready.",
-                    buttonTitle: "Start",
-                    action: .openSubmission(jobID: id),
+                    milestone: .build, eyebrow: "Built", title: "\(title) is built",
+                    detail: "Open it to carry on.", buttonTitle: "Open", action: .openLatestBuild,
                     isWaiting: false
                 )
             }
-            let missing = [
-                facts.macPaired ? nil : "a paired Mac",
-                facts.appleAccountReady ? nil : "your Apple Developer details",
-            ].compactMap { $0 }.joined(separator: " and ")
             return NextStep(
                 milestone: .phone,
                 eyebrow: "Next",
-                title: "Get ready to install \(title)",
-                detail: "Your app is built. Putting it on a real iPhone needs \(missing). It's a one-time setup and CodeGenie walks you through it.",
-                buttonTitle: "Set up",
-                action: .setUpShipping,
+                title: "Put \(title) on your iPhone",
+                detail: "It's built, but nobody has seen it run yet. A short guide takes you through opening it in Xcode on a Mac and installing the real app on your phone.",
+                buttonTitle: "Show me how",
+                action: .openSubmission(jobID: id),
                 isWaiting: false
             )
 
@@ -196,15 +182,29 @@ enum Journey {
 
         let number = record.resumeStep
         let step = ASCStep.step(number)
-        let inStorePhase = record.isPhaseComplete(.testflight)
+        let phase = step?.phase ?? .testflight
+        let milestone: Milestone
+        let detail: String
+        switch phase {
+        case .testflight:
+            milestone = .phone
+            detail = "You're part-way to having the real app on your iPhone."
+        case .testing:
+            milestone = .test
+            detail = "It's installed. Now find out whether it actually works — before Apple or anyone else does."
+        case .appStore:
+            milestone = .store
+            detail = "Tested and working. These steps put it on the public App Store."
+        case .review:
+            milestone = .store
+            detail = "Open the guide to see where Apple's review stands."
+        }
         return NextStep(
-            milestone: inStorePhase ? .store : .phone,
+            milestone: milestone,
             eyebrow: "\(record.appTitle) · step \(number) of \(ASCStep.all.count)",
             title: step?.title ?? "Continue your submission",
-            detail: inStorePhase
-                ? "Your app is already testable. These steps put it on the public App Store."
-                : "You're part-way to having the real app on your iPhone.",
-            buttonTitle: "Continue",
+            detail: detail,
+            buttonTitle: phase == .testing ? "Continue testing" : "Continue",
             action: open,
             isWaiting: step?.ownership == .apple
         )

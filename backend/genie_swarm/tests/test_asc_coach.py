@@ -70,7 +70,7 @@ async def test_users_live_situation_reaches_the_prompt():
     for expected in [
         "TideRider",
         "com.codegenie.tiderider",
-        "step 2 of 18",
+        "step 2 of 23",
         "Support URL is missing.",
         "Distribution IPA: none found.",
     ]:
@@ -78,15 +78,15 @@ async def test_users_live_situation_reaches_the_prompt():
 
 
 @pytest.mark.asyncio
-async def test_no_mac_is_stated_as_a_constraint():
+async def test_the_coach_is_told_it_cannot_see_the_mac():
     llm = FakeLLM()
     await answer(
         llm=llm,
         question="Can I upload now?",
-        context=CoachContext(app_name="Tides", mac_paired=False),
+        context=CoachContext(app_name="Tides"),
     )
-    assert "No Mac is connected" in llm.system
-    assert "cannot package the app for upload" in llm.system
+    assert "by hand in Xcode" in llm.system
+    assert "CodeGenie cannot see their Mac" in llm.system
 
 
 @pytest.mark.asyncio
@@ -169,9 +169,11 @@ def test_every_step_offers_questions():
 
 
 def test_suggestions_are_step_specific():
-    assert any("bundle ID" in q for q in suggested_questions(2))
-    assert any("screenshot" in q.lower() for q in suggested_questions(8))
-    assert any("reject" in q.lower() for q in suggested_questions(17))
+    assert any("bundle ID" in q for q in suggested_questions(5))
+    assert any("Archive" in q for q in suggested_questions(6))
+    assert any("test" in q.lower() for q in suggested_questions(9))
+    assert any("screenshot" in q.lower() for q in suggested_questions(13))
+    assert any("reject" in q.lower() for q in suggested_questions(22))
 
 
 def test_suggestions_work_with_no_step():
@@ -210,6 +212,32 @@ def test_request_accepts_every_step_and_rejects_beyond():
     ASCCoachRequest(question="q", step_number=ASC_TOTAL_STEPS)
     with pytest.raises(ValidationError):
         ASCCoachRequest(question="q", step_number=ASC_TOTAL_STEPS + 1)
+
+
+@pytest.mark.parametrize("needle", [
+    "AirDrop", ".xcodeproj", "Signing & Capabilities", "Personal Team",
+    "Any iOS Device", "greyed out", "Distribute App",
+    "No suitable application records", "Guideline 2.1", "test plan",
+    "nothing on the Mac is\nautomated",
+])
+def test_curriculum_covers_xcode_and_testing(needle):
+    from genie_swarm.asc_coach import SYSTEM_PROMPT
+    assert needle in SYSTEM_PROMPT
+
+
+def test_context_never_claims_codegenie_controls_the_mac():
+    rendered = CoachContext(app_name="Tides", step_number=3).render()
+    assert "by hand in Xcode" in rendered
+    assert "A Mac is connected" not in rendered
+    assert "step 3 of 23" in rendered
+
+
+def test_failed_tests_reach_the_coach():
+    rendered = CoachContext(
+        app_name="Tides", step_number=9,
+        outstanding_items=["Test failed — Use it with no internet: spinner forever"],
+    ).render()
+    assert "spinner forever" in rendered
 
 
 @pytest.mark.parametrize("needle", [

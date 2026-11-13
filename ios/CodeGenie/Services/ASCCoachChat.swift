@@ -47,7 +47,6 @@ final class ASCCoachChat: ObservableObject {
         appName: String,
         bundleID: String,
         completed: Set<Int>,
-        macPaired: Bool,
         blockingIssues: [String],
         outstandingItems: [String]
     ) async {
@@ -71,7 +70,6 @@ final class ASCCoachChat: ObservableObject {
             "app_name": appName,
             "bundle_id": bundleID,
             "completed_steps": completed.sorted(),
-            "mac_paired": macPaired,
             "blocking_issues": blockingIssues,
             "outstanding_items": outstandingItems,
         ]
@@ -117,24 +115,29 @@ final class ASCCoachChat: ObservableObject {
             return [general, "How much does this cost?", "How long will the whole thing take?"]
         }
         let perStep: [Int: [String]] = [
-            1:  ["Which Apple ID should I sign in with?", "Why does it say I don't have permission?"],
-            2:  ["What is a bundle ID?", "My bundle ID isn't in the dropdown", "What should I put for SKU?"],
-            3:  ["What is an .ipa?", "Why does it say no .ipa was found?", "Do I really need a Mac?"],
-            4:  ["How long does processing take?", "My build never showed up"],
-            5:  ["How do I get the app on my phone?", "I never got the invite email"],
-            6:  ["Internal vs external testers?", "How do I share a public link?"],
-            7:  ["What are Apple's icon rules?", "My icon was rejected for transparency"],
-            8:  ["What screenshots do I need?", "What size should screenshots be?"],
-            9:  ["How do keywords work?", "What should I write in the description?"],
-            10: ["Do I collect data if everything stays on the phone?", "Do I need a privacy policy?"],
-            11: ["How do I answer the age rating questions?", "What counts as unrestricted web access?"],
-            12: ["Should my app be free?", "Can I change the price later?"],
-            13: ["What should I write in the review notes?", "Do I need to give Apple a test account?"],
-            14: ["My build isn't in the list", "What is export compliance?", "Manual or automatic release?"],
-            15: ["What happens after I submit?", "What does Add for Review do?"],
-            16: ["How long does review take?", "Can I speed up the review?", "Can I change something while I wait?"],
-            17: ["What does this rejection mean?", "Do I need to upload a new build?", "How do I reply to App Review?", "Can I appeal?"],
-            18: ["Why can't I find my app in search?", "How do I ship an update?"],
+            1:  ["My Mac doesn't show up in AirDrop", "Can I use iCloud Drive instead?", "Do I really need a Mac?"],
+            2:  ["Which file do I open in Xcode?", "Xcode is asking to install components", "How do I sign in to Xcode?"],
+            3:  ["It only shows Personal Team", "What is a bundle identifier?", "Xcode says failed to register bundle identifier"],
+            4:  ["Xcode says Build Failed", "The simulator is taking forever", "How do I use the simulator?"],
+            5:  ["My bundle ID isn't in the dropdown", "What should I put for SKU?", "It says I don't have permission"],
+            6:  ["Archive is greyed out", "No suitable application records were found", "It says the bundle version must be higher"],
+            7:  ["How long does processing take?", "My build never showed up", "What is Missing Compliance?"],
+            8:  ["How do I get the app on my phone?", "I never got the invite email"],
+            9:  ["Why do I have to test it?", "A test failed — what now?", "What counts as it working?"],
+            10: ["Internal vs external testers?", "How do I share a public link?", "What should I ask my tester to do?"],
+            11: ["Is my app ready to submit?", "What happens when I rebuild?"],
+            12: ["What are Apple's icon rules?", "My icon was rejected for transparency"],
+            13: ["What screenshots do I need?", "How do I take a screenshot in the simulator?"],
+            14: ["How do keywords work?", "What should I write in the description?", "What can I use as a support URL?"],
+            15: ["Do I collect data if everything stays on the phone?", "Do I need a privacy policy?"],
+            16: ["How do I answer the age rating questions?", "What counts as unrestricted web access?"],
+            17: ["Should my app be free?", "Can I change the price later?"],
+            18: ["What should I write in the review notes?", "Do I need to give Apple a test account?"],
+            19: ["My build isn't in the list", "What is export compliance?", "Manual or automatic release?"],
+            20: ["What happens after I submit?", "What does Add for Review do?"],
+            21: ["How long does review take?", "Can I speed up the review?", "Can I change something while I wait?"],
+            22: ["What does this rejection mean?", "Do I need to upload a new build?", "How do I reply to App Review?", "Can I appeal?"],
+            23: ["Why can't I find my app in search?", "How do I ship an update?"],
         ]
         return (perStep[step] ?? []) + [general]
     }
