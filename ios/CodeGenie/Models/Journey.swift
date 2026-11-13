@@ -216,3 +216,91 @@ enum Journey {
             || (next.milestone == .live && next.action == .startAnother)
     }
 }
+
+// MARK: - The tour
+
+extension Journey {
+
+    /// One stop on the tour shown at first launch and from Home.
+    ///
+    /// The tour walks the same six milestones as the rail on Home, in
+    /// the same order and by the same names, so what a newcomer is
+    /// shown before they start is the map they then find themselves
+    /// on. Each stop answers the four things people actually want to
+    /// know: what happens, what they do, how long it takes, and what
+    /// they need.
+    struct TourStop: Identifiable, Hashable {
+        let milestone: Milestone
+        let title: String
+        let body: String
+        /// The user's own part, in one line.
+        let youDo: String
+        let takes: String
+        /// What this stop requires that the user might not have. Nil
+        /// when it needs nothing beyond the phone in their hand.
+        let needs: String?
+
+        var id: Int { milestone.rawValue }
+    }
+
+    static let tour: [TourStop] = [
+        TourStop(
+            milestone: .describe,
+            title: "Start with a sentence",
+            body: "Say what you want — \"a tide times app for surfers\" is enough. Pick a look. CodeGenie does the planning.",
+            youDo: "Type a sentence or two.",
+            takes: "A minute",
+            needs: "An AI key from Anthropic or OpenAI. CodeGenie shows you how to get one, and what each build will cost before it starts."
+        ),
+        TourStop(
+            milestone: .build,
+            title: "Watch it get built",
+            body: "A team of AI agents plans the app, writes the code, sets up a real Xcode project and reviews its own work. You see each step, and every file is yours to read.",
+            youDo: "Watch, or play the built-in game while you wait.",
+            takes: "A few minutes",
+            needs: nil
+        ),
+        TourStop(
+            milestone: .phone,
+            title: "Put it on your own iPhone",
+            body: "Apple only lets iPhone apps be packaged on a Mac. CodeGenie sends the project to yours and tells you exactly what to click in Xcode — about six buttons — until the real app is on your Home Screen.",
+            youDo: "Follow eight short steps, mostly on your Mac.",
+            takes: "About an hour the first time",
+            needs: "A Mac, the free Xcode app, and Apple's Developer Program ($99 a year)."
+        ),
+        TourStop(
+            milestone: .test,
+            title: "Test it before anyone else does",
+            body: "AI wrote it, so nobody knows yet whether it works. You get a short test plan made for your app: what to tap, and what should happen. Anything that fails goes straight into a rebuild.",
+            youDo: "Try each test and say whether it worked.",
+            takes: "Ten to fifteen minutes",
+            needs: "One other person to try it, if you can find one."
+        ),
+        TourStop(
+            milestone: .store,
+            title: "Prepare your App Store page",
+            body: "Icon, screenshots, description, privacy answers. CodeGenie drafts what it can, checks every field against Apple's limits, and shows you where each one goes.",
+            youDo: "Check the drafts and paste them into Apple's website.",
+            takes: "An hour or two",
+            needs: "A web page for support and one for your privacy policy. Simple ones are fine."
+        ),
+        TourStop(
+            milestone: .live,
+            title: "Through Apple's review, and live",
+            body: "A person at Apple tries your app. CodeGenie follows the review with you, and if it's sent back — common on a first app — explains what Apple wants and what to change.",
+            youDo: "Wait, and act on Apple's answer.",
+            takes: "Usually a day or two",
+            needs: nil
+        ),
+    ]
+
+    /// What the whole trip needs, gathered from the stops, for the
+    /// summary at the end of the tour.
+    static var tourRequirements: [String] {
+        [
+            "An AI key from Anthropic or OpenAI — to build",
+            "A Mac with Xcode — to install and submit",
+            "Apple's Developer Program, $99 a year — to install and submit",
+        ]
+    }
+}

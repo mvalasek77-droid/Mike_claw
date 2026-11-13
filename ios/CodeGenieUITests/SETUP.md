@@ -48,7 +48,7 @@ Pick any iPhone simulator (iPhone 15 Pro recommended) with iOS 17+.
 
 | File | Coverage |
 |------|----------|
-| T01 | Splash → 7 onboarding slides → Terms scroll gate → Pricing → Home |
+| T01 | Splash → six-stop tour → Terms scroll gate → Home |
 | T02 | Home: hero, next-step card, ship readiness, tiles, sheets |
 | T03 | Describe form, suggestions, DNA readout, build screen layout |
 | T04 | Settings: auth mode, BYOK keys, power mode, all sub-screens |

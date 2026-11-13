@@ -4,7 +4,29 @@ import SwiftUI
 /// We deliberately avoid bundled images so the app stays small and every
 /// illustration animates and adapts to dark mode for free.
 struct OnboardingIllustrationView: View {
-    let kind: OnboardingSlide.Illustration
+    enum Kind: Hashable {
+        case macWithXcode
+        case projectInitialized
+        case cursorLink
+        case aiTraining
+        case appBuilding
+        case iconForge
+        case simulatorToDevice
+
+        /// The picture for each stop on the tour.
+        init(_ milestone: Journey.Milestone) {
+            switch milestone {
+            case .describe: self = .aiTraining
+            case .build:    self = .projectInitialized
+            case .phone:    self = .macWithXcode
+            case .test:     self = .simulatorToDevice
+            case .store:    self = .iconForge
+            case .live:     self = .appBuilding
+            }
+        }
+    }
+
+    let kind: Kind
     @State private var bob: Bool = false
     @State private var spin: Bool = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion

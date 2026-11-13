@@ -248,7 +248,7 @@ struct SettingsView: View {
     private var tutorialBlock: some View {
         navTile(
             title: "Watch the tour",
-            subtitle: "The 7-step tutorial — re-runnable anytime.",
+            subtitle: "The whole trip from idea to App Store, in six stops.",
             icon: "play.rectangle.fill",
             tint: LiquidGlass.accentSecondary
         ) { showTutorial = true }

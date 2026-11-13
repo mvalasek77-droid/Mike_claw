@@ -444,7 +444,7 @@ struct HomeView: View {
     /// do something for someone who has never shipped an app.
     private var quickGrid: some View {
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-            QuickTile(title: "How it works", subtitle: "The 7-step tour",        icon: "play.rectangle.fill", tint: LiquidGlass.accentSecondary) { showTutorial = true }
+            QuickTile(title: "How it works", subtitle: "Idea to App Store",       icon: "play.rectangle.fill", tint: LiquidGlass.accentSecondary) { showTutorial = true }
             QuickTile(title: "Costs & keys", subtitle: "What a build costs",     icon: "creditcard.fill",     tint: LiquidGlass.success)         { showSettings = true }
             QuickTile(title: "Xcode steps",  subtitle: "Pocket guide",           icon: "hammer.fill",         tint: LiquidGlass.warning)         { showXcodeGuide = true }
             QuickTile(title: "BitDrop",      subtitle: "A game for the wait",    icon: "gamecontroller.fill", tint: LiquidGlass.accent)          { showGame = true }

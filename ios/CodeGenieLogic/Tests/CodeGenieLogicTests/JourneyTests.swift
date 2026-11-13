@@ -162,3 +162,48 @@ final class JourneyTests: XCTestCase {
         XCTAssertEqual(Journey.primarySubmission(among: [live])?.appTitle, "Live")
     }
 }
+
+final class TourTests: XCTestCase {
+
+    func testTheTourVisitsEveryMilestoneOnceInOrder() {
+        XCTAssertEqual(Journey.tour.map(\.milestone), Journey.Milestone.allCases)
+    }
+
+    func testEveryStopAnswersWhatYouDoAndHowLong() {
+        for stop in Journey.tour {
+            XCTAssertFalse(stop.title.isEmpty, "\(stop.milestone)")
+            XCTAssertGreaterThan(stop.body.count, 60, "\(stop.milestone)")
+            XCTAssertFalse(stop.youDo.isEmpty, "\(stop.milestone)")
+            XCTAssertFalse(stop.takes.isEmpty, "\(stop.milestone)")
+        }
+    }
+
+    func testCostsAndTheMacAreDisclosedBeforeTheUserStarts() {
+        let all = Journey.tour.map { $0.body + " " + ($0.needs ?? "") }.joined(separator: " ")
+        XCTAssertTrue(all.contains("$99"))
+        XCTAssertTrue(all.contains("Mac"))
+        XCTAssertTrue(all.contains("Xcode"))
+        XCTAssertTrue(all.contains("AI key"))
+        XCTAssertTrue(Journey.tourRequirements.contains { $0.contains("$99") })
+    }
+
+    func testTheTourPromisesNothingTheGuideDoesNotDo() {
+        let all = Journey.tour.map { $0.body + $0.youDo + ($0.needs ?? "") }.joined(separator: " ").lowercased()
+        for claim in ["companion", "pair", "simulator in the cloud", "without a mac", "automatically submits", "no mac"] {
+            XCTAssertFalse(all.contains(claim), claim)
+        }
+    }
+
+    func testTheTourSaysTestingIsTheUsersJob() {
+        let test = Journey.tour.first { $0.milestone == .test }!
+        XCTAssertTrue(test.body.contains("nobody knows yet whether it works"))
+        XCTAssertTrue(test.body.contains("rebuild"))
+    }
+
+    func testThePhoneStopMatchesTheGuidesRealStepCount() {
+        let phone = Journey.tour.first { $0.milestone == .phone }!
+        let words = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"]
+        let count = ASCStep.steps(in: .testflight).count
+        XCTAssertTrue(phone.youDo.contains(words[count]), "the tour says \(phone.youDo); the guide has \(count) steps")
+    }
+}
