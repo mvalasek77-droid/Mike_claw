@@ -38,6 +38,7 @@
       return fromTwa || sessionStorage.getItem("ab_twa") === "1";
     } catch { return fromTwa; }
   })();
+  const PLAY_URL = "https://play.google.com/store/apps/details?id=com.valasek.auctionbaby.android";
   const GAVEL_PACK_ID = { 1000: "gavels_handful", 5000: "gavels_stack", 14000: "gavels_chest", 30000: "gavels_vault" };
   const PASS_ID = { "Paddle": "pass_paddle", "Reserve": "pass_reserve", "Black Card": "pass_blackcard" };
 
@@ -821,6 +822,7 @@
       // returning to finish signing up), so redraw explicitly in that case.
       if (location.hash === "#/floor") render(); else go("/floor");
       syncFloor(); syncMatches(); syncIncoming();
+      setTimeout(() => showTour(), 600);
     };
   }
 
@@ -1445,6 +1447,49 @@
     toast(`${who} passed on your bid this time.` + (refund ? ` Insurance returned ${refund.toLocaleString()} Gavels.` : ""));
   }
 
+  // First-run walkthrough: a few skippable cards, shown once after signup.
+  function showTour(force) {
+    if (!force && (S.tourDone || !S.registered || location.hash.includes("admin"))) return;
+    if (document.querySelector(".tour")) return;
+    const bidder = S.role !== "woman";
+    const steps = bidder ? [
+      ["▦", "Welcome to the floor", "Browse the lots on the floor. Tap anyone to see her profile, prompts and Showcase Credit."],
+      ["⚖", "Bid what a date is worth", "Your bid is the budget you'll spend on the date itself — dinner, drinks, the evening. It's never a payment to her."],
+      ["❤", "She chooses", "If she accepts, you match and the chat opens. Find every match and conversation under Matches."],
+      ["◉", "Make it yours", "Add a photo, get verified and send us feedback from You. Watch for Copycats — AI profiles hiding on the floor."],
+    ] : [
+      ["▦", "You're on the floor", "Men browse the floor and bid on a date with you. Keep your photo and prompts fresh to stand out."],
+      ["⚖", "Bids come to you", "Each bid is what he'll spend on your date. Accept the one you like — his photo unlocks when you do."],
+      ["❤", "Chat after you accept", "Accepting opens the chat. Every match and conversation lives under Matches."],
+      ["◉", "Make it yours", "Edit your profile, get verified and send us feedback from You."],
+    ];
+    let i = 0;
+    const el = document.createElement("div");
+    el.className = "tour";
+    el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-label", "How Auction Baby works");
+    el.style.cssText = "position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.72);display:flex;align-items:flex-end;justify-content:center;padding:16px";
+    const done = () => { el.remove(); S.tourDone = true; save(); };
+    const draw = () => {
+      const [ic, title, body] = steps[i];
+      const last = i === steps.length - 1;
+      el.innerHTML = `<div class="card" style="width:100%;max-width:420px;padding:22px 20px calc(18px + env(safe-area-inset-bottom));text-align:center;background:var(--bg2);border:1px solid var(--line);backdrop-filter:none">
+        <div style="font-size:34px" aria-hidden="true">${ic}</div>
+        <h2 class="display" style="font-size:22px;margin:10px 0 8px">${title}</h2>
+        <div class="muted" style="font-size:15px;line-height:1.5">${body}</div>
+        <div style="display:flex;justify-content:center;gap:6px;margin:16px 0" aria-hidden="true">${steps.map((_, k) => `<span style="width:8px;height:8px;border-radius:50%;background:${k === i ? "var(--gold)" : "var(--line)"}"></span>`).join("")}</div>
+        <div class="row" style="gap:10px">
+          <button class="btn ghost" data-tour-skip style="flex:1">${last ? "Close" : "Skip"}</button>
+          <button class="btn" data-tour-next style="flex:1">${last ? "Get started" : "Next"}</button>
+        </div>
+        <div class="faint" style="margin-top:10px;font-size:12px">Step ${i + 1} of ${steps.length}</div>
+      </div>`;
+      el.querySelector("[data-tour-skip]").onclick = done;
+      el.querySelector("[data-tour-next]").onclick = () => { if (last) done(); else { i++; draw(); } };
+      el.querySelector("[data-tour-next]").focus();
+    };
+    document.body.appendChild(el); draw();
+  }
+
   function copycatReveal(w) {
     const c = document.createElement("div"); c.className = "celebrate copycat";
     c.innerHTML = `<div>
@@ -2003,7 +2048,10 @@
       ${S.role === "man" && !S.pass && !ANDROID_APP ?`<button class="btn" style="margin-top:10px" data-go="paywall">Get an Auction Baby Pass</button>` : ""}
       ${(CONFIGURED() && SIGNED_IN() && window.AB_CONFIG.VAPID_PUBLIC_KEY) ? `<button class="btn ghost" id="notif" style="margin-top:10px">Enable notifications</button>` : ""}
       ${SIGNED_IN() ? `<button class="btn ghost" id="signout" style="margin-top:10px">Sign out</button>` : ""}
-      <button class="btn ghost" id="bugreport" style="margin-top:10px">Report a bug</button>
+      <button class="btn ghost" id="share-app" style="margin-top:10px">Share Auction Baby</button>
+      ${ANDROID_APP ? `<button class="btn ghost" id="rate-app" style="margin-top:10px">Rate Auction Baby</button>` : ""}
+      <button class="btn ghost" id="bugreport" style="margin-top:10px">Send feedback</button>
+      <button class="btn ghost" id="tour-again" style="margin-top:10px">How Auction Baby works</button>
       <button class="btn ghost" id="reset" style="margin-top:10px;color:var(--danger)">Reset account</button>
       ${SIGNED_IN() ? `<button class="btn ghost" id="delacct" style="margin-top:10px;color:var(--danger)">Delete account permanently</button>` : ""}
       <button class="btn ghost" data-go="admin" style="margin-top:18px;font-size:13px;opacity:.5">Admin Console</button>
@@ -2022,6 +2070,15 @@
     };
     $("#reset").onclick = () => { if (confirm("Reset everything?")) { S = fresh(); S.floor = seedDemo(); obPhoto = null; obInterests = []; save(); go("/"); onboarding(); } };
     $("#bugreport").onclick = bugReportSheet;
+    $("#tour-again").onclick = () => showTour(true);
+    $("#share-app").onclick = () => {
+      const url = ANDROID_APP ? PLAY_URL : (window.AB_CONFIG && window.AB_CONFIG.SITE_URL) || location.href.split("#")[0];
+      const data = { title: "Auction Baby", text: "Bid what a date is worth. Try Auction Baby:", url };
+      if (navigator.share) navigator.share(data).catch(() => {});
+      else if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => toast("Link copied — paste it anywhere.")).catch(() => toast(url));
+      else toast(url);
+    };
+    const rate = $("#rate-app"); if (rate) rate.onclick = () => window.open(PLAY_URL, "_blank");
     wire();
   }
 
@@ -2034,15 +2091,16 @@
     const ua = navigator.userAgent;
     const platform = navigator.platform || "unknown";
     app.innerHTML = `<div class="screen">
-      <div class="topbar"><button class="chip" data-go="you">← Back</button><div class="kicker">Report a Bug</div><div></div></div>
+      <div class="topbar"><button class="chip" data-go="you">← Back</button><div class="kicker">Send feedback</div><div></div></div>
       <div class="card">
-        <label class="field"><div class="lbl">What happened?</div><textarea class="txt" id="bug-desc" rows="4" placeholder="Describe the bug…"></textarea></label>
-        <label class="field"><div class="lbl">Steps to reproduce</div><textarea class="txt" id="bug-steps" rows="3" placeholder="1. Go to…&#10;2. Tap on…&#10;3. See error"></textarea></label>
-        <label class="field"><div class="lbl">Severity</div>
-          <select class="txt" id="bug-sev"><option value="low">Low — cosmetic</option><option value="medium" selected>Medium — broken feature</option><option value="high">High — can't use app</option></select>
+        <div class="faint" style="margin-bottom:10px">Ideas, problems, anything — it goes straight to the team.</div>
+        <label class="field"><div class="lbl">Your feedback</div><textarea class="txt" id="bug-desc" rows="4" placeholder="What would make Auction Baby better? Or what went wrong?"></textarea></label>
+        <label class="field"><div class="lbl">If something went wrong: what did you tap? (optional)</div><textarea class="txt" id="bug-steps" rows="3" placeholder="1. Went to…&#10;2. Tapped…&#10;3. Saw…"></textarea></label>
+        <label class="field"><div class="lbl">Type</div>
+          <select class="txt" id="bug-sev"><option value="low" selected>Idea or suggestion</option><option value="medium">Something isn't working</option><option value="high">I can't use the app</option></select>
         </label>
         <div class="faint" style="margin-top:10px;font-size:11px">Device: ${esc(platform)} · ${esc(ua.substring(0, 80))}</div>
-        <button class="btn" id="bug-submit" style="margin-top:14px">Submit report</button>
+        <button class="btn" id="bug-submit" style="margin-top:14px">Send</button>
       </div>
     </div>`;
     wire();
@@ -2050,7 +2108,7 @@
       const desc = ($("#bug-desc") || {}).value || "";
       const steps = ($("#bug-steps") || {}).value || "";
       const sev = ($("#bug-sev") || {}).value || "medium";
-      if (!desc.trim()) { toast("Please describe the bug."); return; }
+      if (!desc.trim()) { toast("Write a few words first."); return; }
       const deviceStr = platform + " · " + ua.substring(0, 100);
       const bug = {
         id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
@@ -2061,10 +2119,12 @@
         status: "open"
       };
       if (CONFIGURED() && SIGNED_IN()) {
-        try { await API.submitBug(desc, steps, sev, deviceStr); } catch { /* fallback to local */ }
+        // Say so when it didn't send, rather than thanking them for nothing.
+        try { await API.submitBug(desc, steps, sev, deviceStr); }
+        catch (e) { toast("Couldn't send just now — check your connection and try again."); return; }
       }
       saveBug(bug);
-      toast("Bug reported — thank you!");
+      toast("Thanks — your feedback was sent.");
       go("/you");
     };
   }
@@ -2529,6 +2589,7 @@
     </div>`;
   }
   if (needsAccount) toast("Sign in or create an account to finish joining — your details are saved below.");
+  if (S.registered && !S.tourDone) setTimeout(() => showTour(), 1200);
   if (location.hash.includes("paid=1")) toast("Payment complete — Gavels added.");
   // demo woman returning with no bids left → reseed so the screen isn't empty
   if (S.registered && S.role === "woman" && (!CONFIGURED() || !SIGNED_IN()) && !(S.incoming && S.incoming.length)) { S.incoming = seedIncoming(); save(); if (tab === "floor") incoming(); }
