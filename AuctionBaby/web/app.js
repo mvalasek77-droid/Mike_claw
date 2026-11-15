@@ -265,7 +265,8 @@
   const KEY = "auctionbaby.web.v1";
   let S = load();
   // Migrate: ensure new fields exist on older saved states
-  if (!S.ownedStatus) S.ownedStatus = [];
+  S = { ...fresh(), ...S, me: { ...fresh().me, ...(S.me || {}) } };
+  for (const k of ["floor", "womenFloor", "matches", "incoming", "ownedStatus"]) if (!Array.isArray(S[k])) S[k] = [];
   if (S.pass === undefined) S.pass = null;
   function load() {
     try { return JSON.parse(localStorage.getItem(KEY)) || fresh(); }
