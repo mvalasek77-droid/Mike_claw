@@ -204,7 +204,10 @@
     photo:"photos/"+photo+".jpg",photos:["photos/"+photo+".jpg"],interests:interests||[],lifestyle:lifestyle||{},showcase:showcase||480,marketValue:Math.round(bid*1.2+((showcase||480)-300)*2)
   });
   const P = (q,a) => ({q,a});
-  const seedFloor = () => ([
+  // Demo profiles kept off the Play Store app (the website still shows them).
+  const HIDDEN_IN_ANDROID_APP = new Set(["Sloane"]);
+  const seedFloor = () => allSeedFloor().filter(l => !(ANDROID_APP && HIDDEN_IN_ANDROID_APP.has(l.name)));
+  const allSeedFloor = () => ([
     W("Serena Voss",28,"Upper East Side, New York",1000000,"Private art dealer. Quiet dinners, old buildings, men who don't explain their watch.",[P("The way to win me over is","Know what you want and don't apologize for it."),P("Together we could","Close a gallery and open the wine they keep behind the counter.")],306,false,true,false,"photo-serena",["Art","Wine","Travel","Design","Film"],{height:"5'9\"",drinks:"Rarely",kids:"Wants kids"},900),
     W("Rae",27,"SoHo, New York",100,"Gallery girl by day, downtown by night. I know what I want and I don't settle.",[P("The way to win me over is","Be direct, be confident, and make the reservation before you ask.")],180,true,false,false,"photo-harper",["Wine","Art","Travel"],{height:"5'6\"",drinks:"Socially"},620),
     W("Sloane",31,"Venice, Los Angeles",150,"Founder, second company. I like early mornings, good espresso, and people who follow through.",[P("Together we could","Skip the small talk and split the tasting menu."),P("Dating me is like","Working with a good cofounder — direct, loyal, occasionally intense.")],198,true,false,false,"photo-sloane",["Startups","Fitness","Food","Design"],{height:"5'7\"",drinks:"Socially",kids:"Wants kids"},650),
@@ -294,6 +297,10 @@
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) { console.warn("save failed (quota?):", e.message); } };
   if (!S.floor || !S.floor.length) { S.floor = seedDemo(); save(); }
   for (const list of [S.floor, S.womenFloor]) for (const l of (list || [])) if (isDemoLot(l)) l.demo = true;
+  if (ANDROID_APP) {
+    const keep = l => !(isDemoLot(l) && HIDDEN_IN_ANDROID_APP.has(l.name));
+    S.floor = S.floor.filter(keep); S.womenFloor = (S.womenFloor || []).filter(keep);
+  }
   save();
   // Restore or retire a Spotlight Boost left over from a previous session.
   // This sits below `save` deliberately — it needs to persist the cleanup, and
@@ -1005,7 +1012,7 @@
     const prompts = w.prompts || [];
 
     app.innerHTML = `<div class="screen" style="padding-bottom:80px">
-      <div class="topbar sticky"><button class="chip" data-back>‹ Floor</button><span class="pill">⚖ ${S.wallet.toLocaleString()}</span><button class="chip" data-report style="margin-left:auto">⚑</button></div>
+      <div class="topbar sticky"><button class="chip" data-back>‹ Floor</button><span class="pill">⚖ ${S.wallet.toLocaleString()}</span><button class="chip" data-report style="margin-left:auto" aria-label="Report or block" title="Report or block">⚑</button></div>
 
       <div class="lot${w.masterpiece ? " masterpiece" : ""}" style="margin-bottom:16px">
         <div class="art" id="photoPager" style="position:relative;overflow:hidden">${photoPagerHTML(w)}
@@ -1677,18 +1684,18 @@
       return `<div class="bub ${msg.me ? "me" : "them"}${photoTag ? " photo" : ""}" data-mid="${i}">${photoTag}${msg.text ? esc(msg.text) : ""}${rx}</div>${receipt}`;
     }).join("") + (m.typing ? `<div class="bub them typing">•••</div>` : "");
     app.innerHTML = `<div class="screen" style="padding-bottom:0">
-      <div class="topbar sticky"><button class="chip" data-back>‹</button>
+      <div class="topbar sticky"><button class="chip" data-back aria-label="Back to matches">‹</button>
         <div class="row">${gradSm(m.hue, m.name, m.photo)}<b style="font-family:var(--serif)">${esc(m.name)}${m.verified ? verifiedBadge("sm") : ""}</b></div>
         <div class="row" style="gap:6px">
           ${S.role === "man" ? (m.reserved ? `<span class="chip on">✓ Reserved</span>` : `<button class="chip" id="reserve">Reserve</button>`) : ""}
-          <button class="chip" id="report" title="Report & block">⚑</button>
+          <button class="chip" id="report" title="Report & block" aria-label="Report or block">⚑</button>
         </div></div>
       <div class="msgs" id="msgs">${bubbles}</div></div>
       <div class="composer">
-        <button class="cbtn" id="photo-btn" title="Send photo">📷</button>
-        <input id="ci" placeholder="Message…" autocomplete="off">
-        <button class="cbtn" id="emoji-btn" title="Emoji">😊</button>
-        <button class="iconbtn" id="send">↑</button>
+        <button class="cbtn" id="photo-btn" title="Send photo" aria-label="Send photo">📷</button>
+        <input id="ci" placeholder="Message…" autocomplete="off" aria-label="Message">
+        <button class="cbtn" id="emoji-btn" title="Emoji" aria-label="Emoji">😊</button>
+        <button class="iconbtn" id="send" aria-label="Send message">↑</button>
       </div>
       <div class="emoji-bar" id="emoji-bar" style="display:none">${["😀","😂","❤️","🔥","👍","👎","😢","😡","🙏","👏","💋","🎉","💯","🤔","😘","😍","😎","😭","😅","😉","😴","🥳","😇","🤯","😬","💪","🌹","💎","🍷","🍽","✨","⚡","🙋","🥰","😏","🤩","😋","🫶","💥","🎯","👑","❤️‍🔥","🕺","💃","🥂","📸","🏖","🌙","🍕","☕","🎁","🚀","🌈","🦋","🎵","💌","🤗","😬"].map(e => `<button class="emoji-cell" data-emoji="${e}">${e}</button>`).join("")}</div>`;
     app.querySelector("[data-back]").onclick = () => go("/matches");
