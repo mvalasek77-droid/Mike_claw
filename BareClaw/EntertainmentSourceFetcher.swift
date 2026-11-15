@@ -79,17 +79,28 @@ actor EntertainmentSourceFetcher {
     private static func sources(for mode: CompanionExperienceMode) -> [EntertainmentSource] {
         switch mode {
         case .movieCharts:
-            return [
-                EntertainmentSource(
-                    name: "Box Office Mojo Weekend",
-                    url: URL(string: "https://www.boxofficemojo.com/weekend/")!,
-                    purpose: "domestic weekend box office chart"
-                ),
-                EntertainmentSource(
-                    name: "Box Office Mojo Daily",
-                    url: URL(string: "https://www.boxofficemojo.com/daily/")!,
-                    purpose: "daily box office chart"
-                ),
+            // The old /weekend/ and /daily/ index pages list past weekends, so
+            // the scrape surfaced stale titles. Point at the *current* weekend
+            // chart pages instead, built from today's date.
+            var movieSources: [EntertainmentSource] = []
+            if let weekendURL = latestWeekendChartURL() {
+                movieSources.append(EntertainmentSource(
+                    name: "Box Office Mojo Latest Weekend",
+                    url: weekendURL,
+                    purpose: "most recent domestic weekend box office top 10"
+                ))
+            }
+            movieSources.append(EntertainmentSource(
+                name: "The Numbers Weekend Chart",
+                url: URL(string: "https://www.the-numbers.com/weekend-box-office-chart")!,
+                purpose: "current weekend box office chart (updated every week)"
+            ))
+            movieSources.append(EntertainmentSource(
+                name: "The Numbers Daily Chart",
+                url: URL(string: "https://www.the-numbers.com/box-office-chart/daily")!,
+                purpose: "current daily box office chart"
+            ))
+            return movieSources + [
                 EntertainmentSource(
                     name: "Rotten Tomatoes In Theaters",
                     url: URL(string: "https://www.rottentomatoes.com/browse/movies_in_theaters")!,
@@ -174,6 +185,24 @@ actor EntertainmentSourceFetcher {
         }
     }
 
+    /// Box Office Mojo weekend pages are `/weekend/{ISO year}W{ISO week}/`.
+    /// Charts post Sunday/Monday, so use the most recent Friday-Sunday weekend
+    /// that ended at least a day ago (falling back one week early in the week).
+    private static func latestWeekendChartURL(now: Date = Date()) -> URL? {
+        var cal = Calendar(identifier: .iso8601)
+        cal.timeZone = TimeZone(identifier: "America/Los_Angeles") ?? .current
+        // Most recent Sunday strictly before today (so Sunday itself uses last week's
+        // final numbers until Monday's actuals post).
+        var day = cal.startOfDay(for: now)
+        repeat {
+            guard let prev = cal.date(byAdding: .day, value: -1, to: day) else { return nil }
+            day = prev
+        } while cal.component(.weekday, from: day) != 1   // 1 = Sunday
+        let year = cal.component(.yearForWeekOfYear, from: day)
+        let week = cal.component(.weekOfYear, from: day)
+        return URL(string: String(format: "https://www.boxofficemojo.com/weekend/%dW%02d/", year, week))
+    }
+
     private nonisolated static func fetch(_ source: EntertainmentSource) async -> EntertainmentSourceResult {
         var request = URLRequest(url: source.url)
         request.timeoutInterval = 5
@@ -219,6 +248,7 @@ actor EntertainmentSourceFetcher {
                                                   results: [EntertainmentSourceResult]) -> String {
         let formatter = ISO8601DateFormatter()
         let fetchedAt = formatter.string(from: Date())
+        let todayLine = DateFormatter.localizedString(from: Date(), dateStyle: .long, timeStyle: .none)
         let modeLabel = mode == .movieCharts ? "MOVIE CHARTS & REVIEWS" : "VIDEO GAME CHARTS & REVIEWS"
         let query = userQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         let queryLine = query.isEmpty ? "" : "\nUser request that triggered this snapshot: \(query)"
@@ -231,7 +261,8 @@ actor EntertainmentSourceFetcher {
 
         var lines: [String] = [
             "## LIVE ENTERTAINMENT SOURCE SNAPSHOT: \(modeLabel)",
-            "Fetched at: \(fetchedAt)\(queryLine)",
+            "Fetched at: \(fetchedAt) (today is \(todayLine))\(queryLine)",
+            "Freshness rule: if no source below clearly shows this week's chart, say the live chart could not be read right now. Never fill in a top ten from memory or from an older season.",
             rules,
             "Use this snapshot for current charts/reviews. Cite the source name and URL when using facts from it. Only state exact ranks/scores when the line clearly supports them; otherwise say the source surfaced the title but the exact rank/score was not readable. If a source is unavailable, do not invent what it would have said."
         ]
@@ -297,6 +328,8 @@ actor EntertainmentSourceFetcher {
     private nonisolated static func anchorCandidates(from html: String) -> [String] {
         let relevantHrefs = [
             "boxofficemojo.com/title",
+            "the-numbers.com/movie/",
+            "/release/rl",
             "/title/tt",
             "rottentomatoes.com/m/",
             "/m/",
