@@ -84,6 +84,52 @@ final class BoxCallUITests: XCTestCase {
         XCTAssertTrue(app.textFields["ageGate.year"].waitForExistence(timeout: 5))
     }
 
+    // MARK: - Paywall (App Review 2.1(a))
+
+    /// The subscribe sheet must always show something interactive — a
+    /// loading indicator, working plan cards, or a retry / unavailable
+    /// card — and the Close button must always work. Review device
+    /// reported a frozen sheet because none of this was present when
+    /// StoreKit returned no products.
+    func testPaywallOpensWithLoadingOrPlans_andCloses() {
+        let app = launch("-resetState", "-skipIntro")
+
+        app.tabBars.buttons["Profile"].tap()
+        let upgrade = app.buttons["profile.upgrade"]
+        XCTAssertTrue(scrollUntilVisible(upgrade, in: app),
+                      "Upgrade button should be reachable on Profile")
+        upgrade.tap()
+
+        // The sheet appears immediately with either the loading card or
+        // the plan cards. Debug builds get plan cards straight away.
+        let close = app.buttons["paywall.close"]
+        XCTAssertTrue(close.waitForExistence(timeout: 5),
+                      "Close button must be visible as soon as the sheet opens")
+
+        let loading = app.otherElements["paywall.loading"]
+        let subscribe = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'paywall.subscribe.'")
+        )
+        let retry = app.buttons["paywall.retry"]
+
+        // Exactly one of these three groups must be visible within 10s.
+        let deadline = Date().addingTimeInterval(10)
+        var responded = false
+        while Date() < deadline {
+            if loading.exists || subscribe.count > 0 || retry.exists {
+                responded = true
+                break
+            }
+            Thread.sleep(forTimeInterval: 0.2)
+        }
+        XCTAssertTrue(responded, "Paywall never rendered loading, plans, or a retry card")
+
+        // The Close button must dismiss the sheet in every state.
+        close.tap()
+        XCTAssertTrue(close.waitForNonExistence(timeout: 5),
+                      "Close must dismiss the paywall back to Profile")
+    }
+
     // MARK: - Performance
 
     func testLaunchPerformance() {

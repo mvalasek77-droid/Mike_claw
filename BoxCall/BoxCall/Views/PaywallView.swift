@@ -5,6 +5,8 @@ struct PaywallView: View {
     @EnvironmentObject var store: StoreService
     @Environment(\.dismiss) private var dismiss
 
+    @State private var showErrorAlert = false
+
     var currentMembership: Membership { portfolio.user.membership }
 
     var body: some View {
@@ -13,14 +15,16 @@ struct PaywallView: View {
                 VStack(spacing: 20) {
                     header
                     fairnessBanner
-                    ForEach(Membership.paidTiers) { tier in
-                        TierCard(tier: tier,
-                                 isCurrent: tier == currentMembership,
-                                 price: store.displayPrice(for: tier),
-                                 isBuying: store.purchaseInFlight == tier) {
-                            Task { await store.buy(tier) }
-                        }
+
+                    switch store.loadState {
+                    case .loading, .idle:
+                        loadingCard
+                    case .failed, .empty:
+                        unavailableCard
+                    case .loaded:
+                        tierStack
                     }
+
                     if currentMembership.isPaid {
                         Button {
                             if let url = URL(string: "https://apps.apple.com/account/subscriptions") {
@@ -41,10 +45,24 @@ struct PaywallView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
+                    // Review device labels this as the visible exit. Always
+                    // visible, even when the StoreKit load is stuck, so the
+                    // sheet can never trap the user.
                     Button("Close") { dismiss() }
+                        .accessibilityIdentifier("paywall.close")
                 }
             }
             .task { await store.loadProducts() }
+            .onChange(of: store.lastError) { _, newValue in
+                showErrorAlert = (newValue?.isEmpty == false)
+            }
+            .alert("Can't complete this",
+                   isPresented: $showErrorAlert,
+                   presenting: store.lastError) { _ in
+                Button("OK") { store.clearLastError() }
+            } message: { message in
+                Text(message)
+            }
         }
     }
 
@@ -70,6 +88,78 @@ struct PaywallView: View {
         }
         .padding(12)
         .background(RoundedRectangle(cornerRadius: 10).fill(.orange.opacity(0.08)))
+    }
+
+    /// Shown while StoreKit is still responding. Critically, the Close
+    /// button in the toolbar is still live — so even a stuck fetch can
+    /// never prevent the reviewer from leaving the sheet.
+    private var loadingCard: some View {
+        VStack(spacing: 12) {
+            ProgressView()
+                .accessibilityIdentifier("paywall.loading")
+            Text("Loading subscription options…")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 28)
+        .background(RoundedRectangle(cornerRadius: 12).fill(Color(.secondarySystemBackground)))
+    }
+
+    /// Shown when StoreKit returned no products, or when the fetch
+    /// failed. Gives the reviewer a visible explanation, a working
+    /// Retry button, and the Close button in the toolbar still works.
+    private var unavailableCard: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "wifi.exclamationmark")
+                .font(.title)
+                .foregroundStyle(.orange)
+            Text("Subscriptions are unavailable right now.")
+                .font(.subheadline.weight(.semibold))
+                .multilineTextAlignment(.center)
+            Text(explanation)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            Button {
+                Task { await store.reloadProducts() }
+            } label: {
+                if store.isLoadingProducts {
+                    ProgressView().tint(.white)
+                } else {
+                    Text("Retry").frame(maxWidth: 160)
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.orange)
+            .accessibilityIdentifier("paywall.retry")
+            .disabled(store.isLoadingProducts)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(20)
+        .background(RoundedRectangle(cornerRadius: 12).fill(Color(.secondarySystemBackground)))
+    }
+
+    private var explanation: String {
+        switch store.loadState {
+        case .failed:
+            return "We couldn't reach the App Store. Check your connection and try again."
+        default:
+            return "The App Store hasn't finished listing our plans yet. Try again in a few minutes."
+        }
+    }
+
+    @ViewBuilder
+    private var tierStack: some View {
+        ForEach(Membership.paidTiers) { tier in
+            TierCard(tier: tier,
+                     isCurrent: tier == currentMembership,
+                     price: store.displayPrice(for: tier),
+                     isBuying: store.purchaseInFlight == tier,
+                     canPurchase: store.canPurchase(tier)) {
+                Task { await store.buy(tier) }
+            }
+        }
     }
 
     private var restoreRow: some View {
@@ -115,6 +205,7 @@ private struct TierCard: View {
     let isCurrent: Bool
     let price: String
     let isBuying: Bool
+    let canPurchase: Bool
     let onTap: () -> Void
 
     var body: some View {
@@ -155,13 +246,16 @@ private struct TierCard: View {
                     ProgressView().frame(maxWidth: .infinity)
                 } else if isCurrent {
                     Text("Current plan").frame(maxWidth: .infinity)
+                } else if !canPurchase {
+                    Text("Unavailable").frame(maxWidth: .infinity).fontWeight(.semibold)
                 } else {
                     Text("Subscribe — \(price)").frame(maxWidth: .infinity).fontWeight(.semibold)
                 }
             }
             .buttonStyle(.borderedProminent)
-            .tint(isCurrent ? .gray : tier.accentColor)
-            .disabled(isCurrent || isBuying)
+            .tint(isCurrent || !canPurchase ? .gray : tier.accentColor)
+            .disabled(isCurrent || isBuying || !canPurchase)
+            .accessibilityIdentifier("paywall.subscribe.\(tier.rawValue)")
         }
         .padding(16)
         .background(RoundedRectangle(cornerRadius: 14).fill(tier.accentColor.opacity(0.08)))

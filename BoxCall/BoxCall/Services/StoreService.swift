@@ -13,12 +13,32 @@ import Combine
 final class StoreService: ObservableObject {
     static let shared = StoreService()
 
+    /// Outcome of the most recent product-load attempt. The paywall uses
+    /// this to decide between a spinner, a working subscribe button, and
+    /// a retry card — so a slow or unavailable App Store never leaves
+    /// the user staring at a frozen sheet.
+    enum LoadState: Equatable {
+        case idle
+        case loading
+        case loaded          // At least one product came back.
+        case empty           // Fetch returned, nothing matched our ids.
+        case failed(String)  // Fetch threw, or timed out.
+    }
+
     @Published private(set) var products: [Membership: Product] = [:]
     @Published private(set) var isLoadingProducts = false
+    @Published private(set) var loadState: LoadState = .idle
     @Published private(set) var lastError: String?
     @Published var purchaseInFlight: Membership?
 
     private var updatesTask: Task<Void, Never>?
+    private var activeLoad: Task<Void, Never>?
+
+    /// Hard ceiling for `Product.products(for:)`. On some networks and
+    /// on brand-new iOS betas the call can stall far past any reasonable
+    /// wait; a bounded timeout means the paywall surfaces a retry
+    /// instead of appearing hung. Review device clock is ignored.
+    private let loadTimeoutSeconds: UInt64 = 12
 
     private init() {
         updatesTask = Task { await listenForTransactions() }
@@ -26,14 +46,70 @@ final class StoreService: ObservableObject {
 
     // MARK: - Product loading
 
+    /// Fetch the three subscription products from StoreKit. Idempotent:
+    /// a repeat call while one is in flight joins that attempt, and a
+    /// repeat call after a successful load is a no-op. A caller that
+    /// wants to try again after a failure or empty result should call
+    /// `reloadProducts()` instead.
     func loadProducts() async {
-        guard products.isEmpty else { return }
+        if loadState == .loaded { return }
+        if let active = activeLoad {
+            await active.value
+            return
+        }
+        await runLoad()
+    }
+
+    /// Force a fresh fetch — used by the paywall's "Retry" button after
+    /// a failed or empty load.
+    func reloadProducts() async {
+        activeLoad?.cancel()
+        activeLoad = nil
+        await runLoad()
+    }
+
+    private func runLoad() async {
+        let task = Task { [weak self] in
+            await self?.performLoad()
+        }
+        activeLoad = task
+        await task.value
+        // Only clear `activeLoad` if it still points at the completed
+        // task. A newer reload may have replaced it already.
+        if activeLoad === task { activeLoad = nil }
+    }
+
+    private func performLoad() async {
+        // If we were cancelled before we even started, do nothing —
+        // the newer call will set state.
+        if Task.isCancelled { return }
+
         isLoadingProducts = true
-        defer { isLoadingProducts = false }
+        loadState = .loading
+        lastError = nil
 
         let ids = Set(Membership.paidTiers.compactMap { $0.productId })
+
         do {
-            let fetched = try await Product.products(for: ids)
+            let fetched = try await withThrowingTaskGroup(of: [Product].self) { group in
+                group.addTask {
+                    try await Product.products(for: ids)
+                }
+                group.addTask { [loadTimeoutSeconds] in
+                    try await Task.sleep(nanoseconds: loadTimeoutSeconds * 1_000_000_000)
+                    throw StoreLoadError.timedOut
+                }
+                guard let first = try await group.next() else {
+                    throw StoreLoadError.timedOut
+                }
+                group.cancelAll()
+                return first
+            }
+
+            // A reload may have cancelled us after the fetch finished.
+            // In that case the newer call owns the state; don't trample it.
+            if Task.isCancelled { return }
+
             var map: [Membership: Product] = [:]
             for tier in Membership.paidTiers {
                 if let pid = tier.productId,
@@ -41,11 +117,32 @@ final class StoreService: ObservableObject {
                     map[tier] = product
                 }
             }
-            self.products = map
+            products = map
+            loadState = map.isEmpty ? .empty : .loaded
+            isLoadingProducts = false
+            if map.isEmpty {
+                // Reviewers see this when the IAPs are still "Waiting
+                // for Review" — without it, tapping Subscribe appears
+                // to do nothing.
+                lastError = "Subscriptions aren't available in this build yet. Please try again later."
+            }
+        } catch is CancellationError {
+            // A newer call superseded this one; leave state for it to update.
+            return
+        } catch StoreLoadError.timedOut {
+            if Task.isCancelled { return }
+            lastError = "The App Store took too long to respond. Check your connection and tap Retry."
+            loadState = .failed(lastError ?? "Timed out")
+            isLoadingProducts = false
         } catch {
-            self.lastError = error.localizedDescription
+            if Task.isCancelled { return }
+            lastError = error.localizedDescription
+            loadState = .failed(error.localizedDescription)
+            isLoadingProducts = false
         }
     }
+
+    enum StoreLoadError: Error { case timedOut }
 
     /// Display price. Uses live StoreKit price if available; otherwise
     /// falls back to the hard-coded label from `Membership`.
@@ -53,6 +150,21 @@ final class StoreService: ObservableObject {
         if let p = products[tier] { return p.displayPrice + " / mo" }
         return tier.priceString
     }
+
+    /// `true` once StoreKit has actually confirmed the product. Paywall
+    /// uses this to disable Subscribe buttons that can't do anything.
+    func canPurchase(_ tier: Membership) -> Bool {
+        guard tier.isPaid else { return false }
+        #if DEBUG
+        return true
+        #else
+        return products[tier] != nil
+        #endif
+    }
+
+    /// Clears the last surfaced error so the paywall's alert can be
+    /// dismissed and immediately re-triggered on the next failure.
+    func clearLastError() { lastError = nil }
 
     // MARK: - Purchase
 

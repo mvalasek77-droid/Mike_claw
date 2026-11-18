@@ -70,6 +70,7 @@ struct ProfileView: View {
             .buttonStyle(.bordered)
             .tint(m.accentColor)
             .controlSize(.small)
+            .accessibilityIdentifier("profile.upgrade")
         }
         .padding(12)
         .background(RoundedRectangle(cornerRadius: 12).fill(m.accentColor.opacity(0.10)))
