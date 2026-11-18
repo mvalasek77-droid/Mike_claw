@@ -33,6 +33,7 @@ final class StoreService: ObservableObject {
 
     private var updatesTask: Task<Void, Never>?
     private var activeLoad: Task<Void, Never>?
+    private var activeLoadId: UUID?
 
     /// Hard ceiling for `Product.products(for:)`. On some networks and
     /// on brand-new iOS betas the call can stall far past any reasonable
@@ -69,20 +70,29 @@ final class StoreService: ObservableObject {
     }
 
     private func runLoad() async {
-        let task = Task { [weak self] in
-            await self?.performLoad()
+        // StoreService is a singleton, so capturing self is safe; the
+        // explicit [weak self] + unwrap keeps the Task's Success as
+        // Void (not Void?) so activeLoad's type matches.
+        let loadId = UUID()
+        let task: Task<Void, Never> = Task { [weak self] in
+            guard let self else { return }
+            await self.performLoad(id: loadId)
         }
         activeLoad = task
+        activeLoadId = loadId
         await task.value
         // Only clear `activeLoad` if it still points at the completed
         // task. A newer reload may have replaced it already.
-        if activeLoad === task { activeLoad = nil }
+        if activeLoadId == loadId {
+            activeLoad = nil
+            activeLoadId = nil
+        }
     }
 
-    private func performLoad() async {
-        // If we were cancelled before we even started, do nothing —
-        // the newer call will set state.
-        if Task.isCancelled { return }
+    private func performLoad(id: UUID) async {
+        // If a newer reload has already replaced us, do nothing — that
+        // call owns the state now.
+        if activeLoadId != id { return }
 
         isLoadingProducts = true
         loadState = .loading
@@ -106,9 +116,9 @@ final class StoreService: ObservableObject {
                 return first
             }
 
-            // A reload may have cancelled us after the fetch finished.
+            // A reload may have replaced us after the fetch finished.
             // In that case the newer call owns the state; don't trample it.
-            if Task.isCancelled { return }
+            if activeLoadId != id { return }
 
             var map: [Membership: Product] = [:]
             for tier in Membership.paidTiers {
@@ -130,12 +140,12 @@ final class StoreService: ObservableObject {
             // A newer call superseded this one; leave state for it to update.
             return
         } catch StoreLoadError.timedOut {
-            if Task.isCancelled { return }
+            if activeLoadId != id { return }
             lastError = "The App Store took too long to respond. Check your connection and tap Retry."
             loadState = .failed(lastError ?? "Timed out")
             isLoadingProducts = false
         } catch {
-            if Task.isCancelled { return }
+            if activeLoadId != id { return }
             lastError = error.localizedDescription
             loadState = .failed(error.localizedDescription)
             isLoadingProducts = false
