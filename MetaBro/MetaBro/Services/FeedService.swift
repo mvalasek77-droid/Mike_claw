@@ -71,7 +71,7 @@ actor MockFeedService: FeedService {
             community: draft.community,
             title: draft.title?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
             body: draft.body.trimmingCharacters(in: .whitespacesAndNewlines),
-            imageURL: nil,
+            imageURL: try draft.imageData.map(Self.storeImage),
             score: 1,
             commentCount: 0,
             createdAt: .now,
@@ -79,6 +79,15 @@ actor MockFeedService: FeedService {
         )
         posts.insert(post, at: 0)
         return post
+    }
+
+    /// Writes a post photo to Application Support and returns its file URL.
+    private static func storeImage(_ data: Data) throws -> URL {
+        let dir = URL.applicationSupportDirectory.appending(path: "PostImages", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let url = dir.appending(path: "\(UUID().uuidString).jpg")
+        try data.write(to: url, options: .atomic)
+        return url
     }
 
     func posts(by userID: UUID) async throws -> [Post] {

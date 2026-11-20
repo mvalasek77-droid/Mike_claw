@@ -11,7 +11,7 @@ struct RootView: View {
     var body: some View {
         TabView(selection: $selection) {
             Tab(AppTab.home.title, systemImage: AppTab.home.systemImage, value: AppTab.home) {
-                FeedView(container: container)
+                FeedView(container: container) { selection = .create }
             }
             Tab(AppTab.communities.title, systemImage: AppTab.communities.systemImage, value: AppTab.communities) {
                 CommunitiesView(container: container)

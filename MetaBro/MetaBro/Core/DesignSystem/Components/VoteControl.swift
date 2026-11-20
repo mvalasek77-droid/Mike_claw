@@ -5,24 +5,32 @@ import SwiftUI
 struct VoteControl: View {
     let score: Int
     let myVote: VoteDirection
+    var showsBackground = true
     let onVote: (VoteDirection) -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var poppedDirection: VoteDirection? = nil
 
     var body: some View {
-        HStack(spacing: Tokens.Spacing.sm) {
+        let core = HStack(spacing: Tokens.Spacing.xs) {
             arrow(.up, system: "chevron.up")
             Text(score.abbreviated)
                 .font(Tokens.Typography.score)
                 .foregroundStyle(scoreColor)
                 .contentTransition(.numericText(value: Double(score)))
                 .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .layoutPriority(1)
             arrow(.down, system: "chevron.down")
         }
-        .padding(.horizontal, Tokens.Spacing.md)
-        .padding(.vertical, Tokens.Spacing.sm)
-        .liquidGlass(radius: Tokens.Radius.pill)
+        if showsBackground {
+            core
+                .padding(.horizontal, Tokens.Spacing.sm)
+                .padding(.vertical, Tokens.Spacing.xs)
+                .liquidGlass(radius: Tokens.Radius.pill)
+        } else {
+            core
+        }
     }
 
     private func arrow(_ direction: VoteDirection, system: String) -> some View {
@@ -42,7 +50,8 @@ struct VoteControl: View {
                 .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(myVote == direction ? direction.tint : Tokens.Color.textSecondary)
                 .scaleEffect(poppedDirection == direction ? 1.2 : 1.0)
-                .frame(width: 22, height: 22)
+                .frame(width: 30, height: 30)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(direction == .up ? "Upvote" : "Downvote")

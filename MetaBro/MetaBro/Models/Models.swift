@@ -244,9 +244,12 @@ struct PostDraft: Sendable {
     var title: String?
     var body: String
     var community: Community?
+    /// JPEG photo attached to the post, already downscaled by the composer.
+    var imageData: Data? = nil
 
+    /// A photo alone is a valid post, just like on Facebook.
     var isValid: Bool {
-        !body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || imageData != nil
     }
 }
 

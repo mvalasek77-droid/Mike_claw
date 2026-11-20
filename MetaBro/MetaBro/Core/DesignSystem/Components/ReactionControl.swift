@@ -14,10 +14,9 @@ extension ReactionKind {
     }
 }
 
-/// Facebook-style reaction control for social posts. Quick-tap toggles the
-/// default "Respect"; long-press opens the full picker. Shows a summary of the
-/// top reactions and total count.
-struct ReactionControl: View {
+/// Facebook-style "Like" button for the post action bar. Tap toggles the
+/// default Respect reaction; long-press opens the full reaction picker.
+struct ReactionButton: View {
     let summary: ReactionSummary
     /// Passes the tapped reaction, or nil to clear the current one.
     let onReact: (ReactionKind?) -> Void
@@ -26,15 +25,9 @@ struct ReactionControl: View {
     @State private var popped = false
 
     var body: some View {
-        HStack(spacing: Tokens.Spacing.md) {
-            primaryButton
-            if summary.total > 0 { summaryView }
-        }
-    }
-
-    private var primaryButton: some View {
         Button {
             onReact(summary.mine == nil ? .respect : nil)
+            HapticsEngine.shared.play(.vote)
             if !reduceMotion {
                 withAnimation(Tokens.Motion.pop) { popped = true }
                 Task { @MainActor in
@@ -44,37 +37,46 @@ struct ReactionControl: View {
             }
         } label: {
             HStack(spacing: Tokens.Spacing.xs) {
-                Text(summary.mine?.emoji ?? ReactionKind.respect.emoji)
-                    .scaleEffect(popped ? 1.2 : 1.0)
-                    .frame(width: 20, height: 20)
-                Text(summary.mine?.label ?? "React")
-                    .font(Tokens.Typography.caption.weight(.semibold))
+                if let mine = summary.mine {
+                    Text(mine.emoji)
+                        .scaleEffect(popped ? 1.25 : 1.0)
+                } else {
+                    Image(systemName: "hand.thumbsup")
+                        .scaleEffect(popped ? 1.25 : 1.0)
+                }
+                Text(summary.mine?.label ?? "Like")
                     .lineLimit(1)
             }
+            .font(Tokens.Typography.caption.weight(.semibold))
             .foregroundStyle(summary.mine?.tint ?? Tokens.Color.textSecondary)
-            .padding(.horizontal, Tokens.Spacing.md)
-            .padding(.vertical, Tokens.Spacing.sm)
-            .liquidGlass(radius: Tokens.Radius.pill)
+            .frame(maxWidth: .infinity, minHeight: 36)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .contextMenu { picker }
-        .accessibilityLabel(summary.mine == nil ? "React" : "Your reaction: \(summary.mine!.label)")
-        .accessibilityHint("Double-tap to react, long-press to choose a reaction")
-    }
-
-    private var picker: some View {
-        ForEach(ReactionKind.allCases, id: \.self) { kind in
-            Button { onReact(kind) } label: {
-                Text("\(kind.emoji)  \(kind.label)")
+        .contextMenu {
+            ForEach(ReactionKind.allCases, id: \.self) { kind in
+                Button { onReact(kind) } label: {
+                    Text("\(kind.emoji)  \(kind.label)")
+                }
             }
         }
+        .accessibilityLabel(summary.mine == nil ? "Like" : "Your reaction: \(summary.mine!.label)")
+        .accessibilityHint("Double-tap to react, long-press to choose a reaction")
     }
+}
 
-    private var summaryView: some View {
+/// Overlapping emoji stack + total, shown in the counts row above the action bar.
+struct ReactionSummaryView: View {
+    let summary: ReactionSummary
+
+    var body: some View {
         HStack(spacing: Tokens.Spacing.xs) {
-            HStack(spacing: -4) {
+            HStack(spacing: -6) {
                 ForEach(summary.top.prefix(3), id: \.self) { kind in
-                    Text(kind.emoji).font(.caption)
+                    Text(kind.emoji)
+                        .font(.caption)
+                        .padding(2)
+                        .background(Circle().fill(Tokens.Color.cardBackground))
                 }
             }
             Text("\(summary.total)")
@@ -83,6 +85,7 @@ struct ReactionControl: View {
                 .lineLimit(1)
         }
         .fixedSize()
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(summary.total) reactions")
     }
 }

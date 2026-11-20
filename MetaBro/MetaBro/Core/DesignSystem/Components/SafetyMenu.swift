@@ -4,32 +4,55 @@ import SwiftUI
 /// profiles, and DMs so safety actions look and behave the same everywhere.
 /// Reporting opens a reason sheet; block/mute fire immediately (both are
 /// reversible from the blocked/muted list in Settings).
-struct SafetyMenu: View {
+struct SafetyMenu<Extra: View>: View {
     let user: User
     let kind: ReportedContentKind
     let targetID: UUID
     let preview: String
-    var community: Community? = nil
+    var community: Community?
     let service: SafetyService
+    /// Content-specific actions (save, award…) listed above the safety section.
+    let extra: Extra
 
     @State private var isReportSheetPresented = false
     @State private var confirmationText: String?
 
+    init(user: User, kind: ReportedContentKind, targetID: UUID, preview: String,
+         community: Community? = nil, service: SafetyService,
+         @ViewBuilder extra: () -> Extra) {
+        self.user = user
+        self.kind = kind
+        self.targetID = targetID
+        self.preview = preview
+        self.community = community
+        self.service = service
+        self.extra = extra()
+    }
+
     var body: some View {
         Menu {
-            Button { isReportSheetPresented = true } label: {
-                Label("Report", systemImage: "flag")
-            }
-            Button(role: .destructive) { Task { await mute() } } label: {
-                Label("Mute \(user.displayName)", systemImage: "speaker.slash")
-            }
-            Button(role: .destructive) { Task { await block() } } label: {
-                Label("Block \(user.displayName)", systemImage: "hand.raised")
+            extra
+            Section {
+                Button { isReportSheetPresented = true } label: {
+                    Label("Report", systemImage: "flag")
+                }
+                Button(role: .destructive) { Task { await mute() } } label: {
+                    Label("Mute \(user.displayName)", systemImage: "speaker.slash")
+                }
+                Button(role: .destructive) { Task { await block() } } label: {
+                    Label("Block \(user.displayName)", systemImage: "hand.raised")
+                }
             }
         } label: {
             Image(systemName: "ellipsis")
+                .font(.body.weight(.semibold))
                 .foregroundStyle(Tokens.Color.textSecondary)
+                .frame(width: 32, height: 32)
+                .contentShape(Rectangle())
         }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
         .accessibilityLabel("More options")
         .sheet(isPresented: $isReportSheetPresented) {
             ReportSheet(user: user, kind: kind, targetID: targetID, preview: preview,
@@ -57,6 +80,14 @@ struct SafetyMenu: View {
             try await service.block(user)
             confirmationText = "\(user.displayName) blocked"
         } catch { BroLog.error(error, category: "safety") }
+    }
+}
+
+extension SafetyMenu where Extra == EmptyView {
+    init(user: User, kind: ReportedContentKind, targetID: UUID, preview: String,
+         community: Community? = nil, service: SafetyService) {
+        self.init(user: user, kind: kind, targetID: targetID, preview: preview,
+                  community: community, service: service) { EmptyView() }
     }
 }
 

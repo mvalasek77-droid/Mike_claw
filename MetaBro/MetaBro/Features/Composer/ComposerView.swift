@@ -1,3 +1,4 @@
+import PhotosUI
 import SwiftUI
 
 /// Create a post — to a Bro-hood or your own feed. Title is optional (social
@@ -44,20 +45,34 @@ struct ComposerView: View {
     private var editor: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Tokens.Spacing.lg) {
-                targetPicker
+                HStack(spacing: Tokens.Spacing.md) {
+                    UserAvatar(user: Session.me, size: 44)
+                    VStack(alignment: .leading, spacing: Tokens.Spacing.xs) {
+                        Text(Session.me.displayName)
+                            .font(.subheadline.weight(.semibold))
+                        targetPicker
+                    }
+                }
 
                 if model.target != nil {
                     TextField("Title (optional)", text: $model.title)
                         .font(Tokens.Typography.headline)
-                        .padding(Tokens.Spacing.md)
-                        .liquidGlass(radius: Tokens.Radius.md)
                 }
 
-                TextField("What's on your mind, bro?", text: $model.body, axis: .vertical)
-                    .lineLimit(6...14)
+                TextField("What's on your mind, \(Session.me.displayName)?",
+                          text: $model.body, axis: .vertical)
+                    .font(model.photo == nil ? .title3 : Tokens.Typography.body)
+                    .lineLimit(4...14)
                     .focused($bodyFocused)
-                    .padding(Tokens.Spacing.md)
-                    .liquidGlass(radius: Tokens.Radius.md)
+
+                if let photo = model.photo {
+                    photoPreview(photo)
+                } else if model.isLoadingPhoto {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, minHeight: 160)
+                        .background(Tokens.Color.inputBackground,
+                                    in: RoundedRectangle(cornerRadius: Tokens.Radius.md))
+                }
 
                 if case .failed(let message) = model.phase {
                     Label(message, systemImage: "exclamationmark.triangle.fill")
@@ -67,7 +82,50 @@ struct ComposerView: View {
             }
             .padding(Tokens.Spacing.lg)
         }
+        .safeAreaInset(edge: .bottom) { addToPostBar }
+        .onChange(of: model.photoSelection) {
+            Task { await model.loadPhoto() }
+        }
         .onAppear { bodyFocused = true }
+    }
+
+    private func photoPreview(_ photo: UIImage) -> some View {
+        Image(uiImage: photo)
+            .resizable()
+            .scaledToFit()
+            .frame(maxWidth: .infinity)
+            .clipShape(RoundedRectangle(cornerRadius: Tokens.Radius.md, style: .continuous))
+            .overlay(alignment: .topTrailing) {
+                Button { model.removePhoto() } label: {
+                    Image(systemName: "xmark")
+                        .font(.footnote.weight(.bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 30, height: 30)
+                        .background(.black.opacity(0.6), in: Circle())
+                }
+                .padding(Tokens.Spacing.sm)
+                .accessibilityLabel("Remove photo")
+            }
+    }
+
+    /// Facebook's "Add to your post" tray, pinned above the keyboard.
+    private var addToPostBar: some View {
+        HStack {
+            Text("Add to your post")
+                .font(.subheadline.weight(.semibold))
+            Spacer()
+            PhotosPicker(selection: $model.photoSelection, matching: .images) {
+                Label(model.photo == nil ? "Photo" : "Change photo",
+                      systemImage: "photo.on.rectangle.angled")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.green)
+            }
+            .accessibilityLabel(model.photo == nil ? "Add a photo" : "Change photo")
+        }
+        .padding(.horizontal, Tokens.Spacing.lg)
+        .padding(.vertical, Tokens.Spacing.md)
+        .background(.bar)
+        .overlay(alignment: .top) { Divider() }
     }
 
     private var targetPicker: some View {
@@ -81,16 +139,21 @@ struct ComposerView: View {
                 }
             }
         } label: {
-            HStack(spacing: Tokens.Spacing.sm) {
-                Image(systemName: model.target == nil ? "person.crop.circle" : "person.3.fill")
+            HStack(spacing: Tokens.Spacing.xs) {
+                Image(systemName: model.target == nil ? "globe.americas.fill" : "person.3.fill")
                 Text(model.target?.name ?? "Your feed")
-                    .font(Tokens.Typography.headline)
-                Image(systemName: "chevron.down").font(.caption.bold())
+                    .lineLimit(1)
+                Image(systemName: "chevron.down")
             }
-            .padding(.horizontal, Tokens.Spacing.lg)
-            .padding(.vertical, Tokens.Spacing.sm)
-            .liquidGlass(radius: Tokens.Radius.pill)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(Tokens.Color.accent)
+            .padding(.horizontal, Tokens.Spacing.sm)
+            .padding(.vertical, Tokens.Spacing.xs)
+            .background(Tokens.Color.accent.opacity(0.12),
+                        in: RoundedRectangle(cornerRadius: 6, style: .continuous))
         }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
         .accessibilityLabel("Post destination")
         .accessibilityValue(model.target?.name ?? "Your feed")
     }

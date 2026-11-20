@@ -17,6 +17,11 @@ enum Tokens {
         static let textPrimary = SwiftUI.Color.primary
         static let textSecondary = SwiftUI.Color.secondary
         static let separator = SwiftUI.Color.primary.opacity(0.08)
+
+        /// Facebook-style feed: grey canvas with flat cards sitting on it.
+        static let feedBackground = SwiftUI.Color(uiColor: .systemGroupedBackground)
+        static let cardBackground = SwiftUI.Color(uiColor: .secondarySystemGroupedBackground)
+        static let inputBackground = SwiftUI.Color(uiColor: .tertiarySystemFill)
     }
 
     // MARK: Spacing (4pt base scale)
