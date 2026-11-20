@@ -1,0 +1,245 @@
+name: BoxCall iOS Release
+
+# Archives the BoxCall iOS app (iPhone + watch companion + widget) and
+# uploads the resulting IPA to App Store Connect. Fallback for days when
+# archiving locally on an Intel Mac isn't possible.
+#
+# Manual only — don't want a failed test on a work branch triggering an
+# accidental TestFlight upload.
+#
+# Required repository secrets (Settings → Secrets and variables →
+# Actions):
+#
+#   APPLE_DIST_CERT_P12
+#     Base64-encoded iOS Distribution .p12 certificate. On a Mac with the
+#     cert in the login keychain:
+#       security find-identity -v -p codesigning
+#       # export the "Apple Distribution: …" cert from Keychain Access
+#       # as cert.p12, then:
+#       base64 -i cert.p12 | pbcopy
+#
+#   APPLE_DIST_CERT_PASSWORD
+#     The password you set when exporting the .p12.
+#
+#   KEYCHAIN_PASSWORD
+#     Any random string; used to lock the ephemeral keychain this job
+#     creates. Not recoverable, not reused anywhere.
+#
+#   APPSTORE_CONNECT_KEY_ID
+#     The 10-char Key ID from appstoreconnect.apple.com → Users and
+#     Access → Integrations → App Store Connect API.
+#
+#   APPSTORE_CONNECT_ISSUER_ID
+#     The UUID shown at the top of that same page.
+#
+#   APPSTORE_CONNECT_PRIVATE_KEY
+#     The entire contents of the AuthKey_XXXXXXXXXX.p8 file Apple gave
+#     you when you created the API key (BEGIN/END lines included). Paste
+#     it as-is into the secret; GitHub preserves newlines.
+#
+# The API key must have "App Manager" (or higher) role to upload builds.
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_number_suffix:
+        description: "Optional suffix appended to CURRENT_PROJECT_VERSION (leave empty to use the run number alone)"
+        required: false
+        default: ""
+
+concurrency:
+  group: boxcall-ios-release
+  cancel-in-progress: false
+
+jobs:
+  archive-and-upload:
+    runs-on: macos-15
+    timeout-minutes: 90
+
+    env:
+      WORKSPACE_PATH: BoxCall
+      SCHEME: BoxCall
+      ARCHIVE_PATH: build/BoxCall.xcarchive
+      EXPORT_PATH: build/export
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select the newest Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate the Xcode project
+        working-directory: ${{ env.WORKSPACE_PATH }}
+        run: xcodegen generate
+
+      - name: Import signing certificate into ephemeral keychain
+        env:
+          CERT_P12_B64: ${{ secrets.APPLE_DIST_CERT_P12 }}
+          CERT_PASSWORD: ${{ secrets.APPLE_DIST_CERT_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain"
+          CERT_PATH="$RUNNER_TEMP/cert.p12"
+
+          echo "$CERT_P12_B64" | base64 --decode > "$CERT_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 3600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          security import "$CERT_PATH" \
+            -P "$CERT_PASSWORD" \
+            -A -t cert -f pkcs12 \
+            -k "$KEYCHAIN_PATH"
+
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          rm "$CERT_PATH"
+
+      - name: Write App Store Connect API key to disk
+        env:
+          ASC_KEY_ID: ${{ secrets.APPSTORE_CONNECT_KEY_ID }}
+          ASC_PRIVATE_KEY: ${{ secrets.APPSTORE_CONNECT_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          KEY_DIR="$RUNNER_TEMP/asc-key"
+          mkdir -p "$KEY_DIR"
+          printf '%s\n' "$ASC_PRIVATE_KEY" > "$KEY_DIR/AuthKey_${ASC_KEY_ID}.p8"
+          chmod 600 "$KEY_DIR/AuthKey_${ASC_KEY_ID}.p8"
+          echo "ASC_KEY_PATH=$KEY_DIR/AuthKey_${ASC_KEY_ID}.p8" >> "$GITHUB_ENV"
+
+      - name: Compute build number
+        id: build_number
+        run: |
+          SUFFIX="${{ github.event.inputs.build_number_suffix }}"
+          if [ -n "$SUFFIX" ]; then
+            BN="${{ github.run_number }}.$SUFFIX"
+          else
+            BN="${{ github.run_number }}"
+          fi
+          echo "value=$BN" >> "$GITHUB_OUTPUT"
+          echo "Build number: $BN"
+
+      - name: Write ExportOptions.plist
+        run: |
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store-connect</string>
+            <key>signingStyle</key>
+            <string>automatic</string>
+            <key>destination</key>
+            <string>export</string>
+            <key>stripSwiftSymbols</key>
+            <true/>
+            <key>uploadSymbols</key>
+            <true/>
+            <key>uploadBitcode</key>
+            <false/>
+          </dict>
+          </plist>
+          PLIST
+
+      - name: Archive
+        working-directory: ${{ env.WORKSPACE_PATH }}
+        env:
+          ASC_KEY_ID: ${{ secrets.APPSTORE_CONNECT_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APPSTORE_CONNECT_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          mkdir -p build
+
+          xcodebuild archive \
+            -project BoxCall.xcodeproj \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath "$ARCHIVE_PATH" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            CURRENT_PROJECT_VERSION="${{ steps.build_number.outputs.value }}" \
+            | tee archive.log \
+            | xcpretty || {
+              echo "==== archive errors ===="
+              grep -E "error:" archive.log | sort -u | head -80
+              exit 1
+            }
+
+      - name: Export IPA
+        working-directory: ${{ env.WORKSPACE_PATH }}
+        env:
+          ASC_KEY_ID: ${{ secrets.APPSTORE_CONNECT_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APPSTORE_CONNECT_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          xcodebuild -exportArchive \
+            -archivePath "$ARCHIVE_PATH" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -exportPath "$EXPORT_PATH" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            | tee export.log \
+            | xcpretty || {
+              echo "==== export errors ===="
+              grep -E "error:" export.log | sort -u | head -80
+              exit 1
+            }
+
+          ls -la "$EXPORT_PATH"
+
+      - name: Upload to App Store Connect
+        working-directory: ${{ env.WORKSPACE_PATH }}
+        env:
+          ASC_KEY_ID: ${{ secrets.APPSTORE_CONNECT_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APPSTORE_CONNECT_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          IPA_PATH=$(ls "$EXPORT_PATH"/*.ipa | head -1)
+          echo "Uploading $IPA_PATH"
+          xcrun altool --upload-app \
+            --type ios \
+            --file "$IPA_PATH" \
+            --apiKey "$ASC_KEY_ID" \
+            --apiIssuer "$ASC_ISSUER_ID"
+
+      - name: Upload archive as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BoxCall-xcarchive
+          path: ${{ env.WORKSPACE_PATH }}/${{ env.ARCHIVE_PATH }}
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BoxCall-release-logs
+          path: |
+            ${{ env.WORKSPACE_PATH }}/archive.log
+            ${{ env.WORKSPACE_PATH }}/export.log
+          if-no-files-found: ignore
+
+      - name: Clean up signing material
+        if: always()
+        env:
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          security delete-keychain "$RUNNER_TEMP/build.keychain" || true
+          rm -rf "$RUNNER_TEMP/asc-key" || true
