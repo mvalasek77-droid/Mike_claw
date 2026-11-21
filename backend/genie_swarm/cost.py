@@ -22,6 +22,9 @@ from .llm import canonical_model
 # when the model is unknown (better to over-estimate than to silently
 # let costs balloon past the cap).
 DEFAULT_PRICES: dict[str, tuple[float, float]] = {
+    # Anthropic — frontier (premium, charged at more credits on the plan)
+    "claude-fable-5-2":    (10.0, 50.0),
+    "astra-6-1":           (15.0, 75.0),
     # Anthropic
     "claude-opus-5-5":     (4.0,  20.0),
     "claude-sonnet-5-5":   (2.0,  10.0),
@@ -30,7 +33,7 @@ DEFAULT_PRICES: dict[str, tuple[float, float]] = {
     "gpt-5":               (12.5, 50.0),
     "gpt-5-mini":          (0.25, 2.0),
 }
-_FALLBACK_PRICE = (12.5, 50.0)
+_FALLBACK_PRICE = (15.0, 75.0)
 
 
 class BudgetExceeded(Exception):

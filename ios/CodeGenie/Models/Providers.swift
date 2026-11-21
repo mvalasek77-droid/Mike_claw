@@ -44,17 +44,28 @@ struct AIModel: Identifiable, Hashable, Codable {
     var contextWindow: Int           // max tokens
     var bestFor: String              // short pitch
     var tier: Tier
+    /// How many build credits one build with this model costs on the
+    /// CodeGenie plan. Premium models are heavier than one build.
+    /// Defaults to 1 so every existing model is unchanged.
+    var creditsPerBuild: Int = 1
+    /// A caveat worth showing on the model card — e.g. that it uses
+    /// more credits. Nil for the ordinary models.
+    var note: String? = nil
 
     enum Tier: String, Codable, CaseIterable {
-        case flagship, balanced, fast
+        case flagship, balanced, fast, frontier
         var label: String {
             switch self {
             case .flagship: "Flagship"
             case .balanced: "Balanced"
             case .fast:     "Fast"
+            case .frontier: "Frontier"
             }
         }
     }
+
+    /// True when a build costs more than a single credit.
+    var isPremium: Bool { creditsPerBuild > 1 }
 }
 
 extension AIModel {
@@ -70,6 +81,29 @@ extension AIModel {
 enum ModelCatalogue {
     /// Hand-curated. Reorder = changes the recommendation order on Settings.
     static let all: [AIModel] = [
+        // — Anthropic frontier (premium) —
+        .init(
+            id: "claude-fable-5-2", provider: .anthropic,
+            displayName: "Claude Fable 5.2",
+            tagline: "Our most capable model",
+            inputUSDPerMTok: 10.0, outputUSDPerMTok: 50.0,
+            contextWindow: 1_000_000,
+            bestFor: "The hardest apps — intricate logic, large refactors, when being right matters more than being cheap",
+            tier: .frontier,
+            creditsPerBuild: 3,
+            note: "Uses more credits: each build counts as 3 on the CodeGenie plan, and it costs more per token with your own key. Worth it when nothing cheaper gets it right."
+        ),
+        .init(
+            id: "astra-6-1", provider: .anthropic,
+            displayName: "Astra 6.1",
+            tagline: "The newest frontier model",
+            inputUSDPerMTok: 15.0, outputUSDPerMTok: 75.0,
+            contextWindow: 1_000_000,
+            bestFor: "The most ambitious apps, where you want the strongest reasoning available and cost is no object",
+            tier: .frontier,
+            creditsPerBuild: 4,
+            note: "The most powerful option and the most credit-hungry: 4 credits per build on the CodeGenie plan. Reach for it only when Fable 5.2 isn't enough."
+        ),
         // — Anthropic —
         .init(
             id: "claude-opus-5-5", provider: .anthropic,

@@ -82,7 +82,22 @@ final class SubscriptionService: ObservableObject {
     }
 
     var canBuild: Bool {
-        buildsThisMonth < currentTier.monthlyBuilds
+        canAfford(credits: 1)
+    }
+
+    /// How many credits one build with this model costs. Premium
+    /// frontier models cost more than one; everything else costs one.
+    func credits(forModelID id: String) -> Int {
+        max(1, ModelCatalogue.model(id: id)?.creditsPerBuild ?? 1)
+    }
+
+    /// Whether this month's remaining allowance covers `credits`.
+    func canAfford(credits: Int) -> Bool {
+        buildsThisMonth + max(1, credits) <= currentTier.monthlyBuilds
+    }
+
+    func canBuild(withModelID id: String) -> Bool {
+        canAfford(credits: credits(forModelID: id))
     }
 
     // MARK: - Private
@@ -170,16 +185,24 @@ final class SubscriptionService: ObservableObject {
         }
     }
 
-    /// Increments the monthly build counter and persists it.
-    /// Returns false (and does NOT increment) when the user has hit their
-    /// tier's limit — callers should check `canBuild` or use the return
-    /// value before starting the build.
+    /// Charges `credits` against the monthly allowance and persists it.
+    /// Returns false (and charges nothing) when the remaining allowance
+    /// won't cover it — callers should check `canAfford` or use the
+    /// return value before starting the build. A premium model passes
+    /// its `creditsPerBuild` here; an ordinary build passes 1.
     @discardableResult
-    func recordBuild() -> Bool {
-        guard canBuild else { return false }
-        buildsThisMonth += 1
+    func recordBuild(credits: Int = 1) -> Bool {
+        let cost = max(1, credits)
+        guard canAfford(credits: cost) else { return false }
+        buildsThisMonth += cost
         persistBuildsCount()
         return true
+    }
+
+    /// Record a build with the credit cost of the chosen model.
+    @discardableResult
+    func recordBuild(withModelID id: String) -> Bool {
+        recordBuild(credits: credits(forModelID: id))
     }
 
     /// Re-reads `Transaction.currentEntitlements` and updates `currentTier`.

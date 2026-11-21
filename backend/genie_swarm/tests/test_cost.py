@@ -32,8 +32,11 @@ def test_meter_falls_back_for_unknown_model():
     # Unknown model — fallback is the dearest rate in the table, so an
     # unrecognised id over-estimates rather than slipping past the cap.
     meter.record(model="some-future-model", input_tokens=1_000_000, output_tokens=0)
-    assert meter.spend_usd == pytest.approx(12.5)
-    assert 12.5 >= max(ip for ip, _ in DEFAULT_PRICES.values())
+    assert meter.spend_usd == pytest.approx(15.0)
+    # The fallback must stay at least as dear as the dearest known
+    # model, so an unknown id over-estimates rather than slipping past
+    # the cap.
+    assert 15.0 >= max(ip for ip, _ in DEFAULT_PRICES.values())
 
 
 def test_meter_prices_superseded_ids_as_their_replacement():

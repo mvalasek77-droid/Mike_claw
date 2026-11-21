@@ -664,6 +664,15 @@ private struct ModelRow: View {
                             .font(.system(size: 15, weight: .semibold, design: .rounded))
                             .foregroundStyle(LiquidGlass.primaryText)
                         TierBadge(tier: model.tier)
+                        if model.isPremium {
+                            Label("\(model.creditsPerBuild) credits", systemImage: "bolt.fill")
+                                .font(.system(size: 10, weight: .bold, design: .rounded))
+                                .labelStyle(.titleAndIcon)
+                                .padding(.horizontal, 6).padding(.vertical, 2)
+                                .background(LiquidGlass.warning.opacity(0.18), in: Capsule())
+                                .foregroundStyle(LiquidGlass.warning)
+                                .accessibilityLabel("Costs \(model.creditsPerBuild) credits per build")
+                        }
                         Spacer()
                         Text(String(format: "$%.0f / $%.0f", model.inputUSDPerMTok, model.outputUSDPerMTok))
                             .font(.system(size: 12, weight: .medium, design: .monospaced))
@@ -675,6 +684,21 @@ private struct ModelRow: View {
                     Text("Best for: \(model.bestFor)")
                         .font(.caption2)
                         .foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
+                    if let note = model.note {
+                        HStack(alignment: .top, spacing: 5) {
+                            Image(systemName: "exclamationmark.circle.fill")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(LiquidGlass.warning)
+                                .accessibilityHidden(true)
+                            Text(note)
+                                .font(.caption2)
+                                .foregroundStyle(LiquidGlass.warning.opacity(0.95))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(.top, 2)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel(note)
+                    }
                 }
             }
             .padding(.vertical, 10)

@@ -39,6 +39,48 @@ final class ModelCatalogueTests: XCTestCase {
         let tiers = Set(ModelCatalogue.all.filter { $0.provider == .anthropic }.map(\.tier))
         XCTAssertEqual(tiers, Set(AIModel.Tier.allCases))
     }
+
+    func testFableAndAstraAreOffered() {
+        for id in ["claude-fable-5-2", "astra-6-1"] {
+            let model = ModelCatalogue.model(id: id)
+            XCTAssertNotNil(model, id)
+            XCTAssertEqual(model?.tier, .frontier, id)
+        }
+    }
+
+    func testOrdinaryModelsCostOneCreditAndAreNotPremium() {
+        for id in ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5", "gpt-5", "gpt-5-mini"] {
+            let model = ModelCatalogue.model(id: id)
+            XCTAssertEqual(model?.creditsPerBuild, 1, id)
+            XCTAssertEqual(model?.isPremium, false, id)
+            XCTAssertNil(model?.note, id)
+        }
+    }
+
+    func testFrontierModelsCostMoreThanOneCreditAndSayWhy() {
+        let fable = ModelCatalogue.model(id: "claude-fable-5-2")
+        XCTAssertEqual(fable?.creditsPerBuild, 3)
+        XCTAssertEqual(fable?.isPremium, true)
+        XCTAssertEqual(fable?.note?.contains("credits"), true, "the note must explain the extra credits")
+
+        let astra = ModelCatalogue.model(id: "astra-6-1")
+        XCTAssertEqual(astra?.creditsPerBuild, 4)
+        XCTAssertGreaterThan(astra?.creditsPerBuild ?? 0, fable?.creditsPerBuild ?? 0,
+                             "Astra is pitched as the heavier of the two")
+        XCTAssertEqual(astra?.note?.isEmpty, false)
+    }
+
+    func testFrontierModelsAreDearerPerTokenThanTheFlagship() throws {
+        let opus = try XCTUnwrap(ModelCatalogue.model(id: "claude-opus-5-5"))
+        for id in ["claude-fable-5-2", "astra-6-1"] {
+            let model = try XCTUnwrap(ModelCatalogue.model(id: id))
+            XCTAssertGreaterThan(model.estimatedBuildCostUSD(), opus.estimatedBuildCostUSD(), id)
+        }
+    }
+
+    func testTheDefaultStaysAnAffordableEverydayModel() {
+        XCTAssertEqual(ModelCatalogue.model(id: ModelCatalogue.recommendedDefault)?.isPremium, false)
+    }
 }
 
 final class BundleIDTests: XCTestCase {
