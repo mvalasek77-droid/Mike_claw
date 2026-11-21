@@ -1,6 +1,163 @@
 {
-  "generated_for": "2026-11-21T12",
+  "generated_for": "2026-11-21T15",
   "posts": [
+    {
+      "community": null,
+      "title": null,
+      "body": "Anyone up for a sunrise hike this weekend?",
+      "score": 21,
+      "reactions": [
+        {
+          "kind": "strong",
+          "count": 23
+        },
+        {
+          "kind": "like",
+          "count": 7
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "1c8e0305-b7a9-43b4-6a5c-cba51f4d02ba",
+      "author": {
+        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
+        "handle": "@newbro",
+        "display_name": "Sam",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
+        "bro_cred": 40
+      },
+      "image_url": null,
+      "comment_count": 4,
+      "created_at": "2026-11-21T12:22:51+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Anyone up for a sunrise hike this weekend?",
+      "score": 49,
+      "reactions": [
+        {
+          "kind": "strong",
+          "count": 23
+        },
+        {
+          "kind": "like",
+          "count": 12
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "bdb5227c-ea46-acac-15e6-50380b0ab270",
+      "author": {
+        "id": "550c58e9-f006-03d7-e005-01cf109b1c20",
+        "handle": "@coachmike",
+        "display_name": "Coach Mike",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachmike.png",
+        "bro_cred": 4200
+      },
+      "image_url": null,
+      "comment_count": 109,
+      "created_at": "2026-11-21T14:12:51+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "1e27fcd8-c8ff-7cac-af7b-60a88268cbe1",
+        "name": "Garage Gearheads",
+        "slug": "cars",
+        "member_count": 141200,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/cars.png",
+        "is_joined": true
+      },
+      "title": "Manual or auto for a first project car?",
+      "body": "Want something I can wrench on cheaply. Thoughts?",
+      "score": 199,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [
+        {
+          "kind": "champ",
+          "count": 1
+        }
+      ],
+      "id": "fc9ef34c-88b5-b64f-38f0-c0de242d84d2",
+      "author": {
+        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
+        "handle": "@coachdave",
+        "display_name": "Dave",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
+        "bro_cred": 9300
+      },
+      "image_url": null,
+      "comment_count": 5,
+      "created_at": "2026-11-21T11:31:51+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Grilling at my place Sunday \u2014 bring a chair and a story.",
+      "score": 37,
+      "reactions": [
+        {
+          "kind": "respect",
+          "count": 13
+        },
+        {
+          "kind": "strong",
+          "count": 15
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "559a558d-e3d3-65d0-e4f7-4e74e2cde4fe",
+      "author": {
+        "id": "337023ca-f0d6-6b4b-335e-42aa37ae608b",
+        "handle": "@you",
+        "display_name": "You",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/you.png",
+        "bro_cred": 1280
+      },
+      "image_url": null,
+      "comment_count": 1,
+      "created_at": "2026-11-21T13:12:51+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Just hit a year sober. Grateful for this crew.",
+      "score": 39,
+      "reactions": [
+        {
+          "kind": "respect",
+          "count": 39
+        },
+        {
+          "kind": "strong",
+          "count": 34
+        },
+        {
+          "kind": "like",
+          "count": 16
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "966fd6d2-bad2-67fd-9fad-4d825d8ac4dd",
+      "author": {
+        "id": "88da342c-12c1-951a-f0bc-99247785f086",
+        "handle": "@theoknows",
+        "display_name": "Theo",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/theoknows.png",
+        "bro_cred": 1120
+      },
+      "image_url": null,
+      "comment_count": 95,
+      "created_at": "2026-11-21T11:47:51+00:00",
+      "my_vote": 0
+    },
     {
       "community": {
         "id": "1e27fcd8-c8ff-7cac-af7b-60a88268cbe1",
@@ -12,45 +169,11 @@
       },
       "title": "Detailing Sunday",
       "body": "Clay bar, two-stage polish, ceramic. Paint looks wet. Worth it.",
-      "score": 257,
+      "score": 133,
       "reactions": [],
       "my_reaction": null,
       "awards": [],
-      "id": "12e90bbb-771c-8816-f371-bf6083a48fe5",
-      "author": {
-        "id": "550c58e9-f006-03d7-e005-01cf109b1c20",
-        "handle": "@coachmike",
-        "display_name": "Coach Mike",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachmike.png",
-        "bro_cred": 4200
-      },
-      "image_url": null,
-      "comment_count": 80,
-      "created_at": "2026-11-21T09:30:30+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": null,
-      "title": null,
-      "body": "Just hit a year sober. Grateful for this crew.",
-      "score": 83,
-      "reactions": [
-        {
-          "kind": "respect",
-          "count": 14
-        },
-        {
-          "kind": "strong",
-          "count": 12
-        },
-        {
-          "kind": "like",
-          "count": 4
-        }
-      ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "a1c32bd8-e325-54c5-dfe8-63c93218a416",
+      "id": "f4a19c63-2dc4-8e17-781c-7bd8edb98594",
       "author": {
         "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
         "handle": "@newbro",
@@ -59,139 +182,8 @@
         "bro_cred": 40
       },
       "image_url": null,
-      "comment_count": 88,
-      "created_at": "2026-11-21T10:11:30+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": {
-        "id": "ad1f28f2-deee-3630-ebff-760d7a720f9e",
-        "name": "Dad Mode",
-        "slug": "fatherhood",
-        "member_count": 58700,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fatherhood.png",
-        "is_joined": true
-      },
-      "title": "Built a treehouse this weekend",
-      "body": "Kid 'helped'. Took twice as long. Best two days of the year.",
-      "score": 128,
-      "reactions": [],
-      "my_reaction": null,
-      "awards": [
-        {
-          "kind": "champ",
-          "count": 2
-        }
-      ],
-      "id": "a3f4e4cf-c981-b108-93c5-35ff897d35c1",
-      "author": {
-        "id": "43f16f34-9942-cb48-49d9-122dc9237e11",
-        "handle": "@leobuilds",
-        "display_name": "Leo",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/leobuilds.png",
-        "bro_cred": 760
-      },
-      "image_url": null,
-      "comment_count": 34,
-      "created_at": "2026-11-21T09:31:30+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": null,
-      "title": null,
-      "body": "Grilling at my place Sunday \u2014 bring a chair and a story.",
-      "score": 46,
-      "reactions": [
-        {
-          "kind": "respect",
-          "count": 8
-        },
-        {
-          "kind": "strong",
-          "count": 12
-        }
-      ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "4094d46e-4ed1-f7e4-e672-4eb6c3deb1a4",
-      "author": {
-        "id": "337023ca-f0d6-6b4b-335e-42aa37ae608b",
-        "handle": "@you",
-        "display_name": "You",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/you.png",
-        "bro_cred": 1280
-      },
-      "image_url": null,
-      "comment_count": 2,
-      "created_at": "2026-11-21T07:10:30+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": null,
-      "title": null,
-      "body": "Just hit a year sober. Grateful for this crew.",
-      "score": 73,
-      "reactions": [
-        {
-          "kind": "respect",
-          "count": 23
-        },
-        {
-          "kind": "strong",
-          "count": 3
-        },
-        {
-          "kind": "like",
-          "count": 11
-        }
-      ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "523df56b-85dd-a1c7-a8b5-348d9846d888",
-      "author": {
-        "id": "88da342c-12c1-951a-f0bc-99247785f086",
-        "handle": "@theoknows",
-        "display_name": "Theo",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/theoknows.png",
-        "bro_cred": 1120
-      },
-      "image_url": null,
-      "comment_count": 7,
-      "created_at": "2026-11-21T06:16:30+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": null,
-      "title": null,
-      "body": "Just hit a year sober. Grateful for this crew.",
-      "score": 96,
-      "reactions": [
-        {
-          "kind": "respect",
-          "count": 27
-        },
-        {
-          "kind": "strong",
-          "count": 13
-        },
-        {
-          "kind": "like",
-          "count": 6
-        }
-      ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "f90047d0-6eb4-8c93-ae6c-a5a39875f5f8",
-      "author": {
-        "id": "bb5a2bd9-5ff6-b2d4-8c47-662f9908097f",
-        "handle": "@rajlifts",
-        "display_name": "Raj",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/rajlifts.png",
-        "bro_cred": 3050
-      },
-      "image_url": null,
-      "comment_count": 68,
-      "created_at": "2026-11-21T06:41:30+00:00",
+      "comment_count": 84,
+      "created_at": "2026-11-21T09:36:51+00:00",
       "my_vote": 0
     }
   ],
