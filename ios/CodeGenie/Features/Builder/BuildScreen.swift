@@ -835,7 +835,13 @@ struct BuildScreen: View {
     }
 
     private static func startFailureMessage(_ reason: String) -> String {
-        "The build didn't start, so nothing was made and nothing was charged. \(reason) Check your connection and the server address in Settings, then try again."
+        // Be honest about where a build actually runs. The app is a
+        // client; the AI that assembles your app runs on the build
+        // service. If that service can't be reached, no build can
+        // start — and that is a hosting/connection problem, not
+        // anything the user typed. Don't send a first-timer hunting
+        // for a setting they have no reason to touch.
+        "The build didn't start, so nothing was made and nothing was charged. CodeGenie couldn't reach the build service that assembles your app. \(reason) Check your internet connection. If it keeps happening, the build service may not be available yet — that's on our side, not anything you did. (Power user mode in Settings lets you point CodeGenie at your own build server.)"
     }
 
     private func formattedTime() -> String {

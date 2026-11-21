@@ -9,6 +9,8 @@ struct SettingsView: View {
     @StateObject private var creds = Credentials.shared
     @State private var anthropicDraft: String = ""
     @State private var openaiDraft: String = ""
+    @State private var backendDraft: String = ""
+    @State private var backendFlash = false
     @State private var revealAnthropic = false
     @State private var revealOpenAI = false
     @State private var savedFlash: AIProvider?
@@ -42,6 +44,7 @@ struct SettingsView: View {
                     appleDevBlock
                     githubBlock
                     if userMode.isPower {
+                        backendBlock
                         costCapBlock
                         agentRoutingBlock
                         customAgentsBlock
@@ -107,6 +110,7 @@ struct SettingsView: View {
         .onAppear {
             anthropicDraft = creds.anthropicKey
             openaiDraft    = creds.openaiKey
+            backendDraft   = creds.backendURL
         }
     }
 
@@ -269,6 +273,86 @@ struct SettingsView: View {
             icon: "wrench.and.screwdriver.fill",
             tint: LiquidGlass.warning
         ) { showAdmin = true }
+    }
+
+    /// The hosted address the app ships pointing at.
+    private static let defaultBackendURL = "https://api.codegenie.app"
+
+    /// True when the current draft is a full http(s) address with a host.
+    /// Mirrors the validation inside `Credentials.setBackendURL`, which
+    /// silently ignores anything malformed.
+    private var backendDraftIsValidURL: Bool {
+        let t = backendDraft.trimmingCharacters(in: .whitespaces)
+        guard let u = URL(string: t),
+              let s = u.scheme?.lowercased(),
+              s == "https" || s == "http",
+              u.host != nil else { return false }
+        return true
+    }
+
+    /// Where builds are actually run. CodeGenie is only a client; the
+    /// AI swarm that assembles an app lives on this server. If it is
+    /// unreachable, no build can start — so power users need to see and
+    /// change this address, not be told to "check Settings" for a field
+    /// that used not to exist.
+    private var backendBlock: some View {
+        GlassCard(title: "Build server", icon: "externaldrive.connected.to.line.below.fill", tint: LiquidGlass.accent) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Every build is sent to this address, where the AI agents assemble your app. The default is CodeGenie's hosted service. If you run the backend yourself, point CodeGenie at your own server here.")
+                    .font(.system(size: 13, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
+                    .fixedSize(horizontal: false, vertical: true)
+
+                TextField(Self.defaultBackendURL, text: $backendDraft)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 14, weight: .medium, design: .monospaced))
+                    .foregroundStyle(LiquidGlass.primaryText)
+                    .padding(.horizontal, 12).padding(.vertical, 10)
+                    .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
+                    .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.white.opacity(0.12)))
+
+                HStack(spacing: 8) {
+                    PrimaryButton(title: "Save", systemImage: "checkmark", style: .filled) {
+                        creds.setBackendURL(backendDraft)
+                        backendDraft = creds.backendURL
+                        backendFlash = true
+                        Haptics.success()
+                    }
+                    .frame(maxWidth: 140)
+                    .disabled(!backendDraftIsValidURL)
+
+                    if backendDraft.trimmingCharacters(in: .whitespaces) != Self.defaultBackendURL {
+                        PrimaryButton(title: "Reset", systemImage: "arrow.uturn.backward", style: .glass) {
+                            creds.setBackendURL(Self.defaultBackendURL)
+                            backendDraft = Self.defaultBackendURL
+                            Haptics.selection()
+                        }
+                        .frame(maxWidth: 120)
+                    }
+                    Spacer()
+                }
+
+                if !backendDraft.trimmingCharacters(in: .whitespaces).isEmpty, !backendDraftIsValidURL {
+                    Label("Enter a full address starting with https://", systemImage: "exclamationmark.triangle.fill")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(LiquidGlass.warning)
+                }
+
+                if backendFlash {
+                    Label("Build server saved", systemImage: "checkmark.seal.fill")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(LiquidGlass.success)
+                        .transition(.opacity)
+                        .task {
+                            try? await Task.sleep(nanoseconds: 1_500_000_000)
+                            withAnimation { backendFlash = false }
+                        }
+                }
+            }
+        }
     }
 
     private func navTile(title: String, subtitle: String, icon: String, tint: Color, action: @escaping () -> Void) -> some View {
