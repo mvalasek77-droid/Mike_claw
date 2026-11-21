@@ -21,7 +21,7 @@ struct MainTabView: View {
                 case .build:    BuildPlaceholderView { tab.wrappedValue = .home }
                 case .play:     GameHomeView()
                 case .apps:     ProjectsGalleryView()
-                case .settings: SettingsView()
+                case .settings: SettingsView(onBack: { tab.wrappedValue = .home })
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

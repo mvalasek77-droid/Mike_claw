@@ -1,6 +1,11 @@
 import SwiftUI
 
 struct SettingsView: View {
+    /// How to leave Settings. Nil when presented as a sheet (we just
+    /// dismiss); the Settings tab passes a closure that returns to the
+    /// Home tab, where there is no sheet to dismiss.
+    var onBack: (() -> Void)? = nil
+
     @StateObject private var creds = Credentials.shared
     @State private var anthropicDraft: String = ""
     @State private var openaiDraft: String = ""
@@ -18,6 +23,7 @@ struct SettingsView: View {
     @State private var showXcodeReadiness = false
     @StateObject private var telemetry = Telemetry.shared
     @StateObject private var userMode = UserMode.shared
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ZStack {
@@ -296,7 +302,27 @@ struct SettingsView: View {
     // MARK: Sections
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 14) {
+            Button {
+                Haptics.selection()
+                if let onBack { onBack() } else { dismiss() }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 15, weight: .bold))
+                    Text("Home")
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                }
+                .foregroundStyle(LiquidGlass.primaryText)
+                .padding(.horizontal, 12).padding(.vertical, 8)
+                .frame(minHeight: 44)
+                .background(.white.opacity(0.08), in: Capsule())
+                .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Back to Home")
+            .accessibilityHint("Closes Settings")
+
             HStack(spacing: 12) {
                 CodeGenieLogo(size: 44, animate: false)
                 VStack(alignment: .leading, spacing: 2) {
