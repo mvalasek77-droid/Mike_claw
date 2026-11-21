@@ -1,0 +1,45 @@
+# Fly.io config for the CodeGenie Swarm API — the backend the app talks to.
+#
+# One-time deploy (do this once; your users never do any of it):
+#   1. Install flyctl:  https://fly.io/docs/flyctl/install
+#   2. Sign in:         fly auth signup   (or: fly auth login)
+#   3. From this folder:
+#        cd backend
+#        fly launch --copy-config --no-deploy --name codegenie-swarm
+#        fly deploy
+#   4. Your address is  https://codegenie-swarm.fly.dev
+#
+#   If "codegenie-swarm" is taken (Fly names are global), choose another
+#   name at launch and tell me the final https://<name>.fly.dev URL — I
+#   update one line in the app and that's it.
+#
+# No secrets required: each user supplies their own Anthropic/OpenAI key
+# with every request, so the server stores nothing sensitive.
+
+app = "codegenie-swarm"
+primary_region = "iad"   # change to the region nearest your users (e.g. "lhr", "sjc")
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  # Keep exactly ONE machine running at all times. The swarm holds each
+  # build's progress, files, and live event stream in memory, so the
+  # machine must not stop mid-build and there must not be a second one.
+  # After deploy, enforce it with:  fly scale count 1
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "15s"
+    method = "GET"
+    path = "/api/coding/swarm/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"   # 512mb also works for light use; 1gb gives build headroom

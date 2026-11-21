@@ -275,8 +275,9 @@ struct SettingsView: View {
         ) { showAdmin = true }
     }
 
-    /// The hosted address the app ships pointing at.
-    private static let defaultBackendURL = "https://api.codegenie.app"
+    /// The hosted address the app ships pointing at. Keep in sync with
+    /// Credentials.backendURL and backend/fly.toml.
+    private static let defaultBackendURL = "https://codegenie-swarm.fly.dev"
 
     /// True when the current draft is a full http(s) address with a host.
     /// Mirrors the validation inside `Credentials.setBackendURL`, which

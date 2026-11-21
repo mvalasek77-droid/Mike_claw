@@ -1,0 +1,28 @@
+# Render Blueprint for the CodeGenie Swarm API.
+#
+# One-time deploy:
+#   1. Create a free account at https://render.com and connect this
+#      GitHub repo (mvalasek77-droid/Mike_claw).
+#   2. New → Blueprint → pick this repo. Render reads this file and
+#      creates the service below. Click Apply.
+#   3. When it's live, Render gives you a URL like
+#      https://codegenie-swarm.onrender.com — that is the "build server"
+#      address the app points at.
+#
+# No environment variables are required: users bring their own LLM key.
+# To lock the API behind a shared token, add CODEGENIE_API_TOKEN in the
+# Render dashboard and set the same token in the app's Build server
+# settings — otherwise leave it unset and the API is open (callers still
+# must supply their own LLM key, so they can't spend your money).
+services:
+  - type: web
+    name: codegenie-swarm
+    runtime: docker
+    dockerfilePath: backend/Dockerfile
+    dockerContext: backend
+    # Starter keeps the instance always-on. The free plan sleeps after
+    # inactivity, and a cold start mid-build drops the live event stream,
+    # so don't use free for this service.
+    plan: starter
+    healthCheckPath: /api/coding/swarm/health
+    autoDeploy: true

@@ -14,7 +14,10 @@ final class Credentials: ObservableObject {
     @Published private(set) var openaiKey: String = ""
     @Published var authMode: AuthMode = .byok
     @Published var preferredModelID: String = ModelCatalogue.recommendedDefault
-    @Published var backendURL: String = "https://api.codegenie.app"
+    // The hosted build service the app ships pointing at. Keep this in
+    // sync with backend/fly.toml's app name (https://<app>.fly.dev) and
+    // with SettingsView.defaultBackendURL.
+    @Published var backendURL: String = "https://codegenie-swarm.fly.dev"
     @Published private(set) var backendToken: String = ""
     /// Per-agent model overrides keyed by `AgentRole.rawValue` ("coder", "reviewer", …).
     @Published var agentModels: [String: String] = [:]
