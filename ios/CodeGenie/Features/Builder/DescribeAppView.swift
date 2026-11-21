@@ -88,6 +88,7 @@ struct DescribeAppView: View {
                 .padding(.top, 18)
             }
             .scrollIndicators(.hidden)
+            .keyboardDoneBar()
             .scrollDismissesKeyboard(.interactively)
         }
     }

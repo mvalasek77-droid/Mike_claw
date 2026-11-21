@@ -61,6 +61,7 @@ struct ASCCoachChatView: View {
                 .padding(.top, 14)
             }
             .scrollIndicators(.hidden)
+            .keyboardDoneBar()
             .scrollDismissesKeyboard(.interactively)
             .onChange(of: chat.turns.count) { _, _ in
                 withAnimation { proxy.scrollTo("bottom", anchor: .bottom) }

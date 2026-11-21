@@ -31,6 +31,8 @@ struct CustomAgentsView: View {
                 .padding(.top, 14)
             }
             .scrollIndicators(.hidden)
+            .scrollDismissesKeyboard(.interactively)
+            .keyboardDoneBar()
         }
         .sheet(item: $editing) { agent in
             CustomAgentEditor(initial: agent) { updated in
@@ -309,6 +311,7 @@ private struct CustomAgentEditor: View {
                 .padding(.top, 14)
             }
             .scrollIndicators(.hidden)
+            .keyboardDoneBar()
             .scrollDismissesKeyboard(.interactively)
         }
     }

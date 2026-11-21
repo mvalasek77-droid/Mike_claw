@@ -46,6 +46,7 @@ struct KeySetupView: View {
                     .padding(.top, 12)
                 }
                 .scrollIndicators(.hidden)
+                .keyboardDoneBar()
                 .scrollDismissesKeyboard(.interactively)
             }
             .navigationTitle("Connect \(provider.displayName)")

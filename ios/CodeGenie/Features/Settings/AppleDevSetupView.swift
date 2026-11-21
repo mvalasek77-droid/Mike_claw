@@ -45,6 +45,7 @@ struct AppleDevSetupView: View {
                 .padding(.top, 14)
             }
             .scrollIndicators(.hidden)
+            .keyboardDoneBar()
             .scrollDismissesKeyboard(.interactively)
         }
         .onAppear {

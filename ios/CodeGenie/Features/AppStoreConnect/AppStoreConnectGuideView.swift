@@ -693,6 +693,8 @@ struct AppStoreConnectGuideView: View {
                 .padding(.top, 14)
             }
             .scrollIndicators(.hidden)
+            .scrollDismissesKeyboard(.interactively)
+            .keyboardDoneBar()
         }
     }
 
@@ -1951,6 +1953,7 @@ private struct ASCMetadataEditor: View {
                     .padding(.top, 12)
                 }
                 .scrollIndicators(.hidden)
+                .keyboardDoneBar()
                 .scrollDismissesKeyboard(.interactively)
             }
             .navigationTitle("Edit listing")

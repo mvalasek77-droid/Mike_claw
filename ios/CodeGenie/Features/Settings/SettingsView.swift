@@ -56,6 +56,8 @@ struct SettingsView: View {
                 .padding(.top, 14)
             }
             .scrollIndicators(.hidden)
+            .scrollDismissesKeyboard(.interactively)
+            .keyboardDoneBar()
         }
         .sheet(isPresented: $showTutorial) {
             TutorialView(mode: .replay) { showTutorial = false }

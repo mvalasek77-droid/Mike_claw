@@ -48,6 +48,8 @@ struct AppleDevWalkthroughView: View {
                 .padding(.top, 14)
             }
             .scrollIndicators(.hidden)
+            .scrollDismissesKeyboard(.interactively)
+            .keyboardDoneBar()
         }
         .onAppear {
             teamDraft   = creds.appleTeamID

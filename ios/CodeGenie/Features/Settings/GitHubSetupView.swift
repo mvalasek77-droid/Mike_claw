@@ -43,6 +43,8 @@ struct GitHubSetupView: View {
                 .padding(.top, 14)
             }
             .scrollIndicators(.hidden)
+            .scrollDismissesKeyboard(.interactively)
+            .keyboardDoneBar()
         }
         .onAppear {
             usernameDraft = creds.githubUsername

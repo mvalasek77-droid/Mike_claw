@@ -29,6 +29,8 @@ struct DecisionSearchView: View {
                 .padding(.top, 14)
             }
             .scrollIndicators(.hidden)
+            .scrollDismissesKeyboard(.interactively)
+            .keyboardDoneBar()
         }
         .task(id: query) { await searchAfterDelay() }
     }

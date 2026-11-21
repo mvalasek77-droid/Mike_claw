@@ -69,6 +69,8 @@ struct ProjectsGalleryView: View {
                 .padding(.top, 14)
             }
             .scrollIndicators(.hidden)
+            .scrollDismissesKeyboard(.interactively)
+            .keyboardDoneBar()
         }
         .sheet(isPresented: $showDescribe) {
             DescribeAppView { description in
