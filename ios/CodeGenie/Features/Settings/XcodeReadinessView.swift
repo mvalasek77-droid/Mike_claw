@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Plain-English explainer for Xcode: what it is and how to get it.
 ///
@@ -64,7 +65,7 @@ struct XcodeReadinessView: View {
                 explainerRow(
                     icon: "macbook",
                     title: "Mac-only — that's an Apple rule",
-                    body: "Apple won't let any other operating system build iOS apps. CodeGenie hides this by running Xcode on your Mac in the background; you never have to open it."
+                    body: "Apple won't let any other operating system build iOS apps, so this one part happens on a Mac. You'll open Xcode yourself and press a few buttons — CodeGenie's guide tells you exactly which ones."
                 )
                 explainerRow(
                     icon: "gift.fill",
@@ -75,45 +76,85 @@ struct XcodeReadinessView: View {
         }
     }
 
+    /// The App Store page for Xcode. Tapped on a Mac it opens the Mac
+    /// App Store; it does nothing useful on the phone, which is the whole
+    /// reason this card sends it to the Mac rather than opening it here.
+    private let xcodeURL = URL(string: "https://apps.apple.com/app/xcode/id497799835")!
+
     private var installCard: some View {
         GlassCard(title: "Don't have Xcode yet?", icon: "arrow.down.circle.fill", tint: LiquidGlass.accentSecondary) {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("It's a 7-15 GB download. Plan for 30 minutes the first time.")
+            VStack(alignment: .leading, spacing: 12) {
+                // Be honest: this can't be done from the phone. Xcode
+                // installs onto the Mac, from the Mac.
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "macbook")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(LiquidGlass.accentSecondary)
+                        .accessibilityHidden(true)
+                    Text("This part is done on your Mac, not here. You can't install Xcode from an iPhone.")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.9))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                VStack(alignment: .leading, spacing: 10) {
+                    walkRow(num: 1, body: "On your Mac, open the **App Store** app — the blue icon with a white **A** in the Dock, or press **⌘-Space** and type \"App Store\".")
+                    walkRow(num: 2, body: "In the search box, top-left, type **Xcode** and press Return.")
+                    walkRow(num: 3, body: "On the Xcode result, click **Get**, then **Install**. It's free; your Apple ID password may be asked for.")
+                    walkRow(num: 4, body: "It's a 7–15 GB download, so give it around 30 minutes. You can keep using your phone while it finishes.")
+                }
+
+                Divider().background(.white.opacity(0.1))
+
+                Text("To save typing, send yourself the link and open it on the Mac — it jumps straight to Xcode in the Mac App Store:")
                     .font(.system(size: 12, weight: .regular, design: .rounded))
-                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
-                Link(destination: URL(string: "macappstores://apps.apple.com/app/xcode/id497799835")!) {
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+                    .fixedSize(horizontal: false, vertical: true)
+
+                ShareLink(item: xcodeURL) {
                     HStack(spacing: 10) {
-                        Image(systemName: "arrow.down.app.fill")
-                        Text("Open in Mac App Store")
+                        Image(systemName: "square.and.arrow.up")
+                        Text("Send the Xcode link to my Mac")
                             .font(.system(size: 14, weight: .semibold, design: .rounded))
                         Spacer()
-                        Image(systemName: "arrow.up.right.square")
                     }
                     .padding(.horizontal, 14).padding(.vertical, 12)
+                    .frame(minHeight: 48)
                     .background(LiquidGlass.auroraGradient, in: RoundedRectangle(cornerRadius: 14))
                     .foregroundStyle(LiquidGlass.primaryText)
                 }
-                .accessibilityHint("Opens the Mac App Store page for Xcode. Open it on your Mac.")
+                .accessibilityHint("Opens the share sheet. Choose AirDrop or Messages to send the link to your Mac, then open it there.")
 
-                Link(destination: URL(string: "https://apps.apple.com/app/xcode/id497799835")!) {
+                Button {
+                    UIPasteboard.general.string = xcodeURL.absoluteString
+                    Haptics.success()
+                } label: {
                     HStack(spacing: 6) {
-                        Image(systemName: "safari")
-                        Text("Or open in Safari")
+                        Image(systemName: "doc.on.doc")
+                        Text("Copy the link")
                             .font(.system(size: 13, weight: .semibold, design: .rounded))
                     }
                     .foregroundStyle(LiquidGlass.accent)
+                    .frame(minHeight: 44)
                 }
+                .buttonStyle(.plain)
+                .accessibilityHint("Copies the Mac App Store link so you can paste it on your Mac")
+
+                Text("Or, on your Mac, just open **developer.apple.com/xcode** in any browser.")
+                    .font(.system(size: 12, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
 
     private var signinCard: some View {
-        GlassCard(title: "After installing", icon: "list.number", tint: LiquidGlass.warning) {
+        GlassCard(title: "After it's installed", icon: "list.number", tint: LiquidGlass.warning) {
             VStack(alignment: .leading, spacing: 10) {
-                walkRow(num: 1, body: "Open Xcode once. Click Agree on the license — Apple won't let it build until you do.")
-                walkRow(num: 2, body: "Xcode → Settings → Accounts → tap **+** → sign in with the same Apple ID you use on your iPhone.")
-                walkRow(num: 3, body: "Quit Xcode. CodeGenie takes it from there — you never have to open it again.")
-                Text("Skipping any of these steps causes a cryptic build error later. Doing them once saves the headache.")
+                walkRow(num: 1, body: "On the Mac, open Xcode once. Click **Agree** on the license — Apple won't let it build until you do. If it offers to install extra components, let it.")
+                walkRow(num: 2, body: "Xcode → Settings → Accounts → tap **+** → sign in with the Apple ID enrolled in the Apple Developer Program.")
+                walkRow(num: 3, body: "That's the setup done. When your app is built, CodeGenie's guide walks you through opening the project and the few buttons to press.")
+                Text("Doing the license and sign-in now means the guide later just works, instead of stopping on a cryptic error.")
                     .font(.system(size: 11, weight: .regular, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
                     .padding(.top, 6)
