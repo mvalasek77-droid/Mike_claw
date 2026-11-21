@@ -63,7 +63,7 @@ struct AgentRoutingView: View {
     private var costEstimate: some View {
         let total = agents.reduce(0.0) { sum, agent in
             let id = creds.agentModels[agent.role] ?? creds.preferredModelID
-            let model = ModelCatalogue.model(id: id) ?? ModelCatalogue.all[0]
+            let model = ModelCatalogue.model(id: id) ?? ModelCatalogue.fallback
             return sum + model.estimatedBuildCostUSD(inputTokens: 30_000, outputTokens: 10_000)
         }
         return GlassCard(title: "Projected cost per build", icon: "dollarsign.circle.fill", tint: LiquidGlass.success) {

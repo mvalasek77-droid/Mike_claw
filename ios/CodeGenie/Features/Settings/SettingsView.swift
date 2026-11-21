@@ -467,7 +467,7 @@ struct SettingsView: View {
     }
 
     private var estimatorBlock: some View {
-        let model = ModelCatalogue.model(id: creds.preferredModelID) ?? ModelCatalogue.all[0]
+        let model = ModelCatalogue.model(id: creds.preferredModelID) ?? ModelCatalogue.fallback
         let cost = model.estimatedBuildCostUSD()
         let buildsPer10 = max(1, Int((10.0 / cost).rounded(.down)))
         return GlassCard(title: "Cost estimator", icon: "dollarsign.circle.fill", tint: LiquidGlass.success) {
@@ -718,6 +718,7 @@ private struct TierBadge: View {
     }
     private var tint: Color {
         switch tier {
+        case .frontier: LiquidGlass.warning
         case .flagship: LiquidGlass.accent
         case .balanced: LiquidGlass.accentSecondary
         case .fast:     LiquidGlass.success

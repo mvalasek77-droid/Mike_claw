@@ -81,6 +81,32 @@ final class ModelCatalogueTests: XCTestCase {
     func testTheDefaultStaysAnAffordableEverydayModel() {
         XCTAssertEqual(ModelCatalogue.model(id: ModelCatalogue.recommendedDefault)?.isPremium, false)
     }
+
+    func testTheFallbackIsTheRecommendedDefaultNotWhateverIsFirst() {
+        // An unresolved saved preference must land on an affordable,
+        // one-credit model — never the premium model that now sits
+        // first in the list.
+        XCTAssertEqual(ModelCatalogue.fallback.id, ModelCatalogue.recommendedDefault)
+        XCTAssertFalse(ModelCatalogue.fallback.isPremium)
+        XCTAssertEqual(ModelCatalogue.fallback.creditsPerBuild, 1)
+        XCTAssertNotEqual(ModelCatalogue.fallback.id, ModelCatalogue.all[0].id,
+                          "the list now leads with a premium model, so the fallback must not be all[0]")
+    }
+
+    func testEveryTierHasALabel() {
+        // A switch over Tier here makes the compiler enforce that any
+        // future case is handled, which a parse-only check would miss.
+        for tier in AIModel.Tier.allCases {
+            let label: String
+            switch tier {
+            case .frontier: label = tier.label
+            case .flagship: label = tier.label
+            case .balanced: label = tier.label
+            case .fast:     label = tier.label
+            }
+            XCTAssertFalse(label.isEmpty, "\(tier)")
+        }
+    }
 }
 
 final class BundleIDTests: XCTestCase {

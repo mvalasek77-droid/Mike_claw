@@ -26,7 +26,7 @@ struct DescribeAppView: View {
             // The chosen model decides which key is needed. Having the
             // other vendor's key doesn't help, and saying "ready" then
             // failing at the server would cost the user a confusing error.
-            let model = ModelCatalogue.model(id: creds.preferredModelID) ?? ModelCatalogue.all[0]
+            let model = ModelCatalogue.model(id: creds.preferredModelID) ?? ModelCatalogue.fallback
             let hasKey = model.provider == .anthropic ? !creds.anthropicKey.isEmpty : !creds.openaiKey.isEmpty
             return hasKey
                 ? .ready("You pay \(model.provider.displayName) directly for what this build uses. See the estimate below.")
@@ -37,12 +37,12 @@ struct DescribeAppView: View {
     }
 
     private var estimatedCost: Double {
-        let model = ModelCatalogue.model(id: creds.preferredModelID) ?? ModelCatalogue.all[0]
+        let model = ModelCatalogue.model(id: creds.preferredModelID) ?? ModelCatalogue.fallback
         return model.estimatedBuildCostUSD()
     }
 
     private var neededProvider: AIProvider {
-        (ModelCatalogue.model(id: creds.preferredModelID) ?? ModelCatalogue.all[0]).provider
+        (ModelCatalogue.model(id: creds.preferredModelID) ?? ModelCatalogue.fallback).provider
     }
 
     private var promptLength: Int {
@@ -238,7 +238,7 @@ struct DescribeAppView: View {
 
     @ViewBuilder
     private var preflightBanner: some View {
-        let model = ModelCatalogue.model(id: creds.preferredModelID) ?? ModelCatalogue.all[0]
+        let model = ModelCatalogue.model(id: creds.preferredModelID) ?? ModelCatalogue.fallback
         let blocked = !preflight.isReady
         GlassSurface(tier: .flat, corner: 14) {
             HStack(alignment: .top, spacing: 10) {
@@ -265,7 +265,7 @@ struct DescribeAppView: View {
     /// that'll be used, the current cap, and explains in plain English
     /// what happens next so the user knows what they're agreeing to.
     private var costConfirmSheet: some View {
-        let model = ModelCatalogue.model(id: creds.preferredModelID) ?? ModelCatalogue.all[0]
+        let model = ModelCatalogue.model(id: creds.preferredModelID) ?? ModelCatalogue.fallback
         let cap = creds.costCapUSD
         return ZStack {
             LiquidGlassBackground().ignoresSafeArea()

@@ -174,4 +174,10 @@ enum ModelCatalogue {
     }
 
     static let recommendedDefault = "claude-sonnet-5-5"
+
+    /// The model to fall back on when a saved preference no longer
+    /// resolves. Always the recommended default — an affordable,
+    /// one-credit everyday model — never whichever model happens to
+    /// sit first in `all` (that one is now a premium frontier model).
+    static var fallback: AIModel { model(id: recommendedDefault) ?? all[0] }
 }

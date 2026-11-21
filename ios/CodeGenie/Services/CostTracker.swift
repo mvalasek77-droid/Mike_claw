@@ -66,7 +66,7 @@ final class CostTracker: ObservableObject {
 
     /// Total USD spend for the run so far.
     var totalUSD: Double {
-        let m = ModelCatalogue.model(id: modelID) ?? ModelCatalogue.all[0]
+        let m = ModelCatalogue.model(id: modelID) ?? ModelCatalogue.fallback
         let mtok = 1_000_000.0
         return (Double(inputTokens)  / mtok) * m.inputUSDPerMTok
              + (Double(outputTokens) / mtok) * m.outputUSDPerMTok
@@ -123,7 +123,7 @@ final class CostTracker: ObservableObject {
     }
 
     private func usd(input: Int, output: Int) -> Double {
-        let m = ModelCatalogue.model(id: modelID) ?? ModelCatalogue.all[0]
+        let m = ModelCatalogue.model(id: modelID) ?? ModelCatalogue.fallback
         let mtok = 1_000_000.0
         return (Double(input)/mtok)*m.inputUSDPerMTok + (Double(output)/mtok)*m.outputUSDPerMTok
     }
