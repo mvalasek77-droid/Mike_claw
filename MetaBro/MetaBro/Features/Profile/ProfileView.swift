@@ -235,32 +235,48 @@ struct ProfileView: View {
 private struct ProfileHeader: View {
     let profile: Profile
 
+    private let avatarSize: CGFloat = 104
+
     var body: some View {
-        VStack(spacing: Tokens.Spacing.md) {
-            UserAvatar(user: profile.user, size: 84)
+        VStack(alignment: .leading, spacing: 0) {
+            // Facebook-style cover banner with the avatar overlapping its edge.
+            LinearGradient(colors: [Tokens.Color.accent, Tokens.Color.respect],
+                           startPoint: .topLeading, endPoint: .bottomTrailing)
+                .frame(height: 140)
+                .overlay(alignment: .bottomLeading) {
+                    UserAvatar(user: profile.user, size: avatarSize)
+                        .overlay(Circle().stroke(Tokens.Color.cardBackground, lineWidth: 4))
+                        .offset(x: Tokens.Spacing.lg, y: avatarSize / 2)
+                }
+                .padding(.bottom, avatarSize / 2 + Tokens.Spacing.sm)
 
-            VStack(spacing: 2) {
-                Text(profile.user.displayName).font(Tokens.Typography.title)
-                Text(profile.user.handle)
-                    .font(Tokens.Typography.caption)
-                    .foregroundStyle(Tokens.Color.textSecondary)
-            }
+            VStack(alignment: .leading, spacing: Tokens.Spacing.md) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(profile.user.displayName).font(Tokens.Typography.title)
+                    Text("\(profile.user.handle) · \(profile.joinedCommunities.count) Bro-hoods")
+                        .font(Tokens.Typography.caption)
+                        .foregroundStyle(Tokens.Color.textSecondary)
+                }
 
-            HStack(spacing: Tokens.Spacing.xl) {
-                stat("\(profile.broCred.abbreviated)", "Bro Cred")
-                stat("\(profile.postKarma.abbreviated)", "Post")
-                stat("\(profile.commentKarma.abbreviated)", "Comment")
+                HStack(spacing: Tokens.Spacing.xl) {
+                    stat("\(profile.broCred.abbreviated)", "Bro Cred")
+                    stat("\(profile.postKarma.abbreviated)", "Post")
+                    stat("\(profile.commentKarma.abbreviated)", "Comment")
+                }
             }
+            .padding([.horizontal, .bottom], Tokens.Spacing.lg)
         }
-        .frame(maxWidth: .infinity)
-        .padding(Tokens.Spacing.xl)
-        .liquidGlass()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Tokens.Color.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: Tokens.Radius.md, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Tokens.Radius.md, style: .continuous)
+            .stroke(Tokens.Color.separator, lineWidth: 1))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(profile.user.displayName), \(profile.broCred) Bro Cred")
     }
 
     private func stat(_ value: String, _ label: String) -> some View {
-        VStack(spacing: 2) {
+        VStack(alignment: .leading, spacing: 2) {
             Text(value).font(Tokens.Typography.headline).monospacedDigit()
             Text(label).font(Tokens.Typography.caption)
                 .foregroundStyle(Tokens.Color.textSecondary)

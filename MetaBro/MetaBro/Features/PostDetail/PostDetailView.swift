@@ -19,20 +19,22 @@ struct PostDetailView: View {
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
-                VStack(spacing: Tokens.Spacing.lg) {
-                    PostCardView(post: model.post, onVote: { _ in }, safetyService: safetyService)
-                    Divider().overlay(Tokens.Color.separator)
+                VStack(spacing: 0) {
+                    PostCardView(post: model.post, onVote: { _ in },
+                                 onOpen: { if !model.post.isLocked { composerFocused = true } },
+                                 safetyService: safetyService, fullBleed: true)
                     threadContent
+                        .padding(Tokens.Spacing.md)
                 }
-                .padding(Tokens.Spacing.lg)
             }
+            .background(Tokens.Color.cardBackground)
             if model.post.isLocked {
                 lockedNotice
             } else {
                 composer
             }
         }
-        .navigationTitle("Discussion")
+        .navigationTitle(model.post.community?.name ?? model.post.author.displayName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if model.canModerate {
@@ -108,7 +110,7 @@ struct PostDetailView: View {
         VStack(spacing: Tokens.Spacing.sm) {
             if let replyingTo {
                 HStack {
-                    Text("Replying to \(replyingTo.author.handle)")
+                    Text("Replying to \(replyingTo.author.displayName)")
                         .font(Tokens.Typography.caption)
                         .foregroundStyle(Tokens.Color.textSecondary)
                     Spacer()
@@ -119,16 +121,20 @@ struct PostDetailView: View {
                 }
             }
             HStack(spacing: Tokens.Spacing.sm) {
-                TextField("Add to the discussion…", text: $replyText, axis: .vertical)
+                UserAvatar(user: Session.me, size: 32)
+                TextField(replyingTo == nil ? "Write a comment…" : "Write a reply…",
+                          text: $replyText, axis: .vertical)
                     .textFieldStyle(.plain)
                     .lineLimit(1...4)
                     .focused($composerFocused)
-                    .padding(Tokens.Spacing.md)
-                    .liquidGlass(radius: Tokens.Radius.lg)
+                    .padding(.horizontal, Tokens.Spacing.md)
+                    .padding(.vertical, Tokens.Spacing.sm)
+                    .background(Tokens.Color.inputBackground, in: Capsule())
 
                 Button(action: send) {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.title2)
+                    Image(systemName: "paperplane.fill")
+                        .font(.title3)
+                        .foregroundStyle(trimmed.isEmpty ? Tokens.Color.textSecondary : Tokens.Color.accent)
                 }
                 .disabled(trimmed.isEmpty)
                 .accessibilityLabel("Send")
