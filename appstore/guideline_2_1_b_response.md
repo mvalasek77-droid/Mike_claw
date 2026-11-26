@@ -105,9 +105,11 @@ Before resubmitting:
 5. You should see the real StoreKit sheet with "[Environment: Sandbox]"
    at the top, and the purchase should complete without error.
 
+For step 3, the build 7 that's already in TestFlight is fine.
+
 If step 4–5 reproduces the reviewer's error on your own device, the
 root cause is one of #1–#5 above, not the app. Fix that, retest, then
-resubmit.
+resubmit build 7.
 
 ---
 
@@ -130,9 +132,11 @@ a specific product configuration row.
 
 ## Reply to App Store Connect Resolution Center
 
-Paste this **after** you've confirmed Paid Apps is Active and all three
-IAPs are attached to the submission, run build 8 through the release
-workflow, and the new build has finished processing.
+Paste this **after** you've confirmed Paid Apps is Active, all three
+IAPs are attached to the submission, and a sandbox purchase works on
+your own device. No code changed, so **resubmit build 7 as-is** — no
+new build, no signing, no GitHub secrets needed. Only build a new one
+if your own sandbox test turns up an actual app bug.
 
 ---
 
@@ -144,8 +148,8 @@ That part of the fix landed.
 
 The "Upgrade process returned an error" result on your device points
 to the In-App Purchase configuration on our side rather than the app
-code. I've taken the following steps and uploaded build 8 as the
-retest candidate:
+code. I've taken the following steps and am resubmitting build 7
+unchanged:
 
 1. Confirmed the **Paid Apps Agreement** is in Active status in
    App Store Connect → Business. All required Legal, Tax, Banking,
