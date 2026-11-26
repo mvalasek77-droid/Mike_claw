@@ -44,7 +44,7 @@
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "Star badge, performance stats, 10 limit orders",
+              "description" : "Star badge, stats, 10 limit orders",
               "displayName" : "Producer's Pass",
               "locale" : "en_US"
             }
@@ -65,7 +65,7 @@
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "Pro analytics, CSV export, app icons, unlimited orders",
+              "description" : "Pro analytics, CSV export, unlimited orders",
               "displayName" : "Mogul",
               "locale" : "en_US"
             }

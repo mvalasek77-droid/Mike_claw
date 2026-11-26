@@ -1,182 +1,114 @@
 # Guideline 2.1(b) — Submission 1.0 (7) — Fix Plan + Reply Draft
 
-## What Apple actually told you
+## Root cause (confirmed in App Store Connect, Nov 26)
 
-Submission 1.0 (7), Guideline 2.1(b), iPad Air 11" (M3) / iPadOS 27.2.1:
-"The In-App Purchase products in the app exhibited one or more bugs …
-Specifically, Upgrade process returned an error."
+BoxCall has **no subscription products in App Store Connect**: no group, no
+products. The app asks StoreKit for three product IDs, StoreKit returns
+nothing, and the paywall shows an error. That error is what the reviewer saw.
 
-This is **progress**: the 2.1(a) fix is working. The paywall sheet opened,
-the reviewer tapped Subscribe, and this time they saw an error message
-instead of a frozen screen. That's what 2.1(b) catches — a visible IAP
-failure. What's failing now is the IAP itself coming back from StoreKit
-in the sandbox, not the UI around it.
-
-Apple **also told you the most likely cause**, in that same message:
-> "the Account Holder must also accept the Paid Apps Agreement in the
-> Business section of App Store Connect. Confirm you have a Paid Apps
-> Agreement in effect."
-
-They don't say that line casually. If the Paid Apps Agreement is not
-"Active", StoreKit can see your products but every purchase attempt in
-sandbox returns an error — which is exactly what the reviewer got.
+The Paid Apps Agreement is Active, and the app code is correct. Nothing in the
+binary needs to change, so **resubmit build 7** once the products exist.
 
 ---
 
-## Diagnostic checklist (do these in order, in App Store Connect)
+## Step 1 — Create the subscription group
 
-### 1. Paid Apps Agreement — fix this first
+Monetization → Subscriptions → Create Subscription Group
 
-App Store Connect → **Business → Agreements, Tax, and Banking →
-Paid Apps**.
+- Reference Name: `BoxCall Membership`
+- After creating it, add a **group localization** (English (U.S.)):
+  Subscription Group Display Name `BoxCall Membership`. The group won't
+  submit without one.
 
-Status must be **Active**. If it says any of these, that's your bug:
+## Step 2 — Create the three subscriptions in that group
 
-- *Pending Contact Info* — fill in the contact for each role (Legal,
-  Marketing, Technical, Financial, Senior Management). One person can
-  hold several roles; Mike can be all five if he's a solo dev.
-- *Pending Bank Info* — add a bank account.
-- *Pending Tax Info* — complete the tax form (W-9 for US).
-- *New Agreement Available* — a newer version came out and nobody
-  accepted it yet; click Review → Agree.
+> **Product IDs are permanent.** Once saved, an ID can never be changed or
+> reused, even if you delete the product. Paste them from this table
+> rather than typing them, and check each one against it before saving.
 
-Only the **Account Holder** can sign; a team Admin can't. For BoxCall
-that's Mike's Apple ID. Once Active, give it 5–10 minutes to propagate
-before testing again.
+| | Backstage | Producer's Pass | Mogul |
+|---|---|---|---|
+| Reference Name | `Backstage Monthly` | `Producer's Pass Monthly` | `Mogul Monthly` |
+| Product ID | `com.boxcall.sub.backstage.monthly` | `com.boxcall.sub.producers_pass.monthly` | `com.boxcall.sub.mogul.monthly` |
+| Duration | 1 Month | 1 Month | 1 Month |
+| Price (USA base) | $3.99 | $9.99 | $14.99 |
+| Display Name (en-US, ≤30) | `Backstage` | `Producer's Pass` | `Mogul` |
+| Description (en-US, ≤45) | `Ticket badge, early access, 3 limit orders` | `Star badge, stats, 10 limit orders` | `Pro analytics, CSV export, unlimited orders` |
+| Level in group | 3 (lowest) | 2 | 1 (highest) |
 
-### 2. IAP product state
+These values match `Membership.swift` and `BoxCall/Products.storekit`.
 
-App Store Connect → BoxCall → **Monetization → In-App Purchases** (or
-Subscriptions).
+For each one also set:
+- **Availability:** all countries, or at least the United States.
+- **Review Information → Screenshot:** a screenshot of the BoxCall paywall
+  (Profile → Upgrade) at iPhone size (for example 1290×2796). The same image
+  works for all three.
+- **Review Notes:** `Profile tab → Upgrade → Subscribe on this tier.`
+- **Family Sharing:** off.
 
-For each of the three subscriptions —
-`com.boxcall.sub.backstage.monthly`,
-`com.boxcall.sub.producers_pass.monthly`,
-`com.boxcall.sub.mogul.monthly` — check:
+**Level matters.** In App Store Connect, level 1 is the highest tier. Drag
+Mogul to the top and Backstage to the bottom so upgrades and downgrades work
+in the right direction.
 
-- **Status is not "Missing Metadata" or "Developer Action Needed"**.
-  Those states keep them out of sandbox too. Fix any red flags on the
-  product page: review screenshot (640×920 or larger), localized
-  display name, localized description, promotional image if needed.
-- **Each product is attached to this submission's build**. On the
-  BoxCall version 1.0 page, under **In-App Purchases**, click "+" and
-  add all three. Without this attach, sandbox will not serve them.
-- **Status is at least "Ready to Submit"** — "Waiting for Review" is
-  also fine. Nothing lower.
+Each subscription should end at **Ready to Submit**. If any shows "Missing
+Metadata", open it and fill in whatever field is flagged.
 
-### 3. Subscription group
+## Step 3 — Attach them to the submission
 
-All three tiers must be in **one subscription group**, because they're
-"different levels of the same service". If you have three separate
-groups, StoreKit considers the purchases invalid (they're not
-upgrade/downgrade paths of each other) and sandbox rejects the
-transaction.
+On the BoxCall 1.0 version page, in **In-App Purchases and Subscriptions**,
+click + and select all three. An app's first subscriptions must be submitted
+together with an app version, so without this step the reviewer still gets
+nothing.
 
-Monetization → Subscriptions → Subscription Group should have one
-group (e.g. "BoxCall Membership") with Backstage, Producer's Pass,
-Mogul inside it, ordered cheapest to most expensive.
+## Step 4 — Sandbox test before resubmitting
 
-### 4. Bundle ID and in-app purchase capability
+1. Users and Access → Sandbox → Test Accounts → create a tester using an email
+   that isn't a real Apple ID.
+2. On the iPad: Settings → App Store → Sandbox Account → sign in as the tester.
+3. Open build 7 from TestFlight → Profile → Upgrade → Subscribe on each tier.
+4. The purchase sheet should say "Environment: Sandbox", and the purchase
+   should complete. The new products can take up to an hour to appear in the
+   sandbox. If the app still says "Subscriptions aren't available", wait and
+   retry before changing anything.
 
-- Xcode → BoxCall target → Signing & Capabilities → ensure **In-App
-  Purchase** capability is on (it should already be — the archive
-  shipped with the right entitlements based on what's in
-  `BoxCall.entitlements`).
-- App Store Connect bundle ID matches the archive. BoxCall uses
-  `com.boxcall.app`. Confirm the app record on ASC uses the same.
-
-### 5. Prices and availability
-
-Each IAP → Pricing → make sure a price tier is set and the availability
-region includes **United States** (Apple reviews from Cupertino). A tier
-set only outside the US can also cause sandbox errors.
-
-### 6. Test it yourself first
-
-Before resubmitting:
-
-1. In App Store Connect → Users and Access → **Sandbox Testers**, make
-   a test Apple ID (any email you don't use for a real Apple ID).
-2. On a physical iPhone or iPad: Settings → App Store → Sandbox Account
-   → sign in with that tester.
-3. Install a TestFlight (or local Xcode) build of BoxCall from branch
-   `claude/movie-betting-app-hspuu3`.
-4. Go through: Profile → Upgrade → tap Subscribe on any tier.
-5. You should see the real StoreKit sheet with "[Environment: Sandbox]"
-   at the top, and the purchase should complete without error.
-
-For step 3, the build 7 that's already in TestFlight is fine.
-
-If step 4–5 reproduces the reviewer's error on your own device, the
-root cause is one of #1–#5 above, not the app. Fix that, retest, then
-resubmit build 7.
-
----
-
-## While you're there: nothing to change in the app code
-
-The paywall code in `BoxCall/BoxCall/Services/StoreService.swift` is
-correct — it calls `Product.products(for:)`, then `product.purchase()`,
-and surfaces any thrown error as an alert. That's exactly how Apple
-wants StoreKit 2 used. The error the reviewer saw was the one we now
-show instead of a frozen screen, so the fix landed and the next
-problem became visible. No Swift change is needed; this is all in App
-Store Connect.
-
-If after fixing #1–#5 the error still reproduces in your own sandbox
-test, come back and we'll add logging to the catch blocks to surface
-the exact `StoreKitError` or `SKError` code, which will narrow it to
-a specific product configuration row.
+## Step 5 — Resubmit build 7 with the reply below
 
 ---
 
 ## Reply to App Store Connect Resolution Center
 
-Paste this **after** you've confirmed Paid Apps is Active, all three
-IAPs are attached to the submission, and a sandbox purchase works on
-your own device. No code changed, so **resubmit build 7 as-is** — no
-new build, no signing, no GitHub secrets needed. Only build a new one
-if your own sandbox test turns up an actual app bug.
+Paste this only after Steps 1–4 are done and a sandbox purchase works.
 
 ---
 
 Hello App Review team,
 
-Thank you for the detailed note on build 7 and for confirming that
-the paywall now shows an error surface where build 5 silently froze.
-That part of the fix landed.
+Thank you for testing build 7 and for the clear description of the upgrade
+error.
 
-The "Upgrade process returned an error" result on your device points
-to the In-App Purchase configuration on our side rather than the app
-code. I've taken the following steps and am resubmitting build 7
-unchanged:
+The cause was on our side in App Store Connect: BoxCall's three subscription
+products had not been created, so StoreKit had nothing to return and the
+paywall correctly showed an error. My earlier note for build 5 suggested the
+products were still in review. That was wrong, and I apologize for the
+confusion.
 
-1. Confirmed the **Paid Apps Agreement** is in Active status in
-   App Store Connect → Business. All required Legal, Tax, Banking,
-   and contact info is on file.
-2. Confirmed each of the three subscription products is in a
-   submittable state and attached to this build's submission:
-   - com.boxcall.sub.backstage.monthly (Backstage)
-   - com.boxcall.sub.producers_pass.monthly (Producer's Pass)
-   - com.boxcall.sub.mogul.monthly (Mogul)
-3. Confirmed all three sit in the same subscription group
-   ("BoxCall Membership"), ordered Backstage → Producer's Pass →
-   Mogul, so StoreKit treats them as upgrade/downgrade paths of a
-   single service.
-4. Confirmed the United States is on the availability list and each
-   tier has a price tier assigned.
-5. Reproduced a successful sandbox purchase of each tier on a
-   physical iPad Air (iPadOS 27.2.1) using a fresh Sandbox Tester
-   Apple ID. All three went through, the StoreKit sheet showed
-   "[Environment: Sandbox]", and the membership activated on return.
+I've now done the following:
 
-If anything in the review environment still returns an error, I'd
-be grateful for the exact error text your tester sees — the paywall
-in build 7 and later surfaces it in an alert — and I'll address it
-right away.
+1. Created the "BoxCall Membership" subscription group with three monthly
+   auto-renewable subscriptions:
+   - com.boxcall.sub.backstage.monthly — Backstage, $3.99/month
+   - com.boxcall.sub.producers_pass.monthly — Producer's Pass, $9.99/month
+   - com.boxcall.sub.mogul.monthly — Mogul, $14.99/month
+2. Completed their metadata and review screenshots, and attached all three to
+   this submission.
+3. Confirmed the Paid Apps Agreement is active.
+4. Purchased each tier successfully in the sandbox on an iPad running
+   iPadOS 27.2.1.
 
-Thank you again,
+The app binary is unchanged, so I'm resubmitting build 7. To test: Profile tab
+→ Upgrade → Subscribe on any plan.
+
+Thank you,
 
 Mike Valasek
 Developer, BoxCall
-mvalasek77@gmail.com
