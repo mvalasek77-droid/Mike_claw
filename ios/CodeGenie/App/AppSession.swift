@@ -152,6 +152,23 @@ final class AppSession: ObservableObject {
         Haptics.selection()
     }
 
+    /// Start a failed or stalled app over from scratch — a brand-new
+    /// build with the same description. We deliberately drop any old
+    /// backend job id so BuildScreen starts fresh instead of trying to
+    /// re-attach to a build the server has long since discarded.
+    func restartJob(_ job: BuildJob) {
+        clearResumeRecord()
+        openJob(job, backendID: nil)
+    }
+
+    /// Re-attach to a job's existing backend build to pick up a paused
+    /// or interrupted one where it left off. Falls back to a fresh
+    /// start when we have no backend id for it (e.g. it never got past
+    /// the first request).
+    func resumeJob(_ job: BuildJob) {
+        openJob(job, backendID: backendJobIDs[job.id])
+    }
+
     @discardableResult
     func startBuildAndOpen(from description: AppDescription) -> BuildJob {
         currentJobBackendID = nil

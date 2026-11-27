@@ -139,6 +139,27 @@ struct BuildJob: Identifiable, Hashable, Codable {
             case .failed:       "We hit a build error — let's diagnose."
             }
         }
+
+        /// The build reached an output a person can act on — try it or
+        /// ship it. These are the only states that do NOT invite a
+        /// restart.
+        var isTerminalSuccess: Bool { self == .readyForTest || self == .shipping }
+
+        /// The build either failed or stopped partway (interrupted,
+        /// force-quit, or paused and never resumed). The Apps gallery
+        /// offers to restart or resume these so a stalled app is never a
+        /// dead card.
+        var isRestartable: Bool { !isTerminalSuccess }
+
+        /// A short status word + colour hint for a gallery badge, so a
+        /// person can see at a glance which apps need attention.
+        var statusKind: StatusKind {
+            if self == .failed { return .failed }
+            if isTerminalSuccess { return .done }
+            return .inProgress
+        }
+
+        enum StatusKind { case done, inProgress, failed }
     }
 }
 

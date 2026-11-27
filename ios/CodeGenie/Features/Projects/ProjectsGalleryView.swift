@@ -31,22 +31,44 @@ struct ProjectsGalleryView: View {
                     } else {
                         whereIsMyAppRow
                         ForEach(filtered) { job in
-                            Button {
-                                session.openJob(job, backendID: session.backendJobIDs[job.id])
-                            } label: {
-                                ProjectCard(
-                                    job: job,
-                                    backendID: session.backendJobIDs[job.id],
-                                    spend: session.backendJobIDs[job.id].flatMap { JobCostLog.shared.spend(for: $0) },
-                                    submissionStatus: submissions.record(for: job.id).flatMap {
-                                        $0.completedSteps.isEmpty && !$0.isSubmitted ? nil : $0.statusLine
-                                    }
-                                )
+                            VStack(spacing: 10) {
+                                Button {
+                                    session.openJob(job, backendID: session.backendJobIDs[job.id])
+                                } label: {
+                                    ProjectCard(
+                                        job: job,
+                                        backendID: session.backendJobIDs[job.id],
+                                        spend: session.backendJobIDs[job.id].flatMap { JobCostLog.shared.spend(for: $0) },
+                                        submissionStatus: submissions.record(for: job.id).flatMap {
+                                            $0.completedSteps.isEmpty && !$0.isSubmitted ? nil : $0.statusLine
+                                        }
+                                    )
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("Open \(job.description.title)")
+                                .accessibilityHint("Opens this app's build")
+
+                                // A failed or stalled build is never a dead
+                                // card: give it an obvious way back in.
+                                if job.stage.isRestartable {
+                                    restartActions(for: job)
+                                }
                             }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("Open \(job.description.title)")
-                            .accessibilityHint("Opens this app's build")
                             .contextMenu {
+                                if job.stage.isRestartable {
+                                    Button {
+                                        session.restartJob(job)
+                                    } label: {
+                                        Label("Start over", systemImage: "arrow.clockwise")
+                                    }
+                                    if session.backendJobIDs[job.id] != nil {
+                                        Button {
+                                            session.resumeJob(job)
+                                        } label: {
+                                            Label("Resume where it left off", systemImage: "clock.arrow.circlepath")
+                                        }
+                                    }
+                                }
                                 if session.backendJobIDs[job.id] != nil {
                                     Button {
                                         compareOrigin = job
@@ -199,6 +221,62 @@ struct ProjectsGalleryView: View {
             .frame(maxWidth: .infinity)
         }
     }
+
+    /// The restart/resume row shown under a failed or stalled card.
+    /// Failed builds lead with "Start over"; an interrupted build that
+    /// still has a backend checkpoint leads with "Resume".
+    @ViewBuilder
+    private func restartActions(for job: BuildJob) -> some View {
+        let hasCheckpoint = session.backendJobIDs[job.id] != nil
+        let failed = job.stage.statusKind == .failed
+        HStack(spacing: 10) {
+            if failed {
+                restartPill(title: "Start over", icon: "arrow.clockwise", tint: LiquidGlass.accent) {
+                    session.restartJob(job)
+                }
+                if hasCheckpoint {
+                    restartPill(title: "Resume", icon: "clock.arrow.circlepath", tint: LiquidGlass.accentSecondary, filled: false) {
+                        session.resumeJob(job)
+                    }
+                }
+            } else {
+                // Interrupted / paused mid-build.
+                restartPill(title: hasCheckpoint ? "Resume" : "Restart", icon: "clock.arrow.circlepath", tint: LiquidGlass.accent) {
+                    hasCheckpoint ? session.resumeJob(job) : session.restartJob(job)
+                }
+                if hasCheckpoint {
+                    restartPill(title: "Start over", icon: "arrow.clockwise", tint: LiquidGlass.accentSecondary, filled: false) {
+                        session.restartJob(job)
+                    }
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 2)
+    }
+
+    private func restartPill(title: String, icon: String, tint: Color, filled: Bool = true, action: @escaping () -> Void) -> some View {
+        Button {
+            Haptics.selection()
+            action()
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: icon).font(.system(size: 12, weight: .bold))
+                Text(title).font(.system(size: 13, weight: .semibold, design: .rounded))
+            }
+            .padding(.horizontal, 14).padding(.vertical, 9)
+            .frame(minHeight: 40)
+            .foregroundStyle(filled ? .white : tint)
+            .background(
+                Group {
+                    if filled { Capsule().fill(tint.opacity(0.9)) }
+                    else { Capsule().strokeBorder(tint.opacity(0.6)) }
+                }
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+    }
 }
 
 private struct ProjectCard: View {
@@ -229,8 +307,9 @@ private struct ProjectCard: View {
                     Text(job.stage.label)
                         .font(.system(size: 11, weight: .semibold, design: .rounded))
                         .padding(.horizontal, 8).padding(.vertical, 4)
-                        .background(.white.opacity(0.08), in: Capsule())
-                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
+                        .background(Self.badgeTint(job.stage).opacity(0.18), in: Capsule())
+                        .overlay(Capsule().strokeBorder(Self.badgeTint(job.stage).opacity(0.4)))
+                        .foregroundStyle(Self.badgeTint(job.stage))
                 }
                 Text(job.description.prompt)
                     .font(.system(size: 13, weight: .regular, design: .rounded))
@@ -269,6 +348,16 @@ private struct ProjectCard: View {
                 }
             }
             .padding(16)
+        }
+    }
+
+    /// Colour the stage badge so a person can scan the gallery and see
+    /// which apps are done, mid-build, or failed.
+    static func badgeTint(_ stage: BuildJob.Stage) -> Color {
+        switch stage.statusKind {
+        case .done:       LiquidGlass.success
+        case .inProgress: LiquidGlass.accent
+        case .failed:     LiquidGlass.error
         }
     }
 }

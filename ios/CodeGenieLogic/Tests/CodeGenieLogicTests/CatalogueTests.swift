@@ -166,6 +166,25 @@ final class BuildStageTests: XCTestCase {
         }
     }
 
+    func testOnlyReadyAndShippingCountAsSuccessEverythingElseCanRestart() {
+        for stage in BuildJob.Stage.allCases {
+            switch stage {
+            case .readyForTest, .shipping:
+                XCTAssertTrue(stage.isTerminalSuccess, "\(stage) should be a success")
+                XCTAssertFalse(stage.isRestartable, "a finished app should not invite a restart")
+                XCTAssertEqual(stage.statusKind, .done)
+            case .failed:
+                XCTAssertFalse(stage.isTerminalSuccess)
+                XCTAssertTrue(stage.isRestartable, "a failed build must be restartable")
+                XCTAssertEqual(stage.statusKind, .failed)
+            default:
+                XCTAssertFalse(stage.isTerminalSuccess, "\(stage) is mid-build, not done")
+                XCTAssertTrue(stage.isRestartable, "an interrupted build must be restartable")
+                XCTAssertEqual(stage.statusKind, .inProgress, "\(stage)")
+            }
+        }
+    }
+
     func testSavedJobsSurviveEncoding() throws {
         let job = BuildJob(description: AppDescription(title: "Tide Times", prompt: "tides", features: ["a"]), stage: .linting)
         let decoded = try JSONDecoder().decode(BuildJob.self, from: JSONEncoder().encode(job))
